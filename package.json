@@ -1,11 +1,11 @@
 {
-    "name": "chrome-extension-svelte-typescript-boilerplate",
-    "description": "Boilerplate for Chrome Extension Svelte Typescript project",
-    "version": "1.0.0",
+    "name": "omni-max",
+    "description": "Omni Max: An AI-powered Chrome extension that enhances the MatrixGo omnichannel customer service platform with features like chat summarization, response improvement, message templates, and quick data copy shortcuts.",
+    "version": "0.1.0",
     "type": "module",
     "repository": {
         "type": "git",
-        "url": "https://github.com/nekitcorp/chrome-extension-svelte-typescript-boilerplate.git"
+        "url": "https://github.com/DevDeividMoura/omni-max.git"
     },
     "scripts": {
         "dev": "vite",
