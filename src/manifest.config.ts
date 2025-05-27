@@ -1,7 +1,9 @@
 import { defineManifest } from "@crxjs/vite-plugin";
 import packageJson from "../package.json";
 
-const { version } = packageJson;
+import { capitalizeFirstLetterOfWords } from "./utils";
+
+const { name: projectName, description: projectDescription, version } = packageJson;
 
 // Convert from Semver (example: 0.1.0-beta6)
 const [major, minor, patch] = version
@@ -12,8 +14,8 @@ const [major, minor, patch] = version
 
 export default defineManifest(async () => ({
     manifest_version: 3,
-    name: "Chrome Extension Svelte Typescript Boilerplate",
-    description: "Boilerplate for Chrome Extension Svelte Typescript project",
+    name: capitalizeFirstLetterOfWords(projectName.replace(/-/g, " ")),
+    description: projectDescription.split(": ")[1],
     version: `${major}.${minor}.${patch}`,
     version_name: version,
     icons: {
@@ -22,12 +24,6 @@ export default defineManifest(async () => ({
         "48": "src/assets/icons/icon-48.png",
         "128": "src/assets/icons/icon-128.png",
     },
-    content_scripts: [
-        {
-            matches: ["https://vipmax.matrixdobrasil.ai/Painel/"],
-            js: ["src/content/index.ts"],
-        },
-    ],
     action: {
         default_popup: "src/popup/popup.html",
         default_icon: {
@@ -37,5 +33,11 @@ export default defineManifest(async () => ({
             "128": "src/assets/icons/icon-128.png",
         },
     },
-    permissions: ["storage"] as chrome.runtime.ManifestPermissions[],
+    content_scripts: [
+        {
+            matches: ["https://vipmax.matrixdobrasil.ai/Painel/"],
+            js: ["src/content/index.ts"],
+        },
+    ],
+    permissions: ["storage", "tabs"] as chrome.runtime.ManifestPermissions[],
 }));
