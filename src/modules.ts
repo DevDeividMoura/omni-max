@@ -5,18 +5,22 @@
  */
 
 /**
- * Interface describing the structure of a configurable module.
+ * Interface describing the structure of a configurable module within the extension.
  */
 export interface Module {
+  /** Unique identifier for the module. */
   id: string;
+  /** User-friendly name of the module, displayed in the UI. */
   name: string;
+  /** Detailed description of what the module does, displayed in the UI. */
   description: string;
+  /** Default enabled state of the module upon first installation. */
   defaultEnabled: boolean;
 }
 
 /**
  * List of all available modules in the Omni Max extension.
- * This is the single source of truth for module definitions.
+ * This array serves as the single source of truth for module definitions.
  */
 export const availableModules: Module[] = [
   {
@@ -28,13 +32,13 @@ export const availableModules: Module[] = [
   {
     id: 'shortcutCopyName',
     name: 'Atalho: Copiar Nome do Cliente',
-    description: 'Permite copiar o nome do cliente usando um atalho de teclado (padrão: Ctrl+Shift+X).',
+    description: 'Permite copiar o nome do cliente usando um atalho de teclado (padrão: Ctrl+Shift+Z).',
     defaultEnabled: true,
   },
   {
-    id: 'shortcutCopyCPF',
-    name: 'Atalho: Copiar CPF do Cliente',
-    description: 'Permite copiar o CPF do cliente usando um atalho de teclado (padrão: Ctrl+Shift+C).',
+    id: 'shortcutCopyDocumentNumber',
+    name: 'Atalho: Copiar Número do Documento do Cliente',
+    description: 'Permite copiar o Número do Documento do cliente usando um atalho de teclado (padrão: Ctrl+Shift+X).',
     defaultEnabled: true,
   },
   {
@@ -59,9 +63,10 @@ export const availableModules: Module[] = [
 
 /**
  * Generates an initial state object for all defined modules.
- * This object maps module IDs to their default enabled/disabled status.
- * Useful for initializing the persistent storage.
- * @returns {Record<string, boolean>} An object like { moduleId1: true, moduleId2: false, ... }
+ * This object maps module IDs to their default enabled/disabled status,
+ * which is useful for initializing persistent storage when the extension is first run
+ * or when new modules are introduced.
+ * @returns {Record<string, boolean>} An object where keys are module IDs and values are their default enabled status (e.g., { moduleId1: true, moduleId2: false }).
  */
 export function getInitialModuleStates(): Record<string, boolean> {
   const initialState: Record<string, boolean> = {};
