@@ -128,3 +128,23 @@ export const collapsibleSectionsStateStore = persistentStore<CollapsibleSections
     prompts: false,
   }
 );
+
+/**
+ * Interface para a configuração das teclas de atalho.
+ * Mapeia o ID do módulo de atalho para a tecla configurada.
+ */
+export interface ShortcutKeysConfig {
+  [moduleId: string]: string; // Ex: { shortcutCopyName: 'X', shortcutCopyCPF: 'C' }
+}
+
+/**
+ * Store persistente para as teclas de atalho configuradas pelo usuário.
+ */
+export const shortcutKeysStore = persistentStore<ShortcutKeysConfig>(
+  'omniMaxShortcutKeys',
+  { // Valores padrão iniciais para as teclas dos atalhos
+    shortcutCopyName: 'X',
+    shortcutCopyCPF: 'C',
+    // Adicione outros módulos de atalho com suas teclas padrão aqui no futuro
+  }
+);

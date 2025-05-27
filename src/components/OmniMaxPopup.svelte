@@ -2,16 +2,7 @@
   import { onMount } from "svelte";
   import CollapsibleSection from "./CollapsibleSection.svelte";
   import ToggleSwitch from "./ToggleSwitch.svelte";
-  import {
-    Keyboard,
-    Cpu,
-    FileText,
-    Eye,
-    X,
-    ListChecks
-  } from "lucide-svelte";
-
-  
+  import { Keyboard, Cpu, FileText, Eye, X, ListChecks } from "lucide-svelte";
 
   import {
     globalExtensionEnabledStore,
@@ -26,6 +17,8 @@
     type PromptsConfig,
     collapsibleSectionsStateStore,
     type CollapsibleSectionsState,
+    shortcutKeysStore,
+    type ShortcutKeysConfig,
   } from "../storage";
 
   import { availableModules } from "../modules";
@@ -85,27 +78,37 @@
     ["aiChatSummary", "aiResponseReview"].includes(m.id),
   );
 
-  let localShortcutKeys: Record<string, string> = {
-    shortcutCopyName: "X", // Tecla padrão
-    shortcutCopyCPF: "C", // Tecla padrão
+  let localShortcutKeys: ShortcutKeysConfig = {
+    // Boa prática inicializar com a estrutura esperada
+    shortcutCopyName: "X", // Default visual antes do onMount
+    shortcutCopyCPF: "C", // Default visual antes do onMount
+  };
+
+  let initialShortcutKeys: ShortcutKeysConfig = {
+    // Boa prática inicializar
+    shortcutCopyName: "X",
+    shortcutCopyCPF: "C",
   };
   // Handler para mudança da tecla de atalho (exemplo para um módulo)
   function handleShortcutKeyChange(moduleId: string, event: Event) {
     const inputElement = event.target as HTMLInputElement;
     let value = inputElement.value.toUpperCase();
+
     if (value.length > 1) {
       value = value.charAt(value.length - 1); // Pega apenas o último caractere digitado
     }
 
     if (value === "" || /^[A-Z0-9]$/.test(value)) {
       // Permite letras ou números
-      localShortcutKeys[moduleId] = value;
-      // keyError[moduleId] = ''; // Se você tiver um sistema de erro por atalho
+      // Para garantir reatividade no Svelte ao modificar propriedades de objeto:
+      localShortcutKeys = {
+        ...localShortcutKeys,
+        [moduleId]: value,
+      };
       markChanged();
     } else {
-      // keyError[moduleId] = 'Apenas uma letra ou número.';
-      // Para reverter para o valor anterior se inválido:
-      inputElement.value = localShortcutKeys[moduleId];
+      // Reverte para o valor anterior se inválido, para o input refletir
+      inputElement.value = localShortcutKeys[moduleId] || "";
     }
   }
 
@@ -139,6 +142,23 @@
       shortcutsOverallEnabledStore.subscribe((val) => {
         localShortcutsOverallEnabled = val;
         initialShortcutsOverallEnabled = val;
+      }),
+    );
+    unsubs.push(
+      shortcutKeysStore.subscribe((val) => {
+        localShortcutKeys = { ...val }; // Carrega do store
+        initialShortcutKeys = { ...val }; // Define o estado inicial para comparação
+        // Garante que as chaves para os módulos de atalho existem, se não vierem do storage
+        for (const module of shortcutModules) {
+          if (localShortcutKeys[module.id] === undefined) {
+            // Se não houver valor salvo, pega do default do store ou define um aqui
+            const defaultKey =
+              (shortcutKeysStore as any).initialValue?.[module.id] ||
+              (module.id === "shortcutCopyName" ? "X" : "C");
+            localShortcutKeys[module.id] = defaultKey;
+            initialShortcutKeys[module.id] = defaultKey;
+          }
+        }
       }),
     );
     unsubs.push(
@@ -229,6 +249,7 @@
     globalExtensionEnabledStore.set(localGlobalEnabled);
     moduleStatesStore.set({ ...localModuleStates });
     shortcutsOverallEnabledStore.set(localShortcutsOverallEnabled);
+    shortcutKeysStore.set({ ...localShortcutKeys });
     aiFeaturesEnabledStore.set(localAiFeaturesEnabled);
     aiCredentialsStore.set({ ...localAiCredentials });
     aiProviderConfigStore.set({ ...localAiProviderConfig });
@@ -238,6 +259,7 @@
     initialGlobalEnabled = localGlobalEnabled;
     initialModuleStates = { ...localModuleStates };
     initialShortcutsOverallEnabled = localShortcutsOverallEnabled;
+    initialShortcutKeys = { ...localShortcutKeys };
     initialAiFeaturesEnabled = localAiFeaturesEnabled;
     initialAiCredentials = { ...localAiCredentials };
     initialAiProviderConfig = { ...localAiProviderConfig };
@@ -357,11 +379,15 @@
                     on:input={(event) =>
                       handleShortcutKeyChange(module.id, event)}
                     maxlength="1"
-                    placeholder={module.id === "shortcutCopyName"
-                      ? "X"
-                      : module.id === "shortcutCopyCPF"
-                        ? "C"
-                        : "?"}
+                    placeholder={localShortcutKeys[module.id] ||
+                      (module.id === "shortcutCopyName"
+                        ? "X"
+                        : module.id === "shortcutCopyCPF"
+                          ? "C"
+                          : "?")}
+                    disabled={!localGlobalEnabled ||
+                      !localShortcutsOverallEnabled ||
+                      !localModuleStates[module.id]}
                   />
                 </div>
               </div>
@@ -534,7 +560,6 @@
         }
       }}
     >
-
       <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
       <!-- svelte-ignore a11y_click_events_have_key_events -->
       <div
@@ -611,7 +636,7 @@
             on:click={() => {
               showCredentialsModal = false; /* markChanged() já foi chamado nos inputs do modal */
             }}>OK</button
-            >
+          >
         </div>
       </div>
     </div>
@@ -723,7 +748,6 @@
   }
 
   .apply-button:hover:not(:disabled) {
-
     filter: brightness(110%);
     /* Outras opções para hover:
      filter: brightness(90%); /* Levemente mais escuro */
