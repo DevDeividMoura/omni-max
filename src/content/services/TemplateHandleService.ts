@@ -1,20 +1,36 @@
 /**
  * src/content/services/TemplateHandlingService.ts
- * Lida com o processamento de templates na caixa de chat ao pressionar Tab.
+ * Handles advanced template processing within the chatbox, primarily triggered by the Tab key.
+ * This includes features like auto-formatting customer names (e.g., {FULL NAME} -> Firstname)
+ * and selecting placeholder variables (e.g., [VARIABLE]) for quick editing.
  */
 import type { Config } from '../config';
-import type { DomService } from '../utils/DomService';
+import type { DomService } from './DomService'; // Corrected import path
 
 export class TemplateHandlingService {
   private config: Config;
   private dom: DomService;
-  private bracketRegex = /\[([^\]]+)\]/g; // Regex para encontrar [VARIAVEL]
+  private bracketRegex = /\[([^\]]+)\]/g; // Regex for finding placeholders like [VARIABLE]
+  private boundOnKeyDown: (event: KeyboardEvent) => Promise<void>;
 
+
+  /**
+   * Constructs an instance of the TemplateHandlingService.
+   * @param {Config} config The application configuration object.
+   * @param {DomService} domService An instance of the DomService for DOM interactions.
+   */
   constructor(config: Config, domService: DomService) {
     this.config = config;
     this.dom = domService;
+    this.boundOnKeyDown = this.onKeyDown.bind(this);
   }
 
+  /**
+   * Capitalizes the first letter of a given full name and returns only the first name, lowercased.
+   * Example: "ANA MARIA SOUZA" -> "Ana"
+   * @param {string} fullName The full name string.
+   * @returns {string} The capitalized first name, or an empty string if input is invalid.
+   */
   private capitalizeFirstName(fullName: string): string {
     if (!fullName || typeof fullName !== 'string') return '';
     const firstName = fullName.split(' ')[0];
@@ -23,43 +39,63 @@ export class TemplateHandlingService {
       : '';
   }
 
+  /**
+   * Transforms template text by processing specific placeholders.
+   * Currently, it replaces placeholders like `{CUSTOMER NAME}` with the capitalized first name.
+   * @param {string} text The input text containing potential placeholders.
+   * @returns {string} The text with placeholders transformed.
+   */
   private transformTemplateText(text: string): string {
-    // Processa {NOME COMPLETO} -> Nome
-    return text.replace(/\{([^}]+)\}/g, (_, placeholderContent) => 
+    // Process {NOME COMPLETO} -> Nome (capitalized first name)
+    return text.replace(/\{([^}]+)\}/g, (_, placeholderContent) =>
       this.capitalizeFirstName(placeholderContent.trim())
     );
   }
 
+  /**
+   * Finds all selectable variable placeholders (e.g., `[VARIABLE]`) within a given text.
+   * @param {string} text The text to search within.
+   * @returns {Array<{ word: string, startIndex: number, endIndex: number }>} An array of objects,
+   * each representing a found variable with its content, start index (of '['), and end index (of ']').
+   */
   private findSelectableVariables(text: string): Array<{ word: string, startIndex: number, endIndex: number }> {
     const matches: Array<{ word: string, startIndex: number, endIndex: number }> = [];
     let matchResult;
-    // Resetar lastIndex do regex global antes de usar
-    this.bracketRegex.lastIndex = 0; 
+    this.bracketRegex.lastIndex = 0; // Reset lastIndex for global regex before each use
+
     while ((matchResult = this.bracketRegex.exec(text)) !== null) {
       matches.push({
-        word: matchResult[1], // Conteúdo dentro dos colchetes
-        startIndex: matchResult.index, // Índice de início do '['
-        endIndex: this.bracketRegex.lastIndex - 1 // Índice do ']'
+        word: matchResult[1], // Content within the brackets
+        startIndex: matchResult.index, // Start index of '['
+        endIndex: this.bracketRegex.lastIndex - 1 // Index of ']' (inclusive)
       });
     }
     return matches;
   }
-  
+
+  /**
+   * Core logic executed when the Tab key is pressed in an editable div.
+   * It first transforms basic templates (like customer name), then attempts to find
+   * and select the first available `[VARIABLE]` placeholder. If no variables are found,
+   * it moves the cursor to the end of the content.
+   * @param {HTMLElement} editableDiv The content-editable HTML element (chatbox).
+   */
   private async handleTabPressLogic(editableDiv: HTMLElement): Promise<void> {
-    console.log("Omni Max [TemplateHandling]: Lógica do Tab iniciada...");
+    // console.log("Omni Max [TemplateHandling]: Tab key logic initiated...");
     try {
-      let currentText = this.dom.getTextSafely(editableDiv); // Pega o texto como string simples
+      let currentText = this.dom.getTextSafely(editableDiv); // Get plain text content
       let transformedText = this.transformTemplateText(currentText);
 
-      // Atualiza o conteúdo do div com o texto transformado ANTES de tentar selecionar
+      // Update the div's content if transformations occurred.
+      // This is crucial because selection offsets depend on the actual rendered text.
       if (editableDiv.innerText !== transformedText) {
-        editableDiv.innerText = transformedText; // Isso pode perder a posição do cursor, mas é necessário para a seleção correta
-        await this.dom.waitNextFrame(); // Espera o DOM atualizar com o novo innerText
-        // Após innerText ser setado, o cursor geralmente vai para o início ou fim.
-        // Precisamos recalcular o texto para encontrar as variáveis na nova string.
-        currentText = transformedText; // O texto base para busca de variáveis agora é o transformado
+        editableDiv.innerText = transformedText;
+        await this.dom.waitNextFrame(); // Wait for DOM to update with the new innerText
+        // After setting innerText, the cursor position might be lost or reset.
+        // The text used for finding variables must be the *new* transformed text.
+        currentText = transformedText;
       }
-      
+
       const selectableVariables = this.findSelectableVariables(currentText);
 
       if (selectableVariables.length > 0) {
@@ -67,75 +103,84 @@ export class TemplateHandlingService {
         const selection = window.getSelection();
         if (!selection) return;
 
-        // Acha os nós de texto correspondentes aos índices da variável no elemento
-        const startNodeInfo = this.dom.getTextNodeAndOffsetAtCharIndex(editableDiv, firstVariable.startIndex); // +1 para pular '['
-        const endNodeInfo = this.dom.getTextNodeAndOffsetAtCharIndex(editableDiv, firstVariable.endIndex + 1); // endIndex já é o ']'
+        // Attempt to find the text node(s) and offsets for the variable placeholder.
+        // The `+1` for startIndex is to select *inside* the brackets `[` `]`.
+        // The `endIndex` already points to `]`, so `endIndex + 1` is the offset *after* `]`.
+        // To select the content *inside* [VAR], we want `startIndex + 1` to `endIndex`.
+        const startNodeInfo = this.dom.getTextNodeAndOffsetAtCharIndex(editableDiv, firstVariable.startIndex + 1);
+        const endNodeInfo = this.dom.getTextNodeAndOffsetAtCharIndex(editableDiv, firstVariable.endIndex);
 
-        if (startNodeInfo && endNodeInfo && startNodeInfo.node === endNodeInfo.node) { // Simples caso: variável está em um único nó de texto
+
+        if (startNodeInfo && endNodeInfo) {
           const range = document.createRange();
-          range.setStart(startNodeInfo.node, startNodeInfo.offset);
-          range.setEnd(endNodeInfo.node, endNodeInfo.offset);
-          selection.removeAllRanges();
-          selection.addRange(range);
-          console.log(`Omni Max [TemplateHandling]: Variável "${firstVariable.word}" selecionada.`);
-        } else if (startNodeInfo && endNodeInfo) { // Caso mais complexo: variável cruza múltiplos nós de texto
-            const range = document.createRange();
+          try {
             range.setStart(startNodeInfo.node, startNodeInfo.offset);
-            range.setEnd(endNodeInfo.node, endNodeInfo.offset); // Tenta selecionar mesmo assim
+            range.setEnd(endNodeInfo.node, endNodeInfo.offset);
             selection.removeAllRanges();
             selection.addRange(range);
-            console.warn("Omni Max [TemplateHandling]: Seleção de variável cruzou múltiplos nós de texto, pode ser imprecisa.");
+            // console.log(`Omni Max [TemplateHandling]: Variable "${firstVariable.word}" selected.`);
+          } catch (rangeError) {
+             console.warn("Omni Max [TemplateHandling]: Error setting range for variable selection. Moving cursor to end.", rangeError);
+             this.dom.moveCursorToEnd(editableDiv);
+          }
         } else {
-          console.warn("Omni Max [TemplateHandling]: Não foi possível encontrar nós para seleção da variável. Movendo cursor para o final.");
+          console.warn("Omni Max [TemplateHandling]: Could not find text nodes for variable selection. Moving cursor to end.");
           this.dom.moveCursorToEnd(editableDiv);
         }
       } else {
-        // Se não há variáveis para selecionar, apenas move o cursor para o final
+        // If no variables are found to select, move the cursor to the end of the editable div.
         this.dom.moveCursorToEnd(editableDiv);
       }
     } catch (error) {
-      console.error("Omni Max [TemplateHandling]: Erro ao processar Tab:", error);
+      console.error("Omni Max [TemplateHandling]: Error processing Tab key press:", error);
+      if (editableDiv) this.dom.moveCursorToEnd(editableDiv); // Fallback
     }
   }
 
 
   /**
-   * Manipulador de evento para a tecla Tab no chatbox editável.
+   * Handles the `keydown` event, specifically for the Tab key within the configured editable chatbox.
+   * It checks if the template processing module is enabled before proceeding.
+   * @param {KeyboardEvent} event The `keydown` event object.
    */
   private async onKeyDown(event: KeyboardEvent): Promise<void> {
-    // Verifica se o módulo "Template Processor" está ativo
+    // Check if the "Template Processor" module is enabled
     const settings = await chrome.storage.sync.get(['omniMaxGlobalEnabled', 'omniMaxModuleStates']);
-    const isGlobalEnabled = settings.omniMaxGlobalEnabled !== false;
-    const isTemplateProcessorEnabled = settings.omniMaxModuleStates?.['templateProcessor'] !== false;
+    const isGlobalEnabled = settings.omniMaxGlobalEnabled !== false; // Default true
+    const moduleStates = settings.omniMaxModuleStates || {};
+    const isTemplateProcessorEnabled = moduleStates['templateProcessor'] !== false; // Default true
 
     if (!isGlobalEnabled || !isTemplateProcessorEnabled) {
-      return; // Não faz nada se o módulo estiver desabilitado
+      return; // Do nothing if the module or global extension is disabled
     }
 
+    // Check if Tab key was pressed and the target is the configured editable chatbox
     if (event.key !== 'Tab' || !(event.target instanceof HTMLElement) || !event.target.matches(this.config.selectors.editableChatbox)) {
       return;
     }
-    
-    event.preventDefault(); // Previne o comportamento padrão do Tab (mudar foco)
-    event.stopPropagation(); // Para o evento aqui
 
-    // Usamos setTimeout para permitir que a ação padrão do Tab (se houver alguma
-    // manipulação de template pela plataforma) ocorra antes da nossa lógica,
-    // embora o event.preventDefault() acima vá impedir isso.
-    // A lógica do seu script original parecia esperar uma ação do Tab da plataforma primeiro.
-    // Se o preventDefault() estiver ativo, precisamos ler o texto e aplicar as lógicas diretamente.
+    event.preventDefault(); // Prevent default Tab behavior (e.g., changing focus)
+    event.stopPropagation(); // Stop the event from bubbling further
+
     this.handleTabPressLogic(event.target as HTMLElement);
   }
-  
+
   /**
-   * Anexa o listener de eventos de teclado ao documento.
+   * Attaches the keyboard event listener to the document to listen for Tab key presses
+   * in the relevant context.
+   * Ensures the listener is not attached multiple times.
    */
   public attachListeners(): void {
-    // Garante que não haja listeners duplicados
     document.removeEventListener('keydown', this.boundOnKeyDown, true);
-    this.boundOnKeyDown = this.onKeyDown.bind(this); // Guarda a referência binded
-    document.addEventListener('keydown', this.boundOnKeyDown, true); // Fase de captura
-    console.log("Omni Max [TemplateHandlingService]: Listener de Tab anexado.");
+    document.addEventListener('keydown', this.boundOnKeyDown, true); // Use capture phase
+    console.log("Omni Max [TemplateHandlingService]: Tab key listener attached.");
   }
-  private boundOnKeyDown: (event: KeyboardEvent) => Promise<void> = async () => {};
+
+  /**
+   * Detaches the keyboard event listener from the document.
+   */
+  public detachListeners(): void {
+    document.removeEventListener('keydown', this.boundOnKeyDown, true);
+    console.log("Omni Max [TemplateHandlingService]: Tab key listener detached.");
+  }
 }

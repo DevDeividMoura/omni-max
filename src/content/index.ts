@@ -1,7 +1,9 @@
 /**
  * src/content/index.ts
- * Ponto de entrada principal para os content scripts da Omni Max.
- * Inicializa e configura todos os serviços e listeners.
+ * Main entry point for the Omni Max content scripts.
+ * This script is injected into pages matching the patterns defined in the manifest.
+ * It initializes and configures all necessary services and event listeners
+ * for the extension's in-page functionalities.
  */
 import { CONFIG } from './config';
 import { DomService } from './services/DomService';
@@ -14,40 +16,48 @@ import { TemplateHandlingService } from './services/TemplateHandleService';
 import packageJson from '../../package.json';
 
 const version = packageJson.version;
+const OMNI_MAX_CONTENT_LOADED_FLAG = `omniMaxContentLoaded_v${version}`;
 
+/**
+ * Initializes the Omni Max content script on the current page.
+ * Sets up services, attaches event listeners, and applies conditional
+ * functionalities based on user settings.
+ * Prevents multiple initializations on the same page, which can occur
+ * with HMR (Hot Module Replacement) or if the script is injected multiple times.
+ */
 function initializeOmniMaxContentScript(): void {
-  /**
-   * Previne múltiplas inicializações do content script,
-   * o que pode acontecer com HMR ou re-injeções.
-   */
-  if ((window as any).omniMaxContentLoaded) {
-    console.log("Omni Max: Content script já inicializado nesta página.");
+  if ((window as any)[OMNI_MAX_CONTENT_LOADED_FLAG]) {
+    console.log(`Omni Max: Content script v${version} already initialized on this page.`);
     return;
   }
-  (window as any).omniMaxContentLoaded = false;
+  (window as any)[OMNI_MAX_CONTENT_LOADED_FLAG] = true;
 
-  console.log(`Omni Max: Content Script ${version} - Inicializando...`);
+  console.log(`Omni Max: Content Script v${version} - Initializing...`);
 
-  // Instanciação dos serviços com injeção de dependência
-  const domService = new DomService(); // DomService não usa CONFIG no construtor na minha versão
+  // Instantiate core services (Dependency Injection)
+  const domService = new DomService();
   const clipboardService = new ClipboardService();
   const notificationService = new NotificationService();
-  const extractionService = new ExtractionService(CONFIG, domService); // ExtractionService usa CONFIG
+  const extractionService = new ExtractionService(CONFIG, domService);
 
-  // Inicializa os manipuladores de eventos/funcionalidades
-  const shortcutService = new ShortcutService(CONFIG, extractionService, clipboardService, notificationService);
-  shortcutService.attachListeners(); // Ativa os listeners de atalho
+  // Initialize feature-specific services and attach their listeners
+  // These services will internally check their respective module enablement states.
+  const shortcutService = new ShortcutService(extractionService, clipboardService, notificationService);
+  shortcutService.attachListeners();
 
   const templateHandlingService = new TemplateHandlingService(CONFIG, domService);
-  templateHandlingService.attachListeners(); // Ativa os listeners de Tab
+  templateHandlingService.attachListeners();
 
-  // Aplica estilos para correção de layout (se o módulo estiver ativo)
-  // Esta parte precisa ser condicional baseada no estado do módulo 'layoutCorrection'
+  // Apply layout correction conditionally based on settings
+  // This specific logic remains here as it's a direct DOM manipulation at startup,
+  // not tied to a continuous event listener like shortcuts or template handling.
   chrome.storage.sync.get(['omniMaxGlobalEnabled', 'omniMaxModuleStates'], (settings) => {
-    const isGlobalEnabled = settings.omniMaxGlobalEnabled !== false;
-    const isLayoutCorrectionEnabled = settings.omniMaxModuleStates?.['layoutCorrection'] !== false;
+    const isGlobalEnabled = settings.omniMaxGlobalEnabled !== false; // Default true
+    const moduleStates = settings.omniMaxModuleStates || {};
+    const isLayoutCorrectionEnabled = moduleStates['layoutCorrection'] !== false; // Default true
+
     if (isGlobalEnabled && isLayoutCorrectionEnabled && CONFIG.selectors.tabsList) {
-      console.log("Omni Max: Aplicando correção de layout.");
+      console.log("Omni Max: Applying layout correction.");
       domService.applyStyles(CONFIG.selectors.tabsList, {
         float: 'right',
         maxHeight: '72vh',
@@ -56,10 +66,10 @@ function initializeOmniMaxContentScript(): void {
     }
   });
 
-  console.log('Omni Max: Content Script pronto!');
+  console.log(`Omni Max: Content Script v${version} - Ready!`);
 }
 
-// Garante que o script rode após o DOM estar pronto
+// Ensure the script runs after the DOM is fully loaded or interactively ready
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initializeOmniMaxContentScript);
 } else {

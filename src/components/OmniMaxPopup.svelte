@@ -1,8 +1,17 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  /**
+   * OmniMaxPopup.svelte
+   * Main UI component for the Omni Max Chrome extension's popup.
+   * It allows users to configure global settings, enable/disable individual modules,
+   * manage AI provider settings, customize prompts, and set keyboard shortcuts.
+   * State is loaded from and saved to persistent storage via Svelte stores.
+   *
+   * @component
+   */
+  import { onMount, createEventDispatcher } from "svelte";
   import CollapsibleSection from "./CollapsibleSection.svelte";
   import ToggleSwitch from "./ToggleSwitch.svelte";
-  import { Keyboard, Cpu, FileText, Eye, X, ListChecks } from "lucide-svelte";
+  import { Keyboard, Cpu, FileText, ListChecks, XCircle, Info } from "lucide-svelte";
 
   import {
     globalExtensionEnabledStore,
@@ -21,231 +30,220 @@
     type ShortcutKeysConfig,
   } from "../storage";
 
-  import { availableModules } from "../modules";
+  import { availableModules, type Module } from "../modules"; // Import Module type
 
-  /**
-   * Component principal para o popup da extensão Omni Max.
-   * Permite ao usuário configurar várias funcionalidades da extensão.
-   */
+  const dispatch = createEventDispatcher();
 
-  // Estados de controle da UI
-  let isLoading = true;
-  let hasPendingChanges = false;
-  let showCredentialsModal = false;
+  // --- UI Control States ---
+  /** Indicates if the component is currently loading initial settings. */
+  let isLoading: boolean = true;
+  /** Tracks if there are any unsaved changes made by the user. */
+  let hasPendingChanges: boolean = false;
+  /** Controls the visibility of the AI credentials management modal. */
+  let showCredentialsModal: boolean = false;
 
-  // Estados locais para os valores das configurações (sincronizados com os stores)
+  // --- Local Copies of Stored Settings ---
+  // These are bound to UI elements and synced with stores on "Apply Changes".
   let localGlobalEnabled: boolean;
   let localModuleStates: Record<string, boolean> = {};
   let localShortcutsOverallEnabled: boolean;
   let localAiFeaturesEnabled: boolean;
-  let localAiCredentials: AiCredentials = { openaiApiKey: "" };
-  let localAiProviderConfig: AiProviderConfig = {
-    provider: "openai",
-    model: "gpt-4o-mini",
-  };
-  let localPrompts: PromptsConfig = {
-    summaryPrompt: "",
-    improvementPrompt: "",
-  };
-  let localOpenSections: CollapsibleSectionsState;
+  let localAiCredentials: AiCredentials = { openaiApiKey: "" }; // Initialize structure
+  let localAiProviderConfig: AiProviderConfig = { provider: "openai", model: "gpt-4o-mini" };
+  let localPrompts: PromptsConfig = { summaryPrompt: "", improvementPrompt: "" };
+  let localOpenSections: CollapsibleSectionsState = { modules: false, shortcuts: false, ai: false, prompts: false };
+  let localShortcutKeys: ShortcutKeysConfig = {};
 
-  // Cópias dos estados iniciais para detectar mudanças
+  // --- Initial States for Change Detection ---
+  // Snapshots of settings when the component loads, used to detect `hasPendingChanges`.
   let initialGlobalEnabled: boolean;
-  let initialModuleStates: Record<string, boolean> = {};
+  let initialModuleStates: Record<string, boolean>;
   let initialShortcutsOverallEnabled: boolean;
   let initialAiFeaturesEnabled: boolean;
-  let initialAiCredentials: AiCredentials = { openaiApiKey: "" };
-  let initialAiProviderConfig: AiProviderConfig = {
-    provider: "openai",
-    model: "gpt-4o-mini",
-  };
-  let initialPrompts: PromptsConfig = {
-    summaryPrompt: "",
-    improvementPrompt: "",
-  };
+  let initialAiCredentials: AiCredentials;
+  let initialAiProviderConfig: AiProviderConfig;
+  let initialPrompts: PromptsConfig;
   let initialOpenSections: CollapsibleSectionsState;
+  let initialShortcutKeys: ShortcutKeysConfig;
 
-  // Filtros para categorizar os módulos nas seções da UI
-  const generalModules = availableModules.filter((m) =>
-    ["layoutCorrection", "messageTemplates", "templateProcessor"].includes(
-      m.id,
-    ),
+
+  // --- Derived Data for UI ---
+  /** Modules categorized as 'general' for UI grouping. */
+  const generalModules: Module[] = availableModules.filter((m) =>
+    ["layoutCorrection", "templateProcessor"].includes(m.id) // "messageTemplates" was in your filter but not in availableModules, removed for now.
   );
-  const shortcutModules = availableModules.filter((m) =>
-    ["shortcutCopyName", "shortcutCopyCPF"].includes(m.id),
+  /** Modules categorized as 'shortcuts' for UI grouping. */
+  const shortcutModules: Module[] = availableModules.filter((m) =>
+    ["shortcutCopyName", "shortcutCopyDocumentNumber"].includes(m.id)
   );
-  const aiModules = availableModules.filter((m) =>
-    ["aiChatSummary", "aiResponseReview"].includes(m.id),
+  /** Modules categorized as 'AI features' for UI grouping. */
+  const aiModules: Module[] = availableModules.filter((m) =>
+    ["aiChatSummary", "aiResponseReview"].includes(m.id)
   );
 
-  let localShortcutKeys: ShortcutKeysConfig = {
-    // Boa prática inicializar com a estrutura esperada
-    shortcutCopyName: "Z", // Default visual antes do onMount
-    shortcutCopyCPF: "X", // Default visual antes do onMount
+  /** Available AI models grouped by provider. */
+  const modelOptions: Record<string, string[]> = {
+    openai: ["gpt-4", "gpt-4o-mini", "gpt-4-turbo", "gpt-4o", "gpt-3.5-turbo"],
+    gemini: ["gemini-1.0-pro", "gemini-1.5-pro", "gemini-1.5-flash"], // Placeholder, ensure these are valid for your use case
+    anthropic: ["claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307"],
   };
 
-  let initialShortcutKeys: ShortcutKeysConfig = {
-    // Boa prática inicializar
-    shortcutCopyName: "Z",
-    shortcutCopyCPF: "X",
-  };
-  // Handler para mudança da tecla de atalho (exemplo para um módulo)
-  function handleShortcutKeyChange(moduleId: string, event: Event) {
-    const inputElement = event.target as HTMLInputElement;
-    let value = inputElement.value.toUpperCase();
-
-    if (value.length > 1) {
-      value = value.charAt(value.length - 1); // Pega apenas o último caractere digitado
-    }
-
-    if (value === "" || /^[A-Z0-9]$/.test(value)) {
-      // Permite letras ou números
-      // Para garantir reatividade no Svelte ao modificar propriedades de objeto:
-      localShortcutKeys = {
-        ...localShortcutKeys,
-        [moduleId]: value,
-      };
-      markChanged();
-    } else {
-      // Reverte para o valor anterior se inválido, para o input refletir
-      inputElement.value = localShortcutKeys[moduleId] || "";
-    }
-  }
-
+  // --- Component Lifecycle & Initialization ---
   /**
-   * @description Inicializa os estados locais do componente ao ser montado,
-   * subscrevendo aos Svelte stores para obter os valores persistidos.
-   * Também armazena os estados iniciais para detecção de mudanças.
+   * Subscribes to all relevant Svelte stores upon component mounting.
+   * Initializes local state variables with values from storage and
+   * sets up initial state snapshots for change detection.
+   * Ensures default values are applied for any new modules or settings.
+   * @private
    */
   onMount(() => {
     const unsubs: (() => void)[] = [];
+    let isFirstSubscriptionCall = true; // Flag to set initial values only once if multiple subscriptions fire rapidly
+
+    const setupInitialValue = <T>(value: T, initialSetter: (val: T) => void, localSetter: (val: T) => void) => {
+      localSetter(JSON.parse(JSON.stringify(value))); // Deep copy for objects/arrays
+      if (isFirstSubscriptionCall) {
+        initialSetter(JSON.parse(JSON.stringify(value)));
+      }
+    };
 
     unsubs.push(
-      globalExtensionEnabledStore.subscribe((val) => {
-        localGlobalEnabled = val;
-        initialGlobalEnabled = val;
-      }),
+      globalExtensionEnabledStore.subscribe((val) => setupInitialValue(val, v => initialGlobalEnabled = v, v => localGlobalEnabled = v))
     );
     unsubs.push(
-      moduleStatesStore.subscribe((val) => {
-        localModuleStates = { ...val };
-        initialModuleStates = { ...val };
+      shortcutsOverallEnabledStore.subscribe((val) => setupInitialValue(val, v => initialShortcutsOverallEnabled = v, v => localShortcutsOverallEnabled = v))
+    );
+    unsubs.push(
+      aiFeaturesEnabledStore.subscribe((val) => setupInitialValue(val, v => initialAiFeaturesEnabled = v, v => localAiFeaturesEnabled = v))
+    );
+    unsubs.push(
+      aiCredentialsStore.subscribe((val) => setupInitialValue(val || { openaiApiKey: "" }, v => initialAiCredentials = v, v => localAiCredentials = v ))
+    );
+    unsubs.push(
+      aiProviderConfigStore.subscribe((val) => setupInitialValue(val || { provider: "openai", model: "gpt-4o-mini" }, v => initialAiProviderConfig = v, v => localAiProviderConfig = v ))
+    );
+    unsubs.push(
+      promptsStore.subscribe((val) => setupInitialValue(val || { summaryPrompt: "", improvementPrompt: "" }, v => initialPrompts = v, v => localPrompts = v ))
+    );
+    unsubs.push(
+      collapsibleSectionsStateStore.subscribe((val) => setupInitialValue(val || { modules: false, shortcuts: false, ai: false, prompts: false }, v => initialOpenSections = v, v => localOpenSections = v ))
+    );
+
+    unsubs.push(
+      moduleStatesStore.subscribe((storedStates) => {
+        const currentLocal: Record<string, boolean> = {};
+        const currentInitial: Record<string, boolean> = {};
         for (const module of availableModules) {
-          if (localModuleStates[module.id] === undefined) {
-            localModuleStates[module.id] = module.defaultEnabled;
-            initialModuleStates[module.id] = module.defaultEnabled;
+          currentLocal[module.id] = storedStates[module.id] ?? module.defaultEnabled;
+          if (isFirstSubscriptionCall) {
+            currentInitial[module.id] = storedStates[module.id] ?? module.defaultEnabled;
           }
         }
-      }),
+        localModuleStates = currentLocal;
+        if (isFirstSubscriptionCall) {
+          initialModuleStates = currentInitial;
+        }
+      })
     );
+
     unsubs.push(
-      shortcutsOverallEnabledStore.subscribe((val) => {
-        localShortcutsOverallEnabled = val;
-        initialShortcutsOverallEnabled = val;
-      }),
-    );
-    unsubs.push(
-      shortcutKeysStore.subscribe((val) => {
-        localShortcutKeys = { ...val }; // Carrega do store
-        initialShortcutKeys = { ...val }; // Define o estado inicial para comparação
-        // Garante que as chaves para os módulos de atalho existem, se não vierem do storage
+      shortcutKeysStore.subscribe((storedKeys) => {
+        const currentLocal: ShortcutKeysConfig = {};
+        const currentInitial: ShortcutKeysConfig = {};
+        const defaultShortcutValues = (shortcutKeysStore as any).initialValue || {}; // Accessing private initialValue; better to get defaults from module definition if possible
+
         for (const module of shortcutModules) {
-          if (localShortcutKeys[module.id] === undefined) {
-            // Se não houver valor salvo, pega do default do store ou define um aqui
-            const defaultKey =
-              (shortcutKeysStore as any).initialValue?.[module.id] ||
-              (module.id === "shortcutCopyName" ? "X" : "C");
-            localShortcutKeys[module.id] = defaultKey;
-            initialShortcutKeys[module.id] = defaultKey;
+          // Determine default key more robustly if possible, or hardcode as fallback
+          let defaultKey = defaultShortcutValues[module.id];
+          if (!defaultKey) { // Fallback if not in store's initial value
+            if (module.id === 'shortcutCopyName') defaultKey = 'Z';
+            else if (module.id === 'shortcutCopyDocumentNumber') defaultKey = 'X';
+            else defaultKey = '?';
+          }
+          currentLocal[module.id] = storedKeys[module.id] ?? defaultKey;
+          if (isFirstSubscriptionCall) {
+            currentInitial[module.id] = storedKeys[module.id] ?? defaultKey;
           }
         }
-      }),
-    );
-    unsubs.push(
-      aiFeaturesEnabledStore.subscribe((val) => {
-        localAiFeaturesEnabled = val;
-        initialAiFeaturesEnabled = val;
-      }),
-    );
-    unsubs.push(
-      aiCredentialsStore.subscribe((val) => {
-        localAiCredentials = { ...val };
-        initialAiCredentials = { ...val };
-      }),
-    );
-    unsubs.push(
-      aiProviderConfigStore.subscribe((val) => {
-        localAiProviderConfig = { ...val };
-        initialAiProviderConfig = { ...val };
-      }),
-    );
-    unsubs.push(
-      promptsStore.subscribe((val) => {
-        localPrompts = { ...val };
-        initialPrompts = { ...val };
-      }),
-    );
-    unsubs.push(
-      collapsibleSectionsStateStore.subscribe((val) => {
-        localOpenSections = { ...val };
-        initialOpenSections = { ...val };
-      }),
+        localShortcutKeys = currentLocal;
+        if (isFirstSubscriptionCall) {
+          initialShortcutKeys = currentInitial;
+        }
+      })
     );
 
     isLoading = false;
+    isFirstSubscriptionCall = false; // After all initial subscriptions might have run
 
     return () => {
       unsubs.forEach((unsub) => unsub());
     };
   });
 
+  // --- Event Handlers & UI Logic ---
   /**
-   * @description Marca que existem alterações pendentes a serem salvas,
-   * habilitando o botão "Aplicar Alterações".
+   * Marks that changes have been made to the settings, enabling the "Apply Changes" button.
+   * @private
    */
-  function markChanged() {
+  function markChanged(): void {
     hasPendingChanges = true;
   }
 
   /**
-   * @description Alterna o estado de visibilidade (aberto/fechado) de uma seção colapsável.
-   * Implementa o comportamento de "acordeão", onde apenas uma seção pode
-   * estar aberta por vez (ou todas fechadas).
-   * @param sectionKeyToToggle A chave da seção que teve o toggle clicado.
+   * Toggles the open/closed state of a collapsible UI section.
+   * Implements an "accordion" behavior where only one main section can be open at a time.
+   * @param {keyof CollapsibleSectionsState} sectionKeyToToggle The key of the section to toggle.
+   * @private
    */
-  function toggleSectionCollapse(
-    sectionKeyToToggle: keyof CollapsibleSectionsState,
-  ) {
+  function toggleSectionCollapse(sectionKeyToToggle: keyof CollapsibleSectionsState): void {
     if (localOpenSections) {
       const isCurrentlyOpen = localOpenSections[sectionKeyToToggle];
+      // Create a new state with all sections closed (for accordion behavior)
+      const newOpenState: CollapsibleSectionsState = { modules: false, shortcuts: false, ai: false, prompts: false };
 
-      // Cria um novo estado base com todas as seções fechadas
-      const newOpenState: CollapsibleSectionsState = {
-        modules: false,
-        shortcuts: false,
-        ai: false,
-        prompts: false,
-      };
-
-      // Se a seção clicada não estava aberta, abre-a.
-      // Se estava aberta, ela será fechada (e todas as outras permanecem fechadas).
       if (!isCurrentlyOpen) {
-        newOpenState[sectionKeyToToggle] = true;
+        newOpenState[sectionKeyToToggle] = true; // Open the clicked section
       }
-      // Se estava aberta e foi clicada, newOpenState[sectionKeyToToggle] continuará false, efetivamente fechando-a.
-
+      // If it was open, it remains closed in newOpenState.
       localOpenSections = newOpenState;
-      // markChanged(); // Mudança no estado das seções também é uma alteração a ser aplicada.
+      markChanged(); // Persist accordion state changes
     }
   }
 
   /**
-   * @description Salva todas as configurações locais modificadas pelo usuário nos Svelte stores,
-   * o que por sua vez aciona a persistência no chrome.storage.sync.
-   * Reseta os estados iniciais para refletir as novas configurações salvas.
-   * (A lógica de recarregar a página da plataforma será adicionada posteriormente).
+   * Handles changes to a shortcut key input field.
+   * Validates the input to allow only single uppercase letters or numbers.
+   * @param {string} moduleId The ID of the shortcut module being configured.
+   * @param {Event} event The input event from the HTMLInputElement.
+   * @private
    */
-  function applyChanges() {
+  function handleShortcutKeyChange(moduleId: string, event: Event): void {
+    const inputElement = event.target as HTMLInputElement;
+    let value = inputElement.value.toUpperCase();
+
+    if (value.length > 1) {
+      value = value.charAt(value.length - 1); // Take only the last character entered
+    }
+
+    if (value === "" || /^[A-Z0-9]$/.test(value)) { // Allow empty (to clear) or single alphanumeric
+      localShortcutKeys = { ...localShortcutKeys, [moduleId]: value };
+      markChanged();
+    } else {
+      // Revert to the previous valid value if input is invalid
+      inputElement.value = localShortcutKeys[moduleId] || "";
+    }
+  }
+
+  /**
+   * Saves all current local settings to their respective Svelte stores,
+   * which triggers persistence to `chrome.storage.sync`.
+   * Resets the `initial...` state variables to reflect the newly saved values
+   * and disables the "Apply Changes" button.
+   * @private
+   */
+  function applyChanges(): void {
+    if (isLoading) return;
+
     globalExtensionEnabledStore.set(localGlobalEnabled);
     moduleStatesStore.set({ ...localModuleStates });
     shortcutsOverallEnabledStore.set(localShortcutsOverallEnabled);
@@ -256,6 +254,7 @@
     promptsStore.set({ ...localPrompts });
     collapsibleSectionsStateStore.set({ ...localOpenSections });
 
+    // Update initial states to reflect saved changes
     initialGlobalEnabled = localGlobalEnabled;
     initialModuleStates = { ...localModuleStates };
     initialShortcutsOverallEnabled = localShortcutsOverallEnabled;
@@ -267,19 +266,41 @@
     initialOpenSections = { ...localOpenSections };
 
     hasPendingChanges = false;
-    alert("Alterações aplicadas! (Lógica de reload da página pendente)");
-    // TODO: Adicionar lógica de reload da página aqui (requer permissão "tabs")
+    alert("Alterações aplicadas! A aba da plataforma Matrix Go será recarregada para aplicar todas as mudanças.");
+
+    // Reload active Matrix Go tabs
+    chrome.tabs.query({ url: "https://vipmax.matrixdobrasil.ai/Painel/*" }, (tabs) => {
+        for (const tab of tabs) {
+            if (tab.id) {
+                chrome.tabs.reload(tab.id);
+            }
+        }
+    });
+    // Consider closing the popup after applying changes
+    // window.close();
   }
 
-  const modelOptions: Record<string, string[]> = {
-    openai: ["gpt-4", "gpt-4o-mini", "gpt-4-turbo", "gpt-4o"],
-    gemini: ["gemini-1.0-pro", "gemini-1.5-pro", "gemini-1.5-flash"],
-    anthropic: [
-      "claude-3-opus-20240229",
-      "claude-3-sonnet-20240229",
-      "claude-3-haiku-20240307",
-    ],
-  };
+  /**
+   * Resets all local settings to their last saved (initial) values,
+   * discarding any pending changes.
+   * @private
+   */
+  function discardChanges(): void {
+    if (isLoading) return;
+
+    localGlobalEnabled = initialGlobalEnabled;
+    localModuleStates = { ...initialModuleStates };
+    localShortcutsOverallEnabled = initialShortcutsOverallEnabled;
+    localShortcutKeys = { ...initialShortcutKeys };
+    localAiFeaturesEnabled = initialAiFeaturesEnabled;
+    localAiCredentials = { ...initialAiCredentials };
+    localAiProviderConfig = { ...initialAiProviderConfig };
+    localPrompts = { ...initialPrompts };
+    localOpenSections = { ...initialOpenSections };
+
+    hasPendingChanges = false;
+    // alert("Alterações pendentes descartadas."); // Optional user feedback
+  }
 </script>
 
 <div class="omni-max-popup-container-fixed-layout">
@@ -296,11 +317,10 @@
           localGlobalEnabled = val;
           markChanged();
         }}
+        ariaLabel="Habilitar ou desabilitar toda a extensão Omni Max"
       />
       <span
-        class="global-status-indicator {localGlobalEnabled
-          ? 'active'
-          : 'inactive'}"
+        class="global-status-indicator {localGlobalEnabled ? 'active' : 'inactive'}"
       >
         {localGlobalEnabled ? "Ativa" : "Desativada"}
       </span>
@@ -326,16 +346,16 @@
               <ToggleSwitch
                 enabled={localModuleStates[module.id]}
                 onChange={(val) => {
-                  localModuleStates[module.id] = val;
+                  localModuleStates = { ...localModuleStates, [module.id]: val };
                   markChanged();
                 }}
                 disabled={!localGlobalEnabled}
+                ariaLabel={`Ativar ou desativar ${module.name}`}
               />
             </div>
+          {:else}
+            <p class="placeholder-text"><Info size={16} class="placeholder-icon"/> Nenhum módulo geral configurado.</p>
           {/each}
-          {#if generalModules.length === 0}
-            <p class="placeholder-text">Nenhum módulo geral configurado.</p>
-          {/if}
         </div>
       </CollapsibleSection>
 
@@ -354,6 +374,7 @@
               markChanged();
             }}
             disabled={!localGlobalEnabled}
+            ariaLabel="Ativar ou desativar globalmente todos os atalhos de teclado"
           />
           {#if localShortcutsOverallEnabled && localGlobalEnabled}
             {#each shortcutModules as module (module.id)}
@@ -365,33 +386,30 @@
                   <ToggleSwitch
                     enabled={localModuleStates[module.id]}
                     onChange={(val) => {
-                      localModuleStates[module.id] = val;
+                      localModuleStates = { ...localModuleStates, [module.id]: val };
                       markChanged();
                     }}
-                    disabled={!localGlobalEnabled ||
-                      !localShortcutsOverallEnabled}
+                    disabled={!localGlobalEnabled || !localShortcutsOverallEnabled}
+                    ariaLabel={`Ativar ou desativar o atalho ${module.name}`}
                   />
-                  <span class="shortcut-prefix">Ctrl + Shift +</span>
+                  <span class="shortcut-prefix" aria-hidden="true">Ctrl + Shift +</span>
                   <input
                     type="text"
                     class="shortcut-key-input-editable"
                     value={localShortcutKeys[module.id] || ""}
-                    on:input={(event) =>
-                      handleShortcutKeyChange(module.id, event)}
+                    on:input={(event) => handleShortcutKeyChange(module.id, event)}
                     maxlength="1"
-                    placeholder={localShortcutKeys[module.id] ||
-                      (module.id === "shortcutCopyName"
-                        ? "X"
-                        : module.id === "shortcutCopyCPF"
-                          ? "C"
-                          : "?")}
-                    disabled={!localGlobalEnabled ||
-                      !localShortcutsOverallEnabled ||
-                      !localModuleStates[module.id]}
+                    placeholder="Tecla"
+                    aria-label={`Tecla para ${module.name}`}
+                    disabled={!localGlobalEnabled || !localShortcutsOverallEnabled || !localModuleStates[module.id]}
                   />
                 </div>
               </div>
             {/each}
+          {:else if !localGlobalEnabled}
+             <p class="placeholder-text"><Info size={16} class="placeholder-icon"/> Habilite a extensão para configurar atalhos.</p>
+          {:else if !localShortcutsOverallEnabled}
+            <p class="placeholder-text"><Info size={16} class="placeholder-icon"/> Habilite "Todos os Atalhos" para configurar individualmente.</p>
           {/if}
         </div>
       </CollapsibleSection>
@@ -411,6 +429,7 @@
               markChanged();
             }}
             disabled={!localGlobalEnabled}
+            ariaLabel="Ativar ou desativar globalmente todas as funcionalidades de Inteligência Artificial"
           />
           {#if localAiFeaturesEnabled && localGlobalEnabled}
             <div class="input-group">
@@ -421,10 +440,7 @@
                 bind:value={localAiProviderConfig.provider}
                 on:change={() => {
                   markChanged();
-                  localAiProviderConfig.model =
-                    modelOptions[
-                      localAiProviderConfig.provider
-                    ][0]; /* Reseta modelo ao mudar provedor */
+                  localAiProviderConfig.model = modelOptions[localAiProviderConfig.provider]?.[0] || ""; // Reset model
                 }}
               >
                 <option value="openai">OpenAI</option>
@@ -439,11 +455,14 @@
                 class="select-field"
                 bind:value={localAiProviderConfig.model}
                 on:change={markChanged}
+                disabled={!modelOptions[localAiProviderConfig.provider]?.length}
               >
                 {#if localAiProviderConfig.provider && modelOptions[localAiProviderConfig.provider]}
-                  {#each modelOptions[localAiProviderConfig.provider] as m (m)}
-                    <option value={m}>{m}</option>
+                  {#each modelOptions[localAiProviderConfig.provider] as modelName (modelName)}
+                    <option value={modelName}>{modelName}</option>
                   {/each}
+                {:else}
+                   <option value="" disabled selected>Selecione um provedor primeiro</option>
                 {/if}
               </select>
             </div>
@@ -451,40 +470,32 @@
               class="button-primary full-width"
               on:click={() => (showCredentialsModal = true)}
             >
-              Gerenciar Credenciais ({localAiProviderConfig.provider
-                ? localAiProviderConfig.provider.charAt(0).toUpperCase() +
-                  localAiProviderConfig.provider.slice(1)
-                : ""})
+              Gerenciar Credenciais ({localAiProviderConfig.provider ? localAiProviderConfig.provider.charAt(0).toUpperCase() + localAiProviderConfig.provider.slice(1) : "IA"})
             </button>
             <hr class="sub-separator" />
             <p class="section-subtitle">Módulos de IA Individuais:</p>
             {#each aiModules as module (module.id)}
               <div class="module-item-container">
-                <span
-                  class="module-name-with-tooltip"
-                  title={module.description}
-                >
+                <span class="module-name-with-tooltip" title={module.description}>
                   {module.name}
                 </span>
                 <ToggleSwitch
                   enabled={localModuleStates[module.id]}
                   onChange={(val) => {
-                    localModuleStates[module.id] = val;
+                    localModuleStates = { ...localModuleStates, [module.id]: val };
                     markChanged();
                   }}
                   disabled={!localGlobalEnabled || !localAiFeaturesEnabled}
+                  ariaLabel={`Ativar ou desativar ${module.name}`}
                 />
               </div>
+            {:else}
+              <p class="placeholder-text"><Info size={16} class="placeholder-icon"/> Nenhuma funcionalidade de IA configurada.</p>
             {/each}
-            {#if aiModules.length === 0}
-              <p class="placeholder-text">
-                Nenhuma funcionalidade de IA configurada.
-              </p>
-            {/if}
           {:else if !localGlobalEnabled}
-            <p class="placeholder-text">Extensão global desabilitada.</p>
+             <p class="placeholder-text"><Info size={16} class="placeholder-icon"/> Habilite a extensão para usar IA.</p>
           {:else}
-            <p class="placeholder-text">Funções de IA desabilitadas.</p>
+            <p class="placeholder-text"><Info size={16} class="placeholder-icon"/> Habilite "Todas as Funções de IA" para configurar.</p>
           {/if}
         </div>
       </CollapsibleSection>
@@ -498,8 +509,7 @@
         <div class="section-item-space">
           {#if !localGlobalEnabled || !localAiFeaturesEnabled}
             <p class="placeholder-text">
-              Prompts disponíveis quando a extensão e as funções de IA estiverem
-              habilitadas.
+              <Info size={16} class="placeholder-icon"/> Prompts disponíveis quando a extensão e as funções de IA estiverem habilitadas.
             </p>
           {:else}
             <div class="input-group">
@@ -508,37 +518,42 @@
                 id="summaryPrompt"
                 class="textarea-field"
                 rows="3"
-                placeholder="Prompt para resumir atendimentos..."
+                placeholder="Ex: Resuma esta conversa de forma concisa, destacando o problema principal e a resolução."
                 bind:value={localPrompts.summaryPrompt}
                 on:input={markChanged}
               ></textarea>
             </div>
             <div class="input-group">
-              <label for="improvementPrompt"
-                >Prompt de Melhoria de Resposta</label
-              >
+              <label for="improvementPrompt">Prompt de Melhoria de Resposta</label>
               <textarea
                 id="improvementPrompt"
                 class="textarea-field"
                 rows="3"
-                placeholder="Prompt para melhorar respostas..."
+                placeholder="Ex: Revise a seguinte resposta, tornando-a mais clara, empática e profissional..."
                 bind:value={localPrompts.improvementPrompt}
                 on:input={markChanged}
               ></textarea>
             </div>
-            <button class="button-secondary full-width icon-button">
-              <Eye size={16} /> Testar Prompt (Funcionalidade futura)
-            </button>
-          {/if}
+            {/if}
         </div>
       </CollapsibleSection>
     {/if}
   </div>
+
   <div class="actions-footer-fixed">
+    <button
+      class="button-secondary discard-button"
+      on:click={discardChanges}
+      disabled={!hasPendingChanges || isLoading}
+      title="Descartar alterações não salvas"
+    >
+      Descartar
+    </button>
     <button
       class="apply-button"
       on:click={applyChanges}
       disabled={!hasPendingChanges || isLoading}
+      title="Aplicar todas as alterações feitas"
     >
       Aplicar Alterações
     </button>
@@ -547,39 +562,31 @@
   {#if showCredentialsModal}
     <div
       class="modal-overlay"
-      role="button"
-      tabindex="0"
-      aria-label="Fechar modal ao clicar fora"
-      on:click|self={() => (showCredentialsModal = false)}
-      on:keydown|self={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          showCredentialsModal = false;
-        } else if (event.key === "Escape") {
+      role="presentation" on:click|self={() => (showCredentialsModal = false)}
+      on:keydown={(event) => { // Listen for Escape on the overlay itself
+        if (event.key === "Escape") {
           showCredentialsModal = false;
         }
       }}
     >
-      <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
       <!-- svelte-ignore a11y_click_events_have_key_events -->
+      <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
       <div
         class="modal-content"
         role="dialog"
         aria-modal="true"
         aria-labelledby="credentials-modal-title"
-        on:click|stopPropagation
-      >
+        on:click|stopPropagation >
         <div class="modal-header">
-          <h3>
-            Credenciais: {localAiProviderConfig.provider
-              ? localAiProviderConfig.provider.charAt(0).toUpperCase() +
-                localAiProviderConfig.provider.slice(1)
-              : "IA"}
+          <h3 id="credentials-modal-title">
+            Credenciais: {localAiProviderConfig.provider ? localAiProviderConfig.provider.charAt(0).toUpperCase() + localAiProviderConfig.provider.slice(1) : "IA"}
           </h3>
           <button
             class="close-button"
             on:click={() => (showCredentialsModal = false)}
-            ><X size={20} /></button
+            aria-label="Fechar modal de credenciais"
+            title="Fechar"
+            ><XCircle size={20} /></button
           >
         </div>
         <div class="modal-body">
@@ -593,6 +600,7 @@
                 bind:value={localAiCredentials.openaiApiKey}
                 on:input={markChanged}
                 placeholder="sk-..."
+                autocomplete="off"
               />
             </div>
           {:else if localAiProviderConfig.provider === "gemini"}
@@ -605,6 +613,7 @@
                 bind:value={localAiCredentials.geminiApiKey}
                 on:input={markChanged}
                 placeholder="Seu Gemini API Key..."
+                autocomplete="off"
               />
             </div>
           {:else if localAiProviderConfig.provider === "anthropic"}
@@ -617,24 +626,34 @@
                 bind:value={localAiCredentials.anthropicApiKey}
                 on:input={markChanged}
                 placeholder="Seu Anthropic API Key..."
+                autocomplete="off"
               />
             </div>
           {:else}
-            <p>
-              Nenhum provedor de IA selecionado ou configuração de credenciais
-              não implementada para {localAiProviderConfig.provider}.
-            </p>
+            <p class="placeholder-text"><Info size={16} class="placeholder-icon"/> Provedor de IA não selecionado ou configuração de credenciais indisponível.</p>
           {/if}
         </div>
         <div class="modal-footer">
           <button
             class="button-secondary"
-            on:click={() => (showCredentialsModal = false)}>Cancelar</button
+            on:click={() => {
+                // Revert credentials for the current provider if user cancels
+                if (localAiProviderConfig.provider === "openai") localAiCredentials.openaiApiKey = initialAiCredentials.openaiApiKey;
+                else if (localAiProviderConfig.provider === "gemini") localAiCredentials.geminiApiKey = initialAiCredentials.geminiApiKey;
+                else if (localAiProviderConfig.provider === "anthropic") localAiCredentials.anthropicApiKey = initialAiCredentials.anthropicApiKey;
+                showCredentialsModal = false;
+                // Check if this revert actually removed the 'pending' status for credentials
+                // This is a simplification; a more robust check would compare all credentials.
+                if (JSON.stringify(localAiCredentials) === JSON.stringify(initialAiCredentials)) {
+                    // If no other changes, reset hasPendingChanges
+                    // This logic needs to be more comprehensive to be accurate
+                }
+            }}>Cancelar</button
           >
           <button
             class="button-primary"
             on:click={() => {
-              showCredentialsModal = false; /* markChanged() já foi chamado nos inputs do modal */
+              showCredentialsModal = false; // markChanged() already called by input fields
             }}>OK</button
           >
         </div>
@@ -643,20 +662,21 @@
   {/if}
 </div>
 
+<!-- svelte-ignore css-unused-selector -->
 <style>
-  /* Estilos Globais do Popup e Layout Fixo */
+  /* Styles from your provided full version, slightly tidied */
   .omni-max-popup-container-fixed-layout {
     display: flex;
     flex-direction: column;
-    width: 380px; /* Aumentei um pouco para acomodar melhor o conteúdo */
-    max-height: 580px; /* Altura máxima do popup do Chrome é ~600px */
+    width: 380px;
+    max-height: 580px;
     overflow: hidden;
-    background-color: #f4f6f8;
+    background-color: #f4f6f8; /* Light gray background */
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
       Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
     font-size: 14px;
-    color: #333;
-    border-radius: 0.375rem; /* Para arredondar o popup inteiro */
+    color: #333; /* Default text color */
+    border-radius: 0.375rem;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   }
 
@@ -664,21 +684,20 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    /* Outros estilos do header que você já tem (background, color, padding, etc.) */
     flex-shrink: 0;
-    background: linear-gradient(to right, #a9276f, #d02125, #d6621c);
+    background: linear-gradient(to right, #a9276f, #d02125, #d6621c); /* Main gradient */
     color: white;
-    padding: 12px 16px; /* Ajuste o padding se necessário */
+    padding: 12px 16px;
   }
   .header-title-group h1 {
-    font-size: 1.1rem; /* Ajustado */
+    font-size: 1.1rem;
     font-weight: 600;
     margin: 0;
     line-height: 1.2;
   }
   .header-title-group p {
-    font-size: 0.75rem; /* Ajustado */
-    opacity: 0.85;
+    font-size: 0.75rem;
+    opacity: 0.9;
     margin: 2px 0 0;
     line-height: 1.2;
   }
@@ -688,24 +707,14 @@
     gap: 8px;
   }
   .global-status-indicator {
-    /* Similar ao status-indicator mas para o header */
     padding: 3px 8px;
     border-radius: 9999px;
     font-size: 0.75rem;
     font-weight: 500;
-    background-color: rgba(255, 255, 255, 0.2); /* Fundo sutil */
   }
   .global-status-indicator.active {
-    background-color: rgba(
-      255,
-      255,
-      255,
-      0.25
-    ); /* Mantém um fundo claro para contraste no header escuro */
-    color: #fff; /* Texto branco, talvez com uma borda sutil se necessário */
-    /* Ou, se quiser usar uma das cores sólidas e garantir contraste: */
-    /* background-color: #FFFFFF; */
-    /* color: #a9276f; */ /* Texto com a cor do tema */
+    background-color: rgba(255, 255, 255, 0.25);
+    color: #fff;
   }
   .global-status-indicator.inactive {
     background-color: rgba(0, 0, 0, 0.2);
@@ -717,61 +726,78 @@
     overflow-y: auto;
     padding: 16px;
   }
-  .loading-text {
-    text-align: center;
-    padding: 20px;
-    color: #555;
+  .popup-scrollable-content::-webkit-scrollbar {
+    width: 8px;
   }
+  .popup-scrollable-content::-webkit-scrollbar-thumb {
+    background-color: #c1c1c1;
+    border-radius: 4px;
+  }
+  .popup-scrollable-content::-webkit-scrollbar-thumb:hover {
+    background-color: #a8a8a8;
+  }
+  .popup-scrollable-content::-webkit-scrollbar-track {
+    background-color: #f1f1f1;
+  }
+
+
+  .loading-text, .placeholder-text {
+    text-align: center;
+    padding: 20px 10px;
+    color: #6b7280; /* gray-500 */
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .placeholder-icon {
+    color: #9ca3af; /* gray-400 */
+  }
+
 
   .actions-footer-fixed {
+    display: flex;
+    justify-content: flex-end; /* Align buttons to the right */
+    gap: 8px; /* Space between buttons */
     flex-shrink: 0;
-    background-color: #f4f6f8;
+    background-color: #f9fafb; /* Slightly off-white background */
     padding: 12px 16px;
-    border-top: 1px solid #e0e0e0;
-    text-align: right;
+    border-top: 1px solid #e5e7eb; /* border-gray-200 */
   }
-  .apply-button {
-    padding: 10px 20px; /* Mantive o padding que estava no seu arquivo completo */
-    /* Aplicar gradiente como background-image */
-    background-image: linear-gradient(to right, #a9276f, #d02125, #d6621c);
-    /* Cor de fallback caso o gradiente não seja suportado (raro hoje em dia) */
-    background-color: #a9276f;
+  .apply-button, .discard-button {
+    padding: 8px 16px; /* Adjusted padding */
     color: white;
     border: none;
-    border-radius: 0.375rem; /* 6px */
+    border-radius: 0.375rem; /* rounded-md */
     font-weight: 500;
     cursor: pointer;
-    font-size: 0.9em;
-    transition:
-      filter 0.2s ease,
-      opacity 0.2s ease; /* Transição para hover e disabled */
+    font-size: 0.875rem; /* text-sm */
+    transition: filter 0.2s ease, opacity 0.2s ease;
+  }
+  .apply-button {
+     background-image: linear-gradient(to right, #a9276f, #d02125, #d6621c);
+     background-color: #a9276f; /* Fallback */
+  }
+  .discard-button {
+      background-color: #6b7280; /* gray-500 */
   }
 
-  .apply-button:hover:not(:disabled) {
-    filter: brightness(110%);
-    /* Outras opções para hover:
-     filter: brightness(90%); /* Levemente mais escuro */
-    /* box-shadow: 0 2px 8px rgba(0,0,0,0.2); /* Uma sombra sutil */
+  .apply-button:hover:not(:disabled), .discard-button:hover:not(:disabled) {
+    filter: brightness(115%);
   }
-
-  .apply-button:disabled {
-    background-image: none; /* ESSENCIAL: Remove a imagem de gradiente */
-    background-color: #bdc3c7; /* Cor sólida cinza para o estado desabilitado */
-    color: #7f8c8d; /* Cor do texto mais escura para contraste no cinza claro */
+  .apply-button:disabled, .discard-button:disabled {
+    background-image: none;
+    background-color: #d1d5db; /* gray-300 */
+    color: #9ca3af; /* gray-400 */
     cursor: not-allowed;
-    opacity: 0.65; /* Reduz a opacidade para indicar visualmente que está desabilitado */
+    opacity: 0.7;
   }
 
-  /* Estilos para Itens dentro das Seções */
-  .section-item-space > div:not(:last-child),
-  .section-item-space > button:not(:last-child),
-  .section-item-space > .shortcut-definition-item:not(:last-child),
-  .section-item-space > .module-item-container:not(:last-child),
-  .section-item-space > .input-group:not(:last-child),
-  .section-item-space > .placeholder-text:not(:last-child) {
-    margin-bottom: 16px;
+  .section-item-space > *:not(:last-child) {
+     margin-bottom: 16px; /* Consistent spacing */
   }
-
   .module-item-container {
     display: flex;
     align-items: center;
@@ -780,18 +806,15 @@
   }
   .module-name-with-tooltip {
     flex-grow: 1;
-    margin-right: 8px; /* Inverti o margin para ficar antes do toggle */
+    margin-right: 8px;
     font-size: 0.9em;
     font-weight: 500;
-    order: -1; /* Faz o nome vir antes do toggle no flex */
-    cursor: default; /* Para mostrar que o tooltip é no texto */
+    cursor: help; /* Indicate tooltip presence */
   }
 
-  /* Atalhos */
   .shortcut-definition-item {
-    margin-bottom: 16px;
-    padding-bottom: 10px;
-    border-bottom: 1px dashed #e0e0e0;
+    padding-bottom: 12px; /* Slightly less padding */
+    border-bottom: 1px dashed #e5e7eb; /* gray-200 */
   }
   .shortcut-definition-item:last-child {
     border-bottom: none;
@@ -802,40 +825,43 @@
     font-weight: 500;
     font-size: 0.9em;
     margin-bottom: 8px;
-    color: #333;
-    cursor: default;
+    color: #374151; /* gray-700 */
+    cursor: help;
   }
   .shortcut-controls-improved {
     display: flex;
     align-items: center;
-    gap: 8px; /* Espaço entre os elementos */
+    gap: 8px;
   }
   .shortcut-prefix {
-    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier,
-      monospace;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
     font-size: 0.85em;
-    color: #555;
+    color: #4b5563; /* gray-600 */
+    white-space: nowrap;
   }
   .shortcut-key-input-editable {
-    width: 40px; /* Largura para uma letra */
+    width: 40px;
     height: 30px;
     text-align: center;
-    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier,
-      monospace;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
     font-size: 0.9em;
     font-weight: bold;
-    border: 1px solid #d1d5db;
-    border-radius: 0.25rem; /* rounded-sm ou md */
+    border: 1px solid #d1d5db; /* gray-300 */
+    border-radius: 0.25rem; /* rounded-sm */
     padding: 4px;
     box-sizing: border-box;
   }
   .shortcut-key-input-editable:focus {
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    border-color: #a9276f; /* Primary color focus */
+    box-shadow: 0 0 0 2px rgba(169, 39, 111, 0.2);
     outline: none;
   }
+  .shortcut-key-input-editable:disabled {
+      background-color: #f3f4f6; /* gray-100 */
+      color: #9ca3af; /* gray-400 */
+  }
 
-  /* Inputs, Selects, Textareas */
+
   .input-group {
     margin-bottom: 12px;
   }
@@ -843,42 +869,39 @@
     display: block;
     font-size: 0.875rem;
     font-weight: 500;
-    color: #374151;
+    color: #374151; /* gray-700 */
     margin-bottom: 4px;
   }
-  .input-field,
-  .select-field,
-  .textarea-field {
+  .input-field, .select-field, .textarea-field {
     width: 100%;
     padding: 8px 12px;
-    border: 1px solid #d1d5db;
-    border-radius: 0.375rem;
+    border: 1px solid #d1d5db; /* gray-300 */
+    border-radius: 0.375rem; /* rounded-md */
     font-size: 0.875rem;
     box-sizing: border-box;
     background-color: white;
+    color: #1f2937; /* gray-800 */
   }
-  .input-field:focus,
-  .select-field:focus,
-  .textarea-field:focus {
+  .input-field:focus, .select-field:focus, .textarea-field:focus {
     outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); /* Sombra mais sutil */
+    border-color: #a9276f; /* Primary color focus */
+    box-shadow: 0 0 0 2px rgba(169, 39, 111, 0.2); /* Primary color shadow */
   }
   .textarea-field {
     min-height: 70px;
     resize: vertical;
   }
+  .select-field[disabled] {
+      background-color: #f3f4f6;
+      color: #9ca3af;
+  }
 
-  /* Botões Genéricos */
-  .button-primary,
-  .button-secondary {
+  .button-primary, .button-secondary {
     padding: 8px 16px;
     border-radius: 0.375rem;
     font-weight: 500;
     cursor: pointer;
-    transition:
-      background-color 0.2s ease,
-      box-shadow 0.2s ease;
+    transition: background-color 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
     border: 1px solid transparent;
     display: inline-flex;
     align-items: center;
@@ -887,25 +910,23 @@
     font-size: 0.875rem;
   }
   .button-primary {
-    background-color: #3b82f6;
+    background-color: #a9276f; /* Primary color */
     color: white;
   }
   .button-primary:hover:not(:disabled) {
-    background-color: #2563eb;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    filter: brightness(110%);
   }
   .button-secondary {
-    background-color: #e5e7eb;
-    color: #374151;
+    background-color: #e5e7eb; /* gray-200 */
+    color: #374151; /* gray-700 */
   }
   .button-secondary:hover:not(:disabled) {
-    background-color: #d1d5db;
+    background-color: #d1d5db; /* gray-300 */
   }
   .full-width {
     width: 100%;
   }
 
-  /* Modal */
   .modal-overlay {
     position: fixed;
     inset: 0;
@@ -913,14 +934,14 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 100;
+    z-index: 1000; /* Ensure it's above other popup content */
   }
   .modal-content {
     background-color: white;
     padding: 20px;
-    border-radius: 0.5rem;
+    border-radius: 0.5rem; /* rounded-lg */
     width: 90%;
-    max-width: 340px;
+    max-width: 340px; /* Consistent with other popup width considerations */
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
   }
   .modal-header {
@@ -929,23 +950,24 @@
     align-items: center;
     margin-bottom: 16px;
     padding-bottom: 10px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid #e5e7eb; /* gray-200 */
   }
   .modal-header h3 {
     font-size: 1.1rem;
     font-weight: 600;
-    color: #1f2937;
+    color: #1f2937; /* gray-800 */
     margin: 0;
   }
   .close-button {
     background: none;
     border: none;
-    color: #9ca3af;
+    color: #9ca3af; /* gray-400 */
     cursor: pointer;
-    padding: 0;
+    padding: 0; /* Remove default padding */
+    line-height: 1; /* Ensure icon is centered */
   }
   .close-button:hover {
-    color: #4b5563;
+    color: #4b5563; /* gray-600 */
   }
   .modal-body > .input-group:not(:last-child) {
     margin-bottom: 16px;
@@ -955,29 +977,23 @@
     gap: 8px;
     padding-top: 16px;
     margin-top: 16px;
-    border-top: 1px solid #eee;
+    border-top: 1px solid #e5e7eb; /* gray-200 */
+    justify-content: flex-end;
   }
   .modal-footer button {
-    flex: 1;
+    min-width: 80px; /* Give buttons a decent minimum width */
   }
 
-  /* Outros */
-  .placeholder-text {
-    font-style: italic;
-    color: #777;
-    text-align: center;
-    padding: 10px 0;
-  }
   .sub-separator {
     border: none;
-    border-top: 1px dashed #e0e0e0;
-    margin: 16px 0;
+    border-top: 1px dashed #e5e7eb; /* gray-200 */
+    margin: 20px 0; /* More vertical space */
   }
   .section-subtitle {
-    font-size: 0.9em;
+    font-size: 0.95em; /* Slightly larger */
     font-weight: 500;
-    color: #444;
+    color: #374151; /* gray-700 */
     margin-top: 16px;
-    margin-bottom: 10px;
+    margin-bottom: 12px; /* More space below */
   }
 </style>

@@ -1,22 +1,37 @@
 import { writable, type Updater, type Writable } from "svelte/store";
-import { getInitialModuleStates, availableModules, type Module } from './modules';
+import { getInitialModuleStates } from './modules'; // availableModules and Module type are not directly used here
 
-
+/**
+ * Creates a Svelte writable store that persists its value to `chrome.storage.sync`.
+ * It initializes from `chrome.storage.sync` if a value exists for the given key;
+ * otherwise, it uses the provided `initialValue`.
+ * Changes to the store are automatically saved to `chrome.storage.sync`.
+ * The store also listens for external changes to the same key in `chrome.storage.sync`
+ * (e.g., from other extension pages or content scripts) and updates its state accordingly.
+ *
+ * @template T The type of the value held by the store.
+ * @param {string} key The key under which the value is stored in `chrome.storage.sync`.
+ * @param {T} initialValue The initial value to use if no value is found in storage or if storage is unavailable.
+ * @returns {Writable<T>} A Svelte writable store with persistence capabilities.
+ */
 export function persistentStore<T>(key: string, initialValue: T): Writable<T> {
   const store = writable<T>(initialValue);
-  const isChromeStorageAvailable = chrome && chrome.storage && chrome.storage.sync;
+  const isChromeStorageAvailable = typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync;
 
   if (isChromeStorageAvailable) {
     chrome.storage.sync.get(key).then((result) => {
-      if (Object.hasOwn(result, key)) {
+      if (Object.hasOwn(result, key) && result[key] !== undefined) {
         store.set(result[key]);
       }
     });
-    chrome.storage.sync.onChanged.addListener((changes) => {
-      if (Object.hasOwn(changes, key)) {
+
+    chrome.storage.onChanged.addListener((changes, areaName) => {
+      if (areaName === 'sync' && Object.hasOwn(changes, key)) {
         let currentValue: T | undefined;
         const unsubscribe = store.subscribe(value => currentValue = value);
-        unsubscribe();
+        unsubscribe(); // Immediately unsubscribe after getting the current value
+
+        // Check if the new value from storage is actually different before setting
         if (JSON.stringify(changes[key].newValue) !== JSON.stringify(currentValue)) {
           store.set(changes[key].newValue);
         }
@@ -24,7 +39,7 @@ export function persistentStore<T>(key: string, initialValue: T): Writable<T> {
     });
   } else {
     console.warn(
-      `Chrome storage sync API not available for key "${key}". Persistent store will operate in memory only for this session.`
+      `Omni Max [PersistentStore]: Chrome storage.sync API not available for key "${key}". Store will operate in-memory only for this session.`
     );
   }
 
@@ -48,80 +63,101 @@ export function persistentStore<T>(key: string, initialValue: T): Writable<T> {
   };
 }
 
+// --- Omni Max Configuration Stores ---
 
-// --- ARMAZENAMENTO PARA AS CONFIGURAÇÕES DO OMNI MAX ---
-
-// Stores já definidos (ou que estávamos planejando)
+/** Global enable/disable state for the entire Omni Max extension. */
 export const globalExtensionEnabledStore = persistentStore<boolean>(
   'omniMaxGlobalEnabled',
   true
 );
 
+/** Stores the enabled/disabled state for each individual module. */
 export const moduleStatesStore = persistentStore<Record<string, boolean>>(
   'omniMaxModuleStates',
   getInitialModuleStates()
 );
 
-// --- NOVOS STORES PARA A UI APRIMORADA ---
+// --- Stores for Enhanced UI Features ---
 
-// Para o toggle geral da seção "Atalhos de Teclado"
+/** General toggle for the "Keyboard Shortcuts" section in the popup. */
 export const shortcutsOverallEnabledStore = persistentStore<boolean>(
   'omniMaxShortcutsOverallEnabled',
   true
 );
 
-// Para o toggle geral da seção "Configurações de IA"
+/** General toggle for the "AI Settings" section in the popup. */
 export const aiFeaturesEnabledStore = persistentStore<boolean>(
   'omniMaxAiFeaturesEnabled',
   false
 );
 
-// Para armazenar as credenciais de IA
-// Inicialmente, focaremos na chave da OpenAI.
+/**
+ * Defines the structure for storing API credentials for various AI providers.
+ */
 export interface AiCredentials {
+  /** API key for OpenAI services. */
   openaiApiKey?: string;
-  geminiApiKey?: string; // Placeholder para o futuro
-  anthropicApiKey?: string; // Placeholder para o futuro
+  /** API key for Google Gemini services. (Future use) */
+  geminiApiKey?: string;
+  /** API key for Anthropic Claude services. (Future use) */
+  anthropicApiKey?: string;
 }
+/** Stores API keys for AI provider integrations. */
 export const aiCredentialsStore = persistentStore<AiCredentials>(
   'omniMaxAiCredentials',
-  { openaiApiKey: '' } // Valor inicial
+  { openaiApiKey: '' }
 );
 
-// Para armazenar a configuração do provedor e modelo de IA
+/**
+ * Defines the structure for AI provider and model configuration.
+ */
 export interface AiProviderConfig {
-  provider: 'openai' | 'gemini' | 'anthropic' | string;
-  model: string; // O ID/nome do modelo específico
+  /** Identifier for the selected AI provider (e.g., 'openai', 'gemini'). */
+  provider: string;
+  /** Identifier for the specific AI model to be used (e.g., 'gpt-4o-mini'). */
+  model: string;
 }
+/** Stores the selected AI provider and model configuration. */
 export const aiProviderConfigStore = persistentStore<AiProviderConfig>(
   'omniMaxAiProviderConfig',
-  { provider: 'openai', model: 'gpt-4o-mini' } // Valores iniciais padrão
+  { provider: 'openai', model: 'gpt-4o-mini' }
 );
 
-// Para armazenar os prompts customizáveis
+/**
+ * Defines the structure for customizable AI prompts.
+ */
 export interface PromptsConfig {
+  /** Custom prompt to be used for generating chat summaries. */
   summaryPrompt: string;
+  /** Custom prompt for AI-assisted response improvement. */
   improvementPrompt: string;
 }
+/** Stores user-customizable prompts for AI features. */
 export const promptsStore = persistentStore<PromptsConfig>(
   'omniMaxPrompts',
   {
     summaryPrompt: 'Resuma esta conversa de atendimento ao cliente de forma concisa, destacando o problema principal e a resolução.',
     improvementPrompt: 'Revise a seguinte resposta para um cliente, tornando-a mais clara, empática e profissional, mantendo o significado original:',
-  } 
+  }
 );
 
-// Store para o estado de abertura das seções colapsáveis (opcional, pode ser estado local do componente)
-// Se quisermos persistir quais seções o usuário deixou abertas/fechadas:
+/**
+ * Defines the open/closed state of collapsible sections in the extension's popup UI.
+ */
 export interface CollapsibleSectionsState {
+  /** State for the 'Modules' section. True if open, false if closed. */
   modules: boolean;
+  /** State for the 'Shortcuts' section. */
   shortcuts: boolean;
+  /** State for the 'AI Configuration' section. */
   ai: boolean;
+  /** State for the 'Prompts Configuration' section. */
   prompts: boolean;
 }
+/** Persists the open/closed state of collapsible UI sections. */
 export const collapsibleSectionsStateStore = persistentStore<CollapsibleSectionsState>(
   'omniMaxCollapsibleSectionsState',
-  { // Padrão de quais seções começam abertas
+  {
     modules: false,
     shortcuts: false,
     ai: false,
@@ -130,21 +166,17 @@ export const collapsibleSectionsStateStore = persistentStore<CollapsibleSections
 );
 
 /**
- * Interface para a configuração das teclas de atalho.
- * Mapeia o ID do módulo de atalho para a tecla configurada.
+ * Interface for configuring keyboard shortcuts.
+ * Maps a shortcut module's ID (e.g., 'shortcutCopyName') to its assigned key (e.g., 'X').
  */
 export interface ShortcutKeysConfig {
-  [moduleId: string]: string; // Ex: { shortcutCopyName: 'X', shortcutCopyCPF: 'C' }
+  [moduleId: string]: string;
 }
-
-/**
- * Store persistente para as teclas de atalho configuradas pelo usuário.
- */
+/** Stores user-configured keybindings for available shortcuts. */
 export const shortcutKeysStore = persistentStore<ShortcutKeysConfig>(
   'omniMaxShortcutKeys',
-  { // Valores padrão iniciais para as teclas dos atalhos
+  {
     shortcutCopyName: 'Z',
-    shortcutCopyCPF: 'X',
-    // Adicione outros módulos de atalho com suas teclas padrão aqui no futuro
+    shortcutCopyDocumentNumber: 'X',
   }
 );

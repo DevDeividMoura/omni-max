@@ -1,10 +1,10 @@
 /**
  * src/content/services/NotificationService.ts
- * (Movido para services, conforme nossa última discussão de estrutura)
- * Serviço para exibir notificações toast na página com estilos embutidos.
+ * Service for displaying transient toast-style notifications on the page.
+ * It handles the creation, styling, animation, and removal of notification elements.
  */
 
-// Estilos base para o toast (como você já tinha)
+/** Base CSS styles for toast notifications. */
 const toastBaseStyles: Partial<CSSStyleDeclaration> = {
   position: 'fixed',
   bottom: '20px',
@@ -12,29 +12,30 @@ const toastBaseStyles: Partial<CSSStyleDeclaration> = {
   padding: '12px 20px',
   borderRadius: '6px',
   color: 'white',
-  zIndex: '2147483647', // Para garantir que fique sobre a maioria dos elementos
+  zIndex: '2147483647', // High z-index to appear above most page elements
   fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif',
   fontSize: '14px',
-  opacity: '0', // Começa invisível para animar a entrada
+  opacity: '0', // Start transparent for fade-in animation
   transition: 'opacity 0.3s ease-in-out, transform 0.3s ease-in-out',
-  transform: 'translateY(20px)', // Começa um pouco abaixo para animar para cima
+  transform: 'translateY(20px)', // Start slightly offset for slide-in animation
   boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
 };
 
-// Cores para os diferentes tipos de toast
+/** Defines background colors for different notification types. */
 const toastTypeColors: Record<string, string> = {
-  success: '#2ecc71', // Verde (cor que você usou)
-  warning: '#f39c12', // Laranja
-  error: '#e74c3c',   // Vermelho
-  // Adicione mais tipos/cores se necessário
+  success: '#2ecc71', // Green
+  warning: '#f39c12', // Orange
+  error: '#e74c3c',   // Red
+  // Add more types/colors here if needed (e.g., 'info': '#3498db')
 };
 
 export class NotificationService {
   /**
-   * Exibe uma notificação toast na página.
-   * @param message A mensagem a ser exibida.
-   * @param type O tipo de toast ('success', 'warning', 'error').
-   * @param duration Duração em milissegundos que o toast fica visível.
+   * Displays a toast notification on the page with a specified message, type, and duration.
+   *
+   * @param {string} message The message to be displayed in the toast.
+   * @param {'success' | 'warning' | 'error'} [type='success'] The type of notification, determining its background color. Defaults to 'success'.
+   * @param {number} [duration=3000] The duration in milliseconds for which the toast will be visible. Defaults to 3000ms.
    */
   showToast(
     message: string,
@@ -43,33 +44,33 @@ export class NotificationService {
   ): void {
     const toastElement = document.createElement('div');
     toastElement.textContent = message;
-    
-    // Aplica os estilos base definidos acima
+
     Object.assign(toastElement.style, toastBaseStyles);
-    // Aplica a cor de fundo específica do tipo de toast
-    toastElement.style.backgroundColor = toastTypeColors[type];
+    toastElement.style.backgroundColor = toastTypeColors[type] || toastTypeColors.success; // Fallback to success color
 
     document.body.appendChild(toastElement);
 
-    // Força um reflow para garantir que as transições CSS funcionem corretamente
-    // ao mudar opacity e transform após o appendChild.
+    // Force a reflow to ensure CSS transitions apply correctly from the initial state.
+    // Accessing offsetHeight is a common way to trigger this.
     // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-    toastElement.offsetHeight; 
+    toastElement.offsetHeight;
 
-    // Animação de entrada (fade in e slide para cima)
+    // Animate in: fade in and slide up
     requestAnimationFrame(() => {
       toastElement.style.opacity = '1';
       toastElement.style.transform = 'translateY(0)';
     });
 
-    // Configura a remoção do toast após a duração especificada
+    // Set up removal after the specified duration
     setTimeout(() => {
       toastElement.style.opacity = '0';
-      toastElement.style.transform = 'translateY(20px)'; // Animação de saída
-      // Espera a animação de saída terminar antes de remover o elemento do DOM
+      toastElement.style.transform = 'translateY(20px)'; // Animate out: fade out and slide down
+
+      // Wait for the fade-out animation to complete before removing the element from the DOM.
+      // This timeout should match the CSS transition duration (0.3s = 300ms).
       setTimeout(() => {
         toastElement.remove();
-      }, 300); // Deve ser igual à duração da transição CSS (0.3s)
+      }, 300);
     }, duration);
   }
 }
