@@ -5,7 +5,7 @@
 import type { Config } from '../config';
 import type { ExtractionService } from './ExtractionService';
 import type { ClipboardService } from './ClipboardService';
-import type { NotificationService } from '../utils/NotificationService';
+import type { NotificationService } from './NotificationService';
 import type { ShortcutKeysConfig } from '../../storage'; // Para os tipos das chaves
 
 interface StoredSettings {
@@ -30,7 +30,7 @@ export class ShortcutService {
       {
         moduleId: 'shortcutCopyCPF',
         defaultKey: 'X',
-        actionFunction: async () => ({ data: this.extractionService.extractCPF(), label: "CPF" })
+        actionFunction: async () => ({ data: this.extractionService.extractDocumentNumber(), label: "CPF" })
       },
       {
         moduleId: 'shortcutCopyName',

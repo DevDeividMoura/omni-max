@@ -3,7 +3,7 @@
  * Responsável por extrair informações específicas do DOM da plataforma Matrix Go.
  */
 import type { Config } from '../config';
-import type { DomService } from '../utils/DomService';
+import type { DomService } from './DomService';
 
 export class ExtractionService {
   private config: Config;
@@ -37,7 +37,7 @@ export class ExtractionService {
    * Extrai o CPF do cliente da página.
    * @returns O CPF formatado ou null se não encontrado.
    */
-  public extractCPF(): string | null {
+  public extractDocumentNumber(): string | null {
     const conversaDiv = this.dom.query(this.config.selectors.conversaContainer);
     if (!conversaDiv) {
       console.warn("Omni Max [ExtractionService]: Container da conversa não encontrado para CPF.");

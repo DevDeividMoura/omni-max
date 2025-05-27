@@ -4,9 +4,9 @@
  * Inicializa e configura todos os serviços e listeners.
  */
 import { CONFIG } from './config';
-import { DomService } from './utils/DomService';
+import { DomService } from './services/DomService';
 import { ClipboardService } from './services/ClipboardService';
-import { NotificationService } from './utils/NotificationService';
+import { NotificationService } from './services/NotificationService';
 import { ExtractionService } from './services/ExtractionService';
 import { ShortcutService } from './services/ShortcutService';
 import { TemplateHandlingService } from './services/TemplateHandleService';
