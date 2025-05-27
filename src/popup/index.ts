@@ -1,16 +1,19 @@
-import { mount } from "svelte";
-import Options from "../components/Options.svelte";
-import { count } from "../storage";
-
-// Action popup
-// https://developer.chrome.com/docs/extensions/reference/action/
+// src/popup/index.ts
+import { mount } from 'svelte';
+import OmniMaxPopup from '../components/OmniMaxPopup.svelte'; // ATUALIZADO
 
 function render() {
-    const target = document.getElementById("app");
-
-    if (target) {
-        mount(Options, { target, props: { count } });
-    }
+  const target = document.getElementById('app');
+  if (target) {
+    target.innerHTML = ''; // Limpa conteúdo anterior
+    mount(OmniMaxPopup, { target }); // MONTA O NOVO POPUP
+  } else {
+    console.error("Target element #app not found in popup.html");
+  }
 }
 
-document.addEventListener("DOMContentLoaded", render);
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', render);
+} else {
+  render();
+}

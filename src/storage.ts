@@ -1,41 +1,22 @@
 import { writable, type Updater, type Writable } from "svelte/store";
-import { getInitialModuleStates } from './modules'; // Importamos a função que criamos em modules.ts
+import { getInitialModuleStates, availableModules, type Module } from './modules';
 
-/**
- * Creates a persistent Svelte store backed by Chrome's sync storage.
- * Note that each item is limited to 8KB in chrome.storage.sync.
- * Use chrome.storage.local for larger amounts if necessary.
- * https://developer.chrome.com/docs/extensions/reference/api/storage#storage_areas
- *
- * @template T The type of the store's value
- * @param key The key to use in Chrome's storage
- * @param initialValue The initial value of the store
- * @returns A writable Svelte store
- */
+
 export function persistentStore<T>(key: string, initialValue: T): Writable<T> {
   const store = writable<T>(initialValue);
-
-  // Verifica se a API de storage do Chrome está disponível antes de usá-la.
-  // Isso é útil para evitar erros se, por exemplo, este código fosse usado em um contexto não-extensão (testes).
   const isChromeStorageAvailable = chrome && chrome.storage && chrome.storage.sync;
 
   if (isChromeStorageAvailable) {
-    // Carrega o valor inicial do chrome.storage.sync quando o store é criado
     chrome.storage.sync.get(key).then((result) => {
       if (Object.hasOwn(result, key)) {
         store.set(result[key]);
       }
     });
-
-    // Observa mudanças no chrome.storage.sync para manter o store Svelte atualizado
     chrome.storage.sync.onChanged.addListener((changes) => {
       if (Object.hasOwn(changes, key)) {
-        // Verifica se o novo valor é diferente do valor atual do store para evitar loops desnecessários
-        // (Embora o Svelte possa já lidar com isso, é uma boa prática)
         let currentValue: T | undefined;
         const unsubscribe = store.subscribe(value => currentValue = value);
-        unsubscribe(); // Desinscreve imediatamente após pegar o valor
-
+        unsubscribe();
         if (JSON.stringify(changes[key].newValue) !== JSON.stringify(currentValue)) {
           store.set(changes[key].newValue);
         }
@@ -67,28 +48,83 @@ export function persistentStore<T>(key: string, initialValue: T): Writable<T> {
   };
 }
 
+
 // --- ARMAZENAMENTO PARA AS CONFIGURAÇÕES DO OMNI MAX ---
 
-/**
- * Store persistente para os estados (habilitado/desabilitado) dos módulos individuais do Omni Max.
- * A chave no chrome.storage.sync será 'omniMaxModuleStates'.
- * O valor inicial é um objeto onde cada chave é o ID de um módulo e o valor é seu estado booleano padrão.
- * Ex: { layoutCorrection: true, shortcutCopyName: true, ... }
- */
-export const moduleStatesStore = persistentStore<Record<string, boolean>>(
-  'omniMaxModuleStates',      // Nome da chave no chrome.storage.sync
-  getInitialModuleStates()    // Função de src/modules.ts que retorna os estados iniciais
-);
-
-/**
- * Store persistente para o estado global (ligado/desligado) da extensão Omni Max.
- * A chave no chrome.storage.sync será 'omniMaxGlobalEnabled'.
- * Por padrão, a extensão começa habilitada (true).
- */
+// Stores já definidos (ou que estávamos planejando)
 export const globalExtensionEnabledStore = persistentStore<boolean>(
-  'omniMaxGlobalEnabled',     // Nome da chave no chrome.storage.sync
-  true                        // Valor inicial: extensão globalmente habilitada
+  'omniMaxGlobalEnabled',
+  true
 );
 
-// Se você ainda tiver o store 'count' do boilerplate, pode removê-lo ou comentá-lo:
-// export const count = persistentStore("count", 10);
+export const moduleStatesStore = persistentStore<Record<string, boolean>>(
+  'omniMaxModuleStates',
+  getInitialModuleStates()
+);
+
+// --- NOVOS STORES PARA A UI APRIMORADA ---
+
+// Para o toggle geral da seção "Atalhos de Teclado"
+export const shortcutsOverallEnabledStore = persistentStore<boolean>(
+  'omniMaxShortcutsOverallEnabled',
+  true
+);
+
+// Para o toggle geral da seção "Configurações de IA"
+export const aiFeaturesEnabledStore = persistentStore<boolean>(
+  'omniMaxAiFeaturesEnabled',
+  false
+);
+
+// Para armazenar as credenciais de IA
+// Inicialmente, focaremos na chave da OpenAI.
+export interface AiCredentials {
+  openaiApiKey?: string;
+  geminiApiKey?: string; // Placeholder para o futuro
+  anthropicApiKey?: string; // Placeholder para o futuro
+}
+export const aiCredentialsStore = persistentStore<AiCredentials>(
+  'omniMaxAiCredentials',
+  { openaiApiKey: '' } // Valor inicial
+);
+
+// Para armazenar a configuração do provedor e modelo de IA
+export interface AiProviderConfig {
+  provider: 'openai' | 'gemini' | 'anthropic' | string;
+  model: string; // O ID/nome do modelo específico
+}
+export const aiProviderConfigStore = persistentStore<AiProviderConfig>(
+  'omniMaxAiProviderConfig',
+  { provider: 'openai', model: 'gpt-4o-mini' } // Valores iniciais padrão
+);
+
+// Para armazenar os prompts customizáveis
+export interface PromptsConfig {
+  summaryPrompt: string;
+  improvementPrompt: string;
+}
+export const promptsStore = persistentStore<PromptsConfig>(
+  'omniMaxPrompts',
+  {
+    summaryPrompt: 'Resuma esta conversa de atendimento ao cliente de forma concisa, destacando o problema principal e a resolução.',
+    improvementPrompt: 'Revise a seguinte resposta para um cliente, tornando-a mais clara, empática e profissional, mantendo o significado original:',
+  } 
+);
+
+// Store para o estado de abertura das seções colapsáveis (opcional, pode ser estado local do componente)
+// Se quisermos persistir quais seções o usuário deixou abertas/fechadas:
+export interface CollapsibleSectionsState {
+  modules: boolean;
+  shortcuts: boolean;
+  ai: boolean;
+  prompts: boolean;
+}
+export const collapsibleSectionsStateStore = persistentStore<CollapsibleSectionsState>(
+  'omniMaxCollapsibleSectionsState',
+  { // Padrão de quais seções começam abertas
+    modules: false,
+    shortcuts: false,
+    ai: false,
+    prompts: false,
+  }
+);

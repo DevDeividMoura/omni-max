@@ -22,7 +22,7 @@ export const availableModules: Module[] = [
   {
     id: 'layoutCorrection',
     name: 'Correção de Layout',
-    description: 'Aplica pequenos ajustes no layout da plataforma Matrix Go para melhor usabilidade.',
+    description: 'Move a lista de conversas para a direia e limita a altura 70% da tela para melhor usabilidade.',
     defaultEnabled: true,
   },
   {
@@ -38,21 +38,15 @@ export const availableModules: Module[] = [
     defaultEnabled: true,
   },
   {
-    id: 'messageTemplates',
-    name: 'Templates de Mensagens',
-    description: 'Acesso rápido a respostas e mensagens pré-definidas para agilizar o atendimento.',
-    defaultEnabled: true,
-  },
-  {
     id: 'templateProcessor',
-    name: 'Processador de Templates (Automático)',
-    description: 'Sugere ou aplica templates de forma mais automática durante a interação (funcionalidade futura).',
-    defaultEnabled: false,
+    name: 'Processador de Templates de Mensagens',
+    description: 'Ajusta o nome do cliente ({ANA MARIA} => Ana), auto seleciona variavel ([VARIAVEL]) com Tab.',
+    defaultEnabled: true,
   },
   {
     id: 'aiChatSummary',
     name: 'IA: Resumir Atendimento',
-    description: 'Gera um resumo do histórico da conversa atual utilizando Inteligência Artificial.',
+    description: 'Gera um resumo do histórico da conversa (protocolo) atual utilizando Inteligência Artificial.',
     defaultEnabled: false,
   },
   {
