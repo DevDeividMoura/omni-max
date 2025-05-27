@@ -35,7 +35,7 @@ export default defineManifest(async () => ({
     },
     content_scripts: [
         {
-            matches: ["https://vipmax.matrixdobrasil.ai/Painel/"],
+            matches: ["https://vipmax.matrixdobrasil.ai/Painel/*"],
             js: ["src/content/index.ts"],
         },
     ],

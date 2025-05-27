@@ -80,14 +80,14 @@
 
   let localShortcutKeys: ShortcutKeysConfig = {
     // Boa prática inicializar com a estrutura esperada
-    shortcutCopyName: "X", // Default visual antes do onMount
-    shortcutCopyCPF: "C", // Default visual antes do onMount
+    shortcutCopyName: "Z", // Default visual antes do onMount
+    shortcutCopyCPF: "X", // Default visual antes do onMount
   };
 
   let initialShortcutKeys: ShortcutKeysConfig = {
     // Boa prática inicializar
-    shortcutCopyName: "X",
-    shortcutCopyCPF: "C",
+    shortcutCopyName: "Z",
+    shortcutCopyCPF: "X",
   };
   // Handler para mudança da tecla de atalho (exemplo para um módulo)
   function handleShortcutKeyChange(moduleId: string, event: Event) {

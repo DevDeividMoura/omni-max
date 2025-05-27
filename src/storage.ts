@@ -143,8 +143,8 @@ export interface ShortcutKeysConfig {
 export const shortcutKeysStore = persistentStore<ShortcutKeysConfig>(
   'omniMaxShortcutKeys',
   { // Valores padrão iniciais para as teclas dos atalhos
-    shortcutCopyName: 'X',
-    shortcutCopyCPF: 'C',
+    shortcutCopyName: 'Z',
+    shortcutCopyCPF: 'X',
     // Adicione outros módulos de atalho com suas teclas padrão aqui no futuro
   }
 );
