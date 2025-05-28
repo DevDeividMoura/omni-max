@@ -104,11 +104,11 @@ export class TemplateHandlingService {
         if (!selection) return;
 
         // Attempt to find the text node(s) and offsets for the variable placeholder.
-        // The `+1` for startIndex is to select *inside* the brackets `[` `]`.
-        // The `endIndex` already points to `]`, so `endIndex + 1` is the offset *after* `]`.
-        // To select the content *inside* [VAR], we want `startIndex + 1` to `endIndex`.
-        const startNodeInfo = this.dom.getTextNodeAndOffsetAtCharIndex(editableDiv, firstVariable.startIndex + 1);
-        const endNodeInfo = this.dom.getTextNodeAndOffsetAtCharIndex(editableDiv, firstVariable.endIndex);
+        // Using startIndex to include the opening bracket '['.
+        // Adding +1 to endIndex to include the closing bracket ']' in the selection.
+        // This will select the entire placeholder '[VARIABLE]' including brackets.
+        const startNodeInfo = this.dom.getTextNodeAndOffsetAtCharIndex(editableDiv, firstVariable.startIndex);
+        const endNodeInfo = this.dom.getTextNodeAndOffsetAtCharIndex(editableDiv, firstVariable.endIndex + 1);
 
 
         if (startNodeInfo && endNodeInfo) {
