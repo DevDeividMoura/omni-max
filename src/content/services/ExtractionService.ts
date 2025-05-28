@@ -57,9 +57,9 @@ export class ExtractionService {
     }
 
     // Assumes cpfLabelElement points to the <small> tag, and the <strong> is inside it.
-    const parentElements = this.dom.queryAll<HTMLElement>(this.config.selectors.cpfLabelElement.split(' > ')[0], conversaDiv);
+    const parentElements = this.dom.queryAll<HTMLElement>(this.config.selectors.cpfInfoContainer, conversaDiv);
     const cpfParentElement = parentElements.find(el => {
-      const labelElement = el.querySelector(this.config.selectors.cpfLabelElement.split(' > ')[1]); // The <strong> part
+      const labelElement = el.querySelector(this.config.selectors.cpfLabelQueryInContainer); // The <strong> part
       return labelElement && this.dom.getTextSafely(labelElement) === this.config.textMarkers.cpfLabel;
     });
 
@@ -95,7 +95,7 @@ export class ExtractionService {
     }
 
     // Find an element (e.g., <small>) that contains the customer name indicator text.
-    const nameSourceElement = this.dom.queryAll<HTMLElement>(this.config.selectors.nameLabelElement, conversaDiv).find(
+    const nameSourceElement = this.dom.queryAll<HTMLElement>(this.config.selectors.nameInfoContainer, conversaDiv).find(
       (el) => this.dom.getTextSafely(el).includes(this.config.textMarkers.customerNameIndicator || '---') // Fallback if indicator is undefined
     );
 
@@ -117,6 +117,72 @@ export class ExtractionService {
       }
     }
     console.warn("Omni Max [ExtractionService]: Customer name could not be extracted. Check selectors and text markers.");
+    return null;
+  }
+  /**
+   * Extrai o número de telefone do cliente da página.
+   * @returns O número de telefone como string, ou null se não encontrado.
+   */
+  public extractPhoneNumber(): string | null {
+    const conversaDiv = this.dom.query(this.config.selectors.conversaContainer);
+    if (!conversaDiv) {
+      console.warn("Omni Max [ExtractionService]: Container da conversa não encontrado para Telefone.");
+      return null;
+    }
+
+    const potentialContainers = this.dom.queryAll<HTMLElement>(this.config.selectors.phoneInfoContainer, conversaDiv);
+    const targetContainer = potentialContainers.find(container => {
+      const labelElement = this.dom.query(this.config.selectors.phoneLabelQueryInContainer, container);
+      return labelElement && this.dom.getTextSafely(labelElement) === this.config.textMarkers.phoneLabel;
+    });
+
+    if (targetContainer) {
+      const fullText = this.dom.getTextSafely(targetContainer);
+      // Assume que o telefone é o texto após o label "Telefone:"
+      let phoneNumber = fullText.split(this.config.textMarkers.phoneLabel)[1]?.trim();
+      if (phoneNumber && phoneNumber.startsWith(':')) {
+        phoneNumber = phoneNumber.substring(1).trim();
+      }
+      
+      if (phoneNumber) {
+        console.log("Omni Max [ExtractionService]: Telefone extraído:", phoneNumber);
+        return phoneNumber.replace(/\D/g, ''); // Retorna apenas números por padrão, ou ajuste conforme necessário
+      }
+    }
+    console.warn(`Omni Max [ExtractionService]: Label de Telefone "${this.config.textMarkers.phoneLabel}" ou valor não encontrados.`);
+    return null;
+  }
+
+  /**
+   * Extrai o número de protocolo do atendimento da página.
+   * @returns O número de protocolo como string, ou null se não encontrado.
+   */
+  public extractProtocolNumber(): string | null {
+    const conversaDiv = this.dom.query(this.config.selectors.conversaContainer);
+    if (!conversaDiv) {
+      console.warn("Omni Max [ExtractionService]: Container da conversa não encontrado para Protocolo.");
+      return null;
+    }
+
+    const potentialContainers = this.dom.queryAll<HTMLElement>(this.config.selectors.protocolInfoContainer, conversaDiv);
+    const targetContainer = potentialContainers.find(container => {
+      const labelElement = this.dom.query(this.config.selectors.protocolLabelQueryInContainer, container);
+      return labelElement && this.dom.getTextSafely(labelElement) === this.config.textMarkers.protocolLabel;
+    });
+
+    if (targetContainer) {
+      const fullText = this.dom.getTextSafely(targetContainer);
+      let protocolNumber = fullText.split(this.config.textMarkers.protocolLabel)[1]?.trim();
+       if (protocolNumber && protocolNumber.startsWith(':')) {
+        protocolNumber = protocolNumber.substring(1).trim();
+      }
+
+      if (protocolNumber) {
+        console.log("Omni Max [ExtractionService]: Protocolo extraído:", protocolNumber);
+        return protocolNumber.replace(/\D/g, ''); // Retorna apenas números por padrão
+      }
+    }
+    console.warn(`Omni Max [ExtractionService]: Label de Protocolo "${this.config.textMarkers.protocolLabel}" ou valor não encontrados.`);
     return null;
   }
 }

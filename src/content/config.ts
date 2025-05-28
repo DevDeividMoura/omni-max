@@ -22,12 +22,40 @@ export interface Config {
      * for the customer's CPF label. Example: 'small > strong' if 'CPF Cliente:' is in a <strong>
      * inside a <small> tag that also contains the CPF value.
      */
-    cpfLabelElement: string;
+    cpfInfoContainer: string;
+    /**
+     * Selector for an element that is a reliable ancestor or direct identifier
+     * for the customer's CPF label, used in a container that may include other elements.
+     * Example: 'small > strong' if the CPF label is in a <strong> inside a <small> tag.
+     * This is used to ensure the CPF label can be found even if the structure changes.
+     */
+    cpfLabelQueryInContainer: string;
     /**
      * Selector for an element that is a reliable ancestor or direct identifier
      * for the customer's name label.
      */
-    nameLabelElement: string;
+    nameInfoContainer: string;
+    /**
+     * Selector for an element that is a reliable ancestor or direct identifier
+     * for the customer's phone number information.
+     */
+    phoneInfoContainer: string;
+
+    /**
+     * Selector for an element that is a reliable ancestor or direct identifier
+     * for the customer's phone number label, used in a container that may include other elements.
+     */
+    phoneLabelQueryInContainer: string;
+    /**
+     * Selector for an element that is a reliable ancestor or direct identifier
+     * for the customer's protocol information.
+     */
+    protocolInfoContainer: string;
+    /**
+     * Selector for an element that is a reliable ancestor or direct identifier
+     * for the customer's protocol label, used in a container that may include other elements.
+     */
+    protocolLabelQueryInContainer: string;
     /**
      * Optional selector for the list of tabs/conversations,
      * primarily used for layout correction adjustments.
@@ -51,6 +79,10 @@ export interface Config {
      * to isolate the customer's name (e.g., ' - ' in "Matrícula: 123 - John Doe").
      */
     customerNameSeparator?: string;
+    /** The exact text label that precedes the customer's phone number. */
+    phoneLabel: string;
+    /** The exact text label that precedes the customer's protocol number. */
+    protocolLabel: string;
   };
 }
 
@@ -62,13 +94,20 @@ export const CONFIG: Config = Object.freeze({
   selectors: {
     conversaContainer: '.tab-pane.active .conversa.col-lg-12',
     editableChatbox: "#Abas .tab-pane.active .faketextbox.pastable[contenteditable='true']",
-    cpfLabelElement: 'small > strong', // Assumes CPF label is a <strong> inside a <small>
-    nameLabelElement: 'small', // Assumes name information is within a <small> tag
+    cpfInfoContainer: 'small',
+    cpfLabelQueryInContainer: 'strong', 
+    nameInfoContainer: 'small',
+    phoneInfoContainer: 'small',
+    phoneLabelQueryInContainer: 'strong',
+    protocolInfoContainer: 'small',
+    protocolLabelQueryInContainer: 'strong',
     tabsList: '#tabs',
   },
   textMarkers: {
     cpfLabel: 'CPF Cliente:',
     customerNameIndicator: 'Matrícula:',
     customerNameSeparator: ' - ',
+    phoneLabel: 'Telefone:',
+    protocolLabel: 'Número de protocolo:',
   },
 });

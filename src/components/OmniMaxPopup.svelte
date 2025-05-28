@@ -8,7 +8,7 @@
    *
    * @component
    */
-  import { onMount, createEventDispatcher } from "svelte";
+  import { onMount } from "svelte";
   import CollapsibleSection from "./CollapsibleSection.svelte";
   import ToggleSwitch from "./ToggleSwitch.svelte";
   import {
@@ -18,7 +18,6 @@
     ListChecks,
     XCircle,
     Info,
-    Github,
   } from "lucide-svelte";
 
   import {
@@ -39,9 +38,7 @@
   } from "../storage";
 
   import { availableModules, type Module } from "../modules"; // Import Module type
-    import GithubMarkIcon from "./icons/GithubMarkIcon.svelte";
-
-  const dispatch = createEventDispatcher();
+  import GithubMarkIcon from "./icons/GithubMarkIcon.svelte";
 
   // --- UI Control States ---
   /** Indicates if the component is currently loading initial settings. */
@@ -93,7 +90,11 @@
   );
   /** Modules categorized as 'shortcuts' for UI grouping. */
   const shortcutModules: Module[] = availableModules.filter((m) =>
-    ["shortcutCopyName", "shortcutCopyDocumentNumber"].includes(m.id),
+    [
+      "shortcutCopyName",
+      "shortcutCopyDocumentNumber",
+      "shortcutServiceOrderTemplate",
+    ].includes(m.id),
   );
   /** Modules categorized as 'AI features' for UI grouping. */
   const aiModules: Module[] = availableModules.filter((m) =>
@@ -234,10 +235,15 @@
           let defaultKey = defaultShortcutValues[module.id];
           if (!defaultKey) {
             // Fallback if not in store's initial value
-            if (module.id === "shortcutCopyName") defaultKey = "Z";
-            else if (module.id === "shortcutCopyDocumentNumber")
-              defaultKey = "X";
-            else defaultKey = "?";
+            defaultKey =
+              (shortcutKeysStore as any).initialValue?.[module.id] || // Tenta pegar do default do store
+              (module.id === "shortcutCopyName"
+                ? "Z"
+                : module.id === "shortcutCopyDocumentNumber"
+                  ? "X"
+                  : module.id === "shortcutServiceOrderTemplate"
+                    ? "S"
+                    : "?");
           }
           currentLocal[module.id] = storedKeys[module.id] ?? defaultKey;
           if (isFirstSubscriptionCall) {
@@ -427,8 +433,7 @@
         class="github-link-header"
         title="Ver repositório do Omni Max no GitHub"
       >
-
-      <GithubMarkIcon size={20} className="github-svg-icon" />
+        <GithubMarkIcon size={20} className="github-svg-icon" />
       </a>
     </div>
   </div>
