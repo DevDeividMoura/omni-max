@@ -107,8 +107,8 @@ export class TemplateHandlingService {
         // The `+1` for startIndex is to select *inside* the brackets `[` `]`.
         // The `endIndex` already points to `]`, so `endIndex + 1` is the offset *after* `]`.
         // To select the content *inside* [VAR], we want `startIndex + 1` to `endIndex`.
-        const startNodeInfo = this.dom.getTextNodeAndOffsetAtCharIndex(editableDiv, firstVariable.startIndex + 1);
-        const endNodeInfo = this.dom.getTextNodeAndOffsetAtCharIndex(editableDiv, firstVariable.endIndex);
+        const startNodeInfo = this.dom.getTextNodeAndOffsetAtCharIndex(editableDiv, firstVariable.startIndex);
+        const endNodeInfo = this.dom.getTextNodeAndOffsetAtCharIndex(editableDiv, firstVariable.endIndex + 1);
 
 
         if (startNodeInfo && endNodeInfo) {
