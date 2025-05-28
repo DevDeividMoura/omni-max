@@ -104,4 +104,4 @@ This project uses release-please for automated release management.
 This project is licensed under the MIT License.
 Please see the LICENSE.md file for details. 
 
-Made with ❤️ by [DevDeividMoura](https://github.com/DevDeividMoura)
+Made with ❤️ by [@DevDeividMoura](https://github.com/DevDeividMoura)
