@@ -1,120 +1,24 @@
 // src/vitest-setup.ts
 import { vi, beforeEach, afterEach } from 'vitest';
+import * as actualVitestChrome from 'vitest-chrome';
 
-// Mock global da API chrome.*
-const mockChrome = {
-    runtime: {
-        sendMessage: vi.fn(),
-        onMessage: {
-            addListener: vi.fn(),
-            removeListener: vi.fn(),
-            hasListener: vi.fn(),
-        },
-        getURL: vi.fn((path) => `chrome-extension://your-extension-id/${path}`),
-        lastError: undefined as chrome.runtime.LastError | undefined,
-        // Adicione onInstalled, etc., conforme necessário para seus testes futuros
-        onInstalled: {
-            addListener: vi.fn()
-        }
-    },
-    tabs: {
-        query: vi.fn(),
-        sendMessage: vi.fn(),
-        create: vi.fn(),
-        update: vi.fn(),
-        onUpdated: {
-            addListener: vi.fn(),
-        },
-        // Adicione outros métodos de 'tabs' que você usa
-    },
-    action: { // Para chrome.action (Manifest V3)
-        onClicked: {
-            addListener: vi.fn(),
-        },
-        setIcon: vi.fn(),
-        setBadgeText: vi.fn(),
-        // Adicione outros métodos de 'action'
-    },
-    storage: { // Mock para chrome.storage
-        local: {
-            get: vi.fn((keys, callback) => {
-                // Comportamento padrão: chave não encontrada
-                const result: { [key: string]: any } = {};
-                const keyArray = Array.isArray(keys) ? keys : [keys];
-                keyArray.forEach(key => result[key] = undefined);
-                if (callback) callback(result);
-                return Promise.resolve(result); // Para chamadas async/await
-            }),
-            set: vi.fn((items, callback) => {
-                if (callback) callback();
-                return Promise.resolve(); // Para chamadas async/await
-            }),
-            remove: vi.fn((keys, callback) => {
-                if (callback) callback();
-                return Promise.resolve();
-            }),
-            clear: vi.fn((callback) => {
-                if (callback) callback();
-                return Promise.resolve();
-            }),
-        },
-        sync: { // Adicione mocks para sync se você usar
-            get: vi.fn((keys, callback) => {
-                const result: { [key: string]: any } = {};
-                const keyArray = Array.isArray(keys) ? keys : [keys];
-                keyArray.forEach(key => result[key] = undefined);
-                if (callback) callback(result);
-                return Promise.resolve(result);
-            }),
-            set: vi.fn((items, callback) => {
-                if (callback) callback();
-                return Promise.resolve();
-            }),
-            // ... remove, clear para sync
-        },
-        onChanged: {
-            addListener: vi.fn(),
-        },
-    },
-    // Adicione outros namespaces da API Chrome que sua extensão usa (e.g., commands, scripting, notifications)
-    commands: {
-        onCommand: {
-            addListener: vi.fn()
-        }
-    },
-    scripting: {
-        executeScript: vi.fn()
-    }
-};
+// Adiciona o objeto 'chrome' mockado da biblioteca ao escopo global
+// Object.assign(global, actualVitestChrome); // Comum em JS puro ou setups mais antigos
+// Para ambientes ESM e TypeScript com Vitest, é mais seguro e type-friendly fazer assim:
+vi.stubGlobal('chrome', actualVitestChrome.chrome); // Usa apenas o objeto 'chrome' exportado
 
-vi.stubGlobal('chrome', mockChrome);
 
-// Limpar mocks antes de cada arquivo de teste para garantir isolamento,
-// mas mocks de `chrome.storage.local.get/set` podem precisar ser resetados
-// mais granularmente dentro dos `beforeEach` dos testes específicos de storage.
+// Opcional, mas recomendado: Limpar/resetar mocks entre os testes.
+// A biblioteca `vitest-chrome` fornece funções já mockadas (vi.fn()).
+// `vi.clearAllMocks()`: Limpa o histórico de chamadas (mock.calls, mock.results).
+// `vi.resetAllMocks()`: Além de limpar o histórico, remove implementações mockadas,
+//                      restaurando para um mock vazio de vi.fn(). Isso é geralmente mais seguro.
 beforeEach(() => {
-    // Resetar todos os mocks para um estado limpo antes de cada teste.
-    // Isso é importante para que o estado de um mock de um teste não afete outro.
-    mockChrome.runtime.sendMessage.mockClear();
-    mockChrome.runtime.onMessage.addListener.mockClear();
-    mockChrome.storage.local.get.mockReset().mockImplementation((keys, callback) => {
-        const result: { [key: string]: any } = {};
-        const keyArray = Array.isArray(keys) ? keys : [keys];
-        keyArray.forEach(key => result[key] = undefined);
-        if (callback) callback(result);
-        return Promise.resolve(result);
-    });
-    mockChrome.storage.local.set.mockReset().mockImplementation((items, callback) => {
-        if (callback) callback();
-        return Promise.resolve();
-    });
-    // Faça mockClear() ou mockReset() para outros mocks conforme necessário
+    vi.resetAllMocks(); // Reseta todos os mocks para um estado "limpo" antes de cada teste.
 });
 
-// Opcional: Limpeza global após cada teste, se necessário
 // afterEach(() => {
-//    vi.clearAllMocks(); // Cuidado: isso limpa o ESTADO dos mocks (chamadas, etc.), não a implementação.
-                       // vi.resetAllMocks(); // Limpa mocks para suas implementações originais ou stubs vazios.
+//    // Pode ser útil para alguma limpeza específica, mas resetAllMocks no beforeEach costuma ser suficiente.
 // });
 
-console.log('Vitest setup file loaded and chrome API mocked.');
+console.log('Vitest setup file loaded and vitest-chrome initialized.');
