@@ -42,6 +42,12 @@ export const availableModules: Module[] = [
     defaultEnabled: true,
   },
   {
+    id: 'shortcutServiceOrderTemplate',
+    name: 'Atalho: Template de Ordem de Serviço',
+    description: 'Copia um template de Ordem de Serviço para a área de transferência com Telefone e Protocolo pré-preenchidos (padrão: Ctrl+Shift+S).',
+    defaultEnabled: true, // Habilitado por padrão, você decide
+  },
+  {
     id: 'templateProcessor',
     name: 'Processador de Templates de Mensagens',
     description: 'Ajusta o nome do cliente ({ANA MARIA} => Ana), auto seleciona variavel ([VARIAVEL]) com Tab.',

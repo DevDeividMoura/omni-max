@@ -178,5 +178,6 @@ export const shortcutKeysStore = persistentStore<ShortcutKeysConfig>(
   {
     shortcutCopyName: 'Z',
     shortcutCopyDocumentNumber: 'X',
+    shortcutServiceOrderTemplate: 'S',
   }
 );

@@ -53,7 +53,21 @@ export class ShortcutService {
         defaultKey: 'Z', // Default: Ctrl+Shift+Z
         actionFunction: async () => ({ data: this.extractionService.extractCustomerName(), label: "Nome do Cliente" })
       },
-      // Future shortcuts can be added here following the same pattern.
+      {
+        moduleId: 'shortcutServiceOrderTemplate',
+        defaultKey: 'S', // Tecla 'S' para Service Order, por exemplo
+        actionFunction: async () => {
+          const phoneNumber = this.extractionService.extractPhoneNumber();
+          const protocolNumber = this.extractionService.extractProtocolNumber();
+
+          const template = `Situação: [RELATO_DO_CLIENTE] |||
+Telefone: ${phoneNumber || '[TELEFONE]'} |||
+Protocolo: ${protocolNumber || '[PROTOCOLO]'} |||
+OBS: [OBSERVAÇÕES]`;
+
+          return { data: template, label: "Template de Ordem de Serviço" };
+        }
+      }
     ];
 
   /**
@@ -104,6 +118,9 @@ export class ShortcutService {
     if (!event.ctrlKey || !event.shiftKey) {
       return; // Only interested in Ctrl+Shift combinations
     }
+    event.preventDefault(); // Prevent default browser action for this key combination
+    // console.log("Omni Max [ShortcutService]: Ctrl+Shift key combination detected.");
+    event.stopPropagation(); // Stop the event from bubbling further
 
     const settings = await this.getSettings();
     if (!settings.globalEnable || !settings.shortcutsOverallEnable) {
@@ -119,22 +136,22 @@ export class ShortcutService {
       const configuredKey = (settings.shortcutKeys[mappedAction.moduleId] || mappedAction.defaultKey).toUpperCase();
 
       if (isModuleEnabled && pressedKey === configuredKey) {
-        event.preventDefault(); // Prevent default browser action for this key combination
-        // event.stopPropagation(); // Consider if stopping propagation is needed
 
         console.log(`Omni Max [ShortcutService]: Shortcut '${mappedAction.moduleId}' (key ${configuredKey}) triggered!`);
 
         const { data, label } = await mappedAction.actionFunction();
 
-        if (data) {
-          if (await this.clipboardService.copy(data, label)) {
-            this.notificationService.showToast(`${label} "${data}" copiado!`, 'success');
-          } else {
-            this.notificationService.showToast(`Falha ao copiar ${label}.`, 'error');
-          }
-        } else {
+        if (!data) {
           this.notificationService.showToast(`${label} não encontrado na página.`, 'warning');
+          return; // No data to copy, exit early
         }
+        // Attempt to copy the extracted data to the clipboard
+        if (! await this.clipboardService.copy(data, label)) {
+          this.notificationService.showToast(`Falha ao copiar ${label}.`, 'error');
+          return; // Exit if copying fails
+        }
+
+        this.notificationService.showToast(`${label} "${data}" copiado!`, 'success');
         return; // Execute only the first matching shortcut
       }
     }
