@@ -85,9 +85,7 @@ export class NotificationService {
             });
 
             setTimeout(() => {
-                if (toastElement.parentNode) {
-                    toastElement.remove(); // Remoção padrão do DOM
-                }
+                  toastElement.remove(); 
             }, 300); // Duração da animação de saída
         }, duration);
     }
