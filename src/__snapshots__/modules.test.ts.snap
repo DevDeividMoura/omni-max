@@ -1,0 +1,48 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`availableModules > should match the snapshot of available modules 1`] = `
+[
+  {
+    "defaultEnabled": true,
+    "description": "Move a lista de conversas para a direia e limita a altura 70% da tela para melhor usabilidade.",
+    "id": "layoutCorrection",
+    "name": "Correção de Layout",
+  },
+  {
+    "defaultEnabled": true,
+    "description": "Permite copiar o nome do cliente usando um atalho de teclado (padrão: Ctrl+Shift+Z).",
+    "id": "shortcutCopyName",
+    "name": "Atalho: Copiar Nome do Cliente",
+  },
+  {
+    "defaultEnabled": true,
+    "description": "Permite copiar o Número do Documento do cliente usando um atalho de teclado (padrão: Ctrl+Shift+X).",
+    "id": "shortcutCopyDocumentNumber",
+    "name": "Atalho: Copiar Número do Documento do Cliente",
+  },
+  {
+    "defaultEnabled": true,
+    "description": "Copia um template de Ordem de Serviço para a área de transferência com Telefone e Protocolo pré-preenchidos (padrão: Ctrl+Shift+S).",
+    "id": "shortcutServiceOrderTemplate",
+    "name": "Atalho: Template de Ordem de Serviço",
+  },
+  {
+    "defaultEnabled": true,
+    "description": "Ajusta o nome do cliente ({ANA MARIA} => Ana), auto seleciona variavel ([VARIAVEL]) com Tab.",
+    "id": "templateProcessor",
+    "name": "Processador de Templates de Mensagens",
+  },
+  {
+    "defaultEnabled": false,
+    "description": "Gera um resumo do histórico da conversa (protocolo) atual utilizando Inteligência Artificial.",
+    "id": "aiChatSummary",
+    "name": "IA: Resumir Atendimento",
+  },
+  {
+    "defaultEnabled": false,
+    "description": "Utiliza IA para analisar e sugerir melhorias no texto da sua resposta antes do envio.",
+    "id": "aiResponseReview",
+    "name": "IA: Revisar e Melhorar Resposta",
+  },
+]
+`;
