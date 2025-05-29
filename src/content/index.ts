@@ -37,7 +37,7 @@ function initializeOmniMaxContentScript(): void {
   // Instantiate core services (Dependency Injection)
   const domService = new DomService();
   const clipboardService = new ClipboardService();
-  const notificationService = new NotificationService();
+  const notificationService = new NotificationService(domService);
   const extractionService = new ExtractionService(CONFIG, domService);
 
   // Initialize feature-specific services and attach their listeners
