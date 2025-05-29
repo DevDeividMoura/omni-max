@@ -51,7 +51,7 @@ export const capitalizeFirstLetterOfWords = (str: string | null | undefined): st
   if (typeof str !== 'string' || !str) {
     return '';
   }
-  return str.replace(/(^|[^\p{L}\p{N}_])([\p{L}\p{N}_])/gu, (match, p1, p2) => {
+  return str.replace(/(^|[^\p{L}\p{N}_])([\p{L}\p{N}_])/gu, (_match, p1, p2) => {
     // p1 é o caractere separador (ou string vazia se for início da string)
     // p2 é o caractere "de palavra" a ser potencialmente capitalizado
     return p1 + p2.toUpperCase();
