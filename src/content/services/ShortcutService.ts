@@ -46,19 +46,19 @@ export class ShortcutService {
       {
         moduleId: 'shortcutCopyDocumentNumber',
         defaultKey: 'X', // Default: Ctrl+Shift+X
-        actionFunction: async () => ({ data: this.extractionService.extractDocumentNumber(), label: "Número do Documento" })
+        actionFunction: async () => ({ data: await this.extractionService.extractDocumentNumber(), label: "Número do Documento" })
       },
       {
         moduleId: 'shortcutCopyName',
         defaultKey: 'Z', // Default: Ctrl+Shift+Z
-        actionFunction: async () => ({ data: this.extractionService.extractCustomerName(), label: "Nome do Cliente" })
+        actionFunction: async () => ({ data: await this.extractionService.extractCustomerName(), label: "Nome do Cliente" })
       },
       {
         moduleId: 'shortcutServiceOrderTemplate',
         defaultKey: 'S', // Tecla 'S' para Service Order, por exemplo
         actionFunction: async () => {
-          const phoneNumber = this.extractionService.extractPhoneNumber();
-          const protocolNumber = this.extractionService.extractProtocolNumber();
+          const phoneNumber = await this.extractionService.extractPhoneNumber();
+          const protocolNumber = await this.extractionService.extractProtocolNumber();
 
           const template = `Situação: [RELATO_DO_CLIENTE] |||
 Telefone: ${phoneNumber || '[TELEFONE]'} |||
