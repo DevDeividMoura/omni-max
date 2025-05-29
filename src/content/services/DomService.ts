@@ -122,4 +122,68 @@ export class DomService {
     // Ensure the new cursor position is visible by scrolling to the bottom of the element.
     element.scrollTop = element.scrollHeight;
   }
+
+  /**
+   * Creates an HTML element with specified options, optionally sets its text content,
+   * applies styles, and appends it to a parent node.
+   *
+   * @template K The tag name of the element to create (e.g., 'div', 'span').
+   * @param {K} tagName The HTML tag name for the element to be created.
+   * @param {object} [options] Optional configuration for the new element.
+   * @param {string} [options.id] The ID to set for the element.
+   * @param {string | string[]} [options.className] A class name or array of class names to add.
+   * @param {string} [options.textContent] The text content to set for the element.
+   * @param {Partial<CSSStyleDeclaration>} [options.styles] CSS styles to apply to the element.
+   * @param {Node} [options.parent] The parent node to which the new element will be appended.
+   * @param {Record<string, string>} [options.attributes] A map of attributes to set on the element.
+   * @returns {HTMLElementTagNameMap[K]} The created HTML element.
+   */
+  createElementWithOptions<K extends keyof HTMLElementTagNameMap>(
+    tagName: K,
+    options?: {
+      id?: string;
+      className?: string | string[];
+      textContent?: string;
+      styles?: Partial<CSSStyleDeclaration>;
+      parent?: Node;
+      attributes?: Record<string, string>;
+    }
+  ): HTMLElementTagNameMap[K] {
+    const element = document.createElement(tagName);
+
+    if (options?.id) {
+      element.id = options.id;
+    }
+
+    if (options?.className) {
+      if (Array.isArray(options.className)) {
+        element.classList.add(...options.className);
+      } else {
+        element.classList.add(options.className);
+      }
+    }
+
+    if (options?.textContent) {
+      element.textContent = options.textContent;
+    }
+
+    if (options?.attributes) {
+        for (const [key, value] of Object.entries(options.attributes)) {
+            element.setAttribute(key, value);
+        }
+    }
+
+    // Reutiliza o método applyStyles existente se houver estilos
+    if (options?.styles && Object.keys(options.styles).length > 0) {
+      // applyStyles espera um Element, e createElement retorna um tipo mais específico
+      // que é um subtipo de Element, então está ok.
+      this.applyStyles(element, options.styles);
+    }
+
+    if (options?.parent) {
+      options.parent.appendChild(element);
+    }
+
+    return element;
+  }
 }
