@@ -18,11 +18,16 @@ export default defineConfig({
             clientPort: 5173,
         },
     },
+    resolve: {
+        alias: {
+            'vitest-chrome': 'vitest-chrome/lib/index.esm.js'
+        },
+    },
     test: {
         globals: true, // Permite usar describe, it, expect, etc., sem importar
         environment: 'jsdom', // Simula um ambiente de navegador
         setupFiles: ['./src/vitest-setup.ts'], // Arquivo para mocks globais e configurações
-        include: ['src/**/__tests__/**/*.{test,spec}.{js,ts}'], // Onde encontrar os testes
+        include: ['src/**/**/*.{test,spec}.{js,ts}'], // Onde encontrar os testes
         coverage: {
             provider: 'v8', // ou 'istanbul'
             reporter: ['text', 'json', 'html'],
