@@ -4,6 +4,8 @@
  * It handles the creation, styling, animation, and removal of notification elements.
  */
 
+import { DomService } from './DomService';
+
 /** Base CSS styles for toast notifications. */
 const toastBaseStyles: Partial<CSSStyleDeclaration> = {
   position: 'fixed',
@@ -30,6 +32,7 @@ const toastTypeColors: Record<string, string> = {
 };
 
 export class NotificationService {
+  private domService: DomService;
   /**
    * Displays a toast notification on the page with a specified message, type, and duration.
    *
@@ -37,40 +40,53 @@ export class NotificationService {
    * @param {'success' | 'warning' | 'error'} [type='success'] The type of notification, determining its background color. Defaults to 'success'.
    * @param {number} [duration=3000] The duration in milliseconds for which the toast will be visible. Defaults to 3000ms.
    */
+
+  constructor(domService: DomService) { // Ou constructor(domService: DomService) se for injetar
+        this.domService = domService;
+    }
+
   showToast(
     message: string,
     type: 'success' | 'warning' | 'error' = 'success',
     duration: number = 3000
   ): void {
-    const toastElement = document.createElement('div');
-    toastElement.textContent = message;
+        const finalBaseStyles = { ...toastBaseStyles }; // Copia para não modificar o original
+        // Remove opacity e transform dos estilos base, pois serão aplicados na animação
+        delete finalBaseStyles.opacity;
+        delete finalBaseStyles.transform;
 
-    Object.assign(toastElement.style, toastBaseStyles);
-    toastElement.style.backgroundColor = toastTypeColors[type] || toastTypeColors.success; // Fallback to success color
+        const toastElement = this.domService.createElementWithOptions('div', {
+            textContent: message,
+            styles: {
+                ...finalBaseStyles, // Estilos base sem os de animação inicial
+                backgroundColor: toastTypeColors[type] || toastTypeColors.success,
+                // Estilos iniciais para animação (começa invisível e deslocado)
+                opacity: '0',
+                transform: 'translateY(20px)',
+            },
+            parent: document.body
+        });
 
-    document.body.appendChild(toastElement);
+        // Forçar reflow - opcional no teste, mas importante no browser
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+        toastElement.offsetHeight;
 
-    // Force a reflow to ensure CSS transitions apply correctly from the initial state.
-    // Accessing offsetHeight is a common way to trigger this.
-    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-    toastElement.offsetHeight;
+        this.domService.waitNextFrame().then(() => {
+            this.domService.applyStyles(toastElement, {
+                opacity: '1',
+                transform: 'translateY(0)' // Anima para a posição final
+            });
+        });
 
-    // Animate in: fade in and slide up
-    requestAnimationFrame(() => {
-      toastElement.style.opacity = '1';
-      toastElement.style.transform = 'translateY(0)';
-    });
+        setTimeout(() => {
+            this.domService.applyStyles(toastElement, {
+                opacity: '0',
+                transform: 'translateY(20px)' // Anima para sair
+            });
 
-    // Set up removal after the specified duration
-    setTimeout(() => {
-      toastElement.style.opacity = '0';
-      toastElement.style.transform = 'translateY(20px)'; // Animate out: fade out and slide down
-
-      // Wait for the fade-out animation to complete before removing the element from the DOM.
-      // This timeout should match the CSS transition duration (0.3s = 300ms).
-      setTimeout(() => {
-        toastElement.remove();
-      }, 300);
-    }, duration);
-  }
+            setTimeout(() => {
+                  toastElement.remove(); 
+            }, 300); // Duração da animação de saída
+        }, duration);
+    }
 }
