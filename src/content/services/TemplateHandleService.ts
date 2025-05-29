@@ -88,8 +88,8 @@ export class TemplateHandlingService {
 
       // Update the div's content if transformations occurred.
       // This is crucial because selection offsets depend on the actual rendered text.
-      if (editableDiv.innerText !== transformedText) {
-        editableDiv.innerText = transformedText;
+      if (editableDiv.textContent !== transformedText) {
+        editableDiv.textContent = transformedText;
         await this.dom.waitNextFrame(); // Wait for DOM to update with the new innerText
         // After setting innerText, the cursor position might be lost or reset.
         // The text used for finding variables must be the *new* transformed text.
