@@ -58,8 +58,8 @@ export class ExtractionService {
 
     // Assumes cpfLabelElement points to the <small> tag, and the <strong> is inside it.
     const parentElements = this.dom.queryAll<HTMLElement>(this.config.selectors.cpfInfoContainer, conversaDiv);
-    const cpfParentElement = parentElements.find(el => {
-      const labelElement = el.querySelector(this.config.selectors.cpfLabelQueryInContainer); // The <strong> part
+    const cpfParentElement = parentElements.find(container => {
+      const labelElement = this.dom.query(this.config.selectors.cpfLabelQueryInContainer, container); // The <strong> part
       return labelElement && this.dom.getTextSafely(labelElement) === this.config.textMarkers.cpfLabel;
     });
 

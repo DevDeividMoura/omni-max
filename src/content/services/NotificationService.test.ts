@@ -1,183 +1,179 @@
 /**
  * @file src/content/services/NotificationService.test.ts
  * @description Unit tests for the NotificationService class.
+ * These tests verify the service's ability to create, display, animate, and remove
+ * toast notifications, assuming it uses an injected DomService for DOM manipulations.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { NotificationService } from './NotificationService';
-import { DomService } from './DomService'; // Importa a classe real para que o vi.mock funcione corretamente
+import { DomService } from './DomService'; // Actual class import for `vi.mock` to target
 
-// --- Constantes de Estilo e Cores ---
-const toastBaseStylesFromNotificationService: Partial<CSSStyleDeclaration> = {
-    position: 'fixed',
-    bottom: '20px',
-    right: '20px',
-    padding: '12px 20px',
-    borderRadius: '6px',
-    color: 'white',
-    zIndex: '2147483647',
-    fontFamily: expect.any(String),
-    fontSize: '14px',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+// --- Constants for Style Verification ---
+// These are based on the expected styles applied by NotificationService.
+// `expect.any(String)` is used for fontFamily due to potential variations.
+const EXPECTED_BASE_TOAST_STYLES: Partial<CSSStyleDeclaration> = {
+  position: 'fixed',
+  bottom: '20px',
+  right: '20px',
+  padding: '12px 20px',
+  borderRadius: '6px',
+  color: 'white',
+  zIndex: '2147483647',
+  fontFamily: expect.any(String),
+  fontSize: '14px',
+  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
 };
 
-const toastTypeColors: Record<string, string> = {
-    success: '#2ecc71',
-    warning: '#f39c12',
-    error: '#e74c3c',
+const EXPECTED_TOAST_TYPE_COLORS: Record<string, string> = {
+  success: '#2ecc71',
+  warning: '#f39c12',
+  error: '#e74c3c',
 };
 
-// --- Mock da DomService ---
-const mockToastElement = document.createElement('div'); // Elemento mock que será "criado"
-// Adicionamos um spy no método remove DESTE elemento específico
+// --- Mock for DomService and its instance ---
+// This mockElement will be returned by the mocked `createElementWithOptions`.
+const mockToastElement = document.createElement('div');
+// Spy on the remove method of this specific mock element.
 vi.spyOn(mockToastElement, 'remove');
 
 const mockDomServiceInstance = {
-    createElementWithOptions: vi.fn().mockReturnValue(mockToastElement),
-    applyStyles: vi.fn(),
-    waitNextFrame: vi.fn().mockResolvedValue(undefined), // Simula que o frame passou
-    // Adicione outros métodos da DomService que NotificationService possa usar
+  createElementWithOptions: vi.fn(),
+  applyStyles: vi.fn(),
+  waitNextFrame: vi.fn().mockResolvedValue(undefined), // Default: simulate frame passage
 };
 
-// Mocka o módulo DomService. Todas as instâncias de DomService usarão este mock.
-vi.mock('./DomService', () => {
-    // O construtor mockado da DomService deve retornar nossa instância mockada
-    return {
-        DomService: vi.fn(() => mockDomServiceInstance),
-    };
-});
+// Mock the entire DomService module.
+// Any `new DomService()` will now use this mock constructor.
+vi.mock('./DomService', () => ({
+  DomService: vi.fn(() => mockDomServiceInstance),
+}));
 
+/**
+ * Test suite for NotificationService, assuming it uses a mocked DomService.
+ */
 describe('NotificationService (with mocked DomService)', () => {
-    let notificationService: NotificationService;
-    // Não precisamos mais de appendChildSpy nem rafSpy aqui, pois DomService é mockada
+  let notificationService: NotificationService;
 
-    beforeEach(() => {
-        // Limpa todos os mocks ANTES de cada teste para garantir um estado limpo
-        vi.resetAllMocks();
+  beforeEach(() => {
+    // Reset all mocks to ensure a clean state for each test.
+    // This includes call history and mock implementations.
+    vi.resetAllMocks();
 
-        // Configura o mock de createElementWithOptions para retornar o mockToastElement limpo
-        // (seu spy de 'remove' também será resetado por resetAllMocks se o elemento for recriado,
-        // mas como mockToastElement é global ao describe, seu spy é persistente a menos que recriado)
-        // Se mockToastElement.remove foi chamado em um teste anterior, seu spy terá chamadas.
-        // Para garantir que 'remove' esteja limpo para cada teste:
-        vi.spyOn(mockToastElement, 'remove').mockClear(); // Limpa chamadas do spy de remove
-        mockDomServiceInstance.createElementWithOptions.mockReturnValue(mockToastElement);
-        mockDomServiceInstance.waitNextFrame.mockResolvedValue(undefined);
+    // Clear spy calls on mockToastElement.remove, as it's a persistent object.
+    vi.mocked(mockToastElement.remove).mockClear();
 
+    // Re-apply default mock implementations needed for NotificationService.
+    mockDomServiceInstance.createElementWithOptions.mockReturnValue(mockToastElement);
+    mockDomServiceInstance.waitNextFrame.mockResolvedValue(undefined);
 
-        // Cria uma instância de NotificationService.
-        // O construtor de DomService (importado) é mockado para retornar mockDomServiceInstance.
-        // Portanto, `new DomService()` dentro do construtor de NotificationService
-        // (ou se passado como argumento) usará o mock.
-        const domServiceInjected = new DomService(); // Isso vai retornar mockDomServiceInstance
-        notificationService = new NotificationService(domServiceInjected);
+    // Create a new NotificationService instance for each test.
+    // It will be injected with the mockDomServiceInstance due to `vi.mock`.
+    const domServiceInjected = new DomService(); // This call returns `mockDomServiceInstance`.
+    notificationService = new NotificationService(domServiceInjected);
 
-        vi.useFakeTimers();
+    // Use fake timers to control setTimeout calls within NotificationService.
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    // Run any pending timers and restore real timers.
+    vi.runOnlyPendingTimers();
+    vi.useRealTimers();
+    // `vi.resetAllMocks()` in the next `beforeEach` handles general mock cleanup.
+  });
+
+  /**
+   * Test case for the entire lifecycle of a success toast with default parameters.
+   * Verifies creation, animation, and removal through DomService interactions.
+   */
+  it('should create, animate, and remove a success toast with default duration', async () => {
+    const message = 'Test Success!';
+    notificationService.showToast(message); // Default type: 'success', duration: 3000ms
+
+    // 1. Verify element creation via DomService
+    expect(mockDomServiceInstance.createElementWithOptions).toHaveBeenCalledOnce();
+    const createArgs = mockDomServiceInstance.createElementWithOptions.mock.calls[0];
+    expect(createArgs[0]).toBe('div'); // Tag name
+    expect(createArgs[1]?.textContent).toBe(message);
+    expect(createArgs[1]?.parent).toBe(document.body); // Assuming it appends to body
+    expect(createArgs[1]?.styles).toMatchObject({
+      ...EXPECTED_BASE_TOAST_STYLES,
+      backgroundColor: EXPECTED_TOAST_TYPE_COLORS.success,
+      opacity: '0', // Initial state before fade-in
+      transform: 'translateY(20px)',
     });
 
-    afterEach(() => {
-        vi.runOnlyPendingTimers(); // Executa timers pendentes
-        vi.useRealTimers();     // Restaura timers reais
-        // vi.restoreAllMocks(); // Já chamado implicitamente por resetAllMocks no beforeEach do próximo teste
-                               // ou no vitest-setup.ts. Se não, adicione aqui.
+    // 2. Verify waitNextFrame is called before fade-in animation
+    expect(mockDomServiceInstance.waitNextFrame).toHaveBeenCalledOnce();
+
+    // 3. Verify fade-in animation styles are applied
+    // `waitNextFrame`'s promise needs to resolve for this to be called.
+    await vi.waitFor(() => {
+      expect(mockDomServiceInstance.applyStyles).toHaveBeenCalledWith(
+        mockToastElement,
+        { opacity: '1', transform: 'translateY(0)' }
+      );
     });
 
-    it('should create, animate, and remove a success toast with default duration', async () => {
-        const message = 'Success!';
-        notificationService.showToast(message); // type 'success' e duration 3000 por padrão
+    // 4. Advance timers for toast visibility duration (default 3000ms)
+    vi.advanceTimersByTime(3000);
 
-        // 1. Verifica DomService.createElementWithOptions
-        expect(mockDomServiceInstance.createElementWithOptions).toHaveBeenCalledOnce();
-        const createElementArgs = mockDomServiceInstance.createElementWithOptions.mock.calls[0];
-        expect(createElementArgs[0]).toBe('div');
-        expect(createElementArgs[1]?.textContent).toBe(message);
-        expect(createElementArgs[1]?.parent).toBe(document.body);
-        expect(createElementArgs[1]?.styles).toMatchObject({
-            ...toastBaseStylesFromNotificationService,
-            backgroundColor: toastTypeColors.success,
-            opacity: '0',
-            transform: 'translateY(20px)',
-        });
+    // 5. Verify fade-out animation styles are applied
+    expect(mockDomServiceInstance.applyStyles).toHaveBeenCalledWith(
+      mockToastElement,
+      { opacity: '0', transform: 'translateY(20px)' }
+    );
 
-        // 2. Verifica waitNextFrame
-        expect(mockDomServiceInstance.waitNextFrame).toHaveBeenCalledOnce();
+    // 6. Advance timers for fade-out animation duration (300ms)
+    vi.advanceTimersByTime(300);
+    expect(mockToastElement.remove).toHaveBeenCalledOnce();
+  });
 
-        // 3. Verifica applyStyles para animar a entrada
-        // Como waitNextFrame mockado resolve imediatamente (ou quase), applyStyles deve ser chamado.
-        // A primeira chamada a applyStyles pode ser DENTRO de createElementWithOptions se você configurou assim.
-        // A segunda chamada é para a animação de entrada.
-        // Vamos verificar a chamada específica da animação de entrada.
-        await vi.waitFor(() => { // Espera a promise do waitNextFrame e a subsequente applyStyles
-            expect(mockDomServiceInstance.applyStyles).toHaveBeenCalledWith(mockToastElement, {
-                opacity: '1',
-                transform: 'translateY(0)', // JSDOM pode adicionar 'px'
-            });
-        });
+  /**
+   * Test case for a warning toast with a specified duration.
+   * Verifies correct type-based styling and duration handling.
+   */
+  it('should create a warning toast with specified duration and correct styling', async () => {
+    const message = 'Test Warning Message';
+    const duration = 1500;
+    notificationService.showToast(message, 'warning', duration);
 
-        // Contagem total de chamadas para applyStyles pode variar.
-        // Se createElementWithOptions chama applyStyles:
-        // 1. Chamada dentro de createElementWithOptions (para estilos iniciais/base)
-        // 2. Chamada para animação de entrada
-        // 3. Chamada para animação de saída
-        // Verifique o número exato de chamadas se for importante, ou foque nos argumentos das chamadas específicas.
-        const fadeInStylesCall = mockDomServiceInstance.applyStyles.mock.calls.find(call => call[1].opacity === '1');
-        expect(fadeInStylesCall).toBeDefined();
-        expect(fadeInStylesCall?.[1]).toEqual({ opacity: '1', transform: 'translateY(0)' });
+    expect(mockDomServiceInstance.createElementWithOptions).toHaveBeenCalledOnce();
+    const createArgs = mockDomServiceInstance.createElementWithOptions.mock.calls[0];
+    expect(createArgs[1]?.styles?.backgroundColor).toBe(EXPECTED_TOAST_TYPE_COLORS.warning);
 
-
-        // 4. Avança timer para duração do toast
-        vi.advanceTimersByTime(3000);
-        const fadeOutStylesCall = mockDomServiceInstance.applyStyles.mock.calls.find(call => call[1].opacity === '0' && call[0] === mockToastElement);
-        expect(fadeOutStylesCall).toBeDefined();
-        expect(fadeOutStylesCall?.[1]).toEqual({
-            opacity: '0',
-            transform: 'translateY(20px)',
-        });
-
-        // 5. Avança timer para animação de saída
-        vi.advanceTimersByTime(300);
-        expect(mockToastElement.remove).toHaveBeenCalledOnce();
+    await vi.waitFor(() => { // Wait for fade-in
+      expect(mockDomServiceInstance.applyStyles).toHaveBeenCalledWith(mockToastElement, { opacity: '1', transform: 'translateY(0)' });
     });
+    
+    vi.advanceTimersByTime(duration); // Specified duration
+    expect(mockDomServiceInstance.applyStyles).toHaveBeenCalledWith(mockToastElement, { opacity: '0', transform: 'translateY(20px)' });
 
-    it('should create a warning toast with specified duration', async () => {
-        const message = 'Warning message';
-        const duration = 1000;
-        notificationService.showToast(message, 'warning', duration);
+    vi.advanceTimersByTime(300); // Fade-out duration
+    expect(mockToastElement.remove).toHaveBeenCalledOnce();
+  });
 
-        expect(mockDomServiceInstance.createElementWithOptions).toHaveBeenCalledOnce();
-        const createElementArgs = mockDomServiceInstance.createElementWithOptions.mock.calls[0];
-        expect(createElementArgs[1]?.styles?.backgroundColor).toBe(toastTypeColors.warning);
+  /**
+   * Verifies that an error toast is created with the correct error-type styling.
+   * Focuses on the creation aspect, as the animation/removal lifecycle is similar to other types.
+   */
+  it('should create an error toast with error-specific styling', () => {
+    notificationService.showToast('Test Error Occurred', 'error');
+    expect(mockDomServiceInstance.createElementWithOptions).toHaveBeenCalledOnce();
+    const createArgs = mockDomServiceInstance.createElementWithOptions.mock.calls[0];
+    expect(createArgs[1]?.styles?.backgroundColor).toBe(EXPECTED_TOAST_TYPE_COLORS.error);
+  });
 
-        // Animação de entrada
-        await vi.waitFor(() => {
-            expect(mockDomServiceInstance.applyStyles).toHaveBeenCalledWith(mockToastElement, {
-                opacity: '1',
-                transform: 'translateY(0)',
-            });
-        });
-        
-        vi.advanceTimersByTime(duration); // Duração especificada
-        // Animação de saída
-        expect(mockDomServiceInstance.applyStyles).toHaveBeenCalledWith(mockToastElement, {
-            opacity: '0',
-            transform: 'translateY(20px)',
-        });
-
-        vi.advanceTimersByTime(300); // Fade-out
-        expect(mockToastElement.remove).toHaveBeenCalledOnce();
-    });
-
-    it('should create an error toast', () => {
-        notificationService.showToast('Error occurred', 'error');
-        expect(mockDomServiceInstance.createElementWithOptions).toHaveBeenCalledOnce();
-        const createElementArgs = mockDomServiceInstance.createElementWithOptions.mock.calls[0];
-        expect(createElementArgs[1]?.styles?.backgroundColor).toBe(toastTypeColors.error);
-    });
-
-    it('should use success color for unknown type', () => {
-        // @ts-expect-error: Testando um tipo inválido intencionalmente
-        notificationService.showToast('Unknown type toast', 'info');
-        expect(mockDomServiceInstance.createElementWithOptions).toHaveBeenCalledOnce();
-        const createElementArgs = mockDomServiceInstance.createElementWithOptions.mock.calls[0];
-        expect(createElementArgs[1]?.styles?.backgroundColor).toBe(toastTypeColors.success); // Fallback
-    });
+  /**
+   * Tests the fallback behavior for an unknown toast type.
+   * Expects it to default to 'success' styling.
+   */
+  it('should use success color styling for an unknown toast type', () => {
+    // @ts-expect-error: Intentionally testing an invalid type.
+    notificationService.showToast('Unknown Type Toast', 'information');
+    expect(mockDomServiceInstance.createElementWithOptions).toHaveBeenCalledOnce();
+    const createArgs = mockDomServiceInstance.createElementWithOptions.mock.calls[0];
+    // Assumes NotificationService defaults to 'success' color if type is unrecognized.
+    expect(createArgs[1]?.styles?.backgroundColor).toBe(EXPECTED_TOAST_TYPE_COLORS.success);
+  });
 });
