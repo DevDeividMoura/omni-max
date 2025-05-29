@@ -402,4 +402,76 @@ describe('DomService', () => {
       expect(editableDiv.scrollTop).toBe(editableDiv.scrollHeight);
     });
   });
+
+  describe('createElementWithOptions', () => {
+    it('should create an element with the specified tag name', () => {
+        const div = domService.createElementWithOptions('div');
+        expect(div).toBeInstanceOf(HTMLDivElement);
+        expect(div.tagName).toBe('DIV');
+    });
+
+    it('should set ID if provided', () => {
+        const p = domService.createElementWithOptions('p', { id: 'my-paragraph' });
+        expect(p.id).toBe('my-paragraph');
+    });
+
+    it('should set a single class name if provided as string', () => {
+        const span = domService.createElementWithOptions('span', { className: 'my-class' });
+        expect(span.classList.contains('my-class')).toBe(true);
+    });
+
+    it('should set multiple class names if provided as array', () => {
+        const article = domService.createElementWithOptions('article', { className: ['class1', 'class2'] });
+        expect(article.classList.contains('class1')).toBe(true);
+        expect(article.classList.contains('class2')).toBe(true);
+    });
+
+    it('should set textContent if provided', () => {
+        const h1 = domService.createElementWithOptions('h1', { textContent: 'Hello Title' });
+        expect(h1.textContent).toBe('Hello Title');
+    });
+
+    it('should apply styles if provided', () => {
+        const styles: Partial<CSSStyleDeclaration> = { color: 'rgb(0, 0, 255)', marginLeft: '10px' };
+        // Espiona o método applyStyles da instância atual de domService
+        const applyStylesSpy = vi.spyOn(domService, 'applyStyles');
+        const section = domService.createElementWithOptions('section', { styles });
+
+        expect(applyStylesSpy).toHaveBeenCalledWith(section, styles);
+        // Verificação real do estilo (opcional, pois applyStyles já é testado, mas bom para integração)
+        expect(section.style.color).toBe('rgb(0, 0, 255)');
+        expect(section.style.marginLeft).toBe('10px');
+        applyStylesSpy.mockRestore(); // Restaura o spy
+    });
+
+    it('should append to parent if provided', () => {
+        const parentDiv = document.createElement('div');
+        testContainer.appendChild(parentDiv); // testContainer é do beforeEach geral
+        const childP = domService.createElementWithOptions('p', { parent: parentDiv, textContent: 'child' });
+
+        expect(parentDiv.contains(childP)).toBe(true);
+        expect(parentDiv.textContent).toBe('child');
+    });
+
+    it('should set attributes if provided', () => {
+        const input = domService.createElementWithOptions('input', { 
+            attributes: { type: 'text', placeholder: 'Enter here', 'data-custom': 'value' } 
+        });
+        expect(input.getAttribute('type')).toBe('text');
+        expect(input.getAttribute('placeholder')).toBe('Enter here');
+        expect(input.getAttribute('data-custom')).toBe('value');
+    });
+
+    it('should handle empty options object', () => {
+        const el = domService.createElementWithOptions('a', {});
+        expect(el).toBeInstanceOf(HTMLAnchorElement);
+        expect(el.id).toBe('');
+        expect(el.textContent).toBe('');
+    });
+
+    it('should handle undefined options', () => {
+        const el = domService.createElementWithOptions('button', undefined);
+        expect(el).toBeInstanceOf(HTMLButtonElement);
+    });
+});
 });
