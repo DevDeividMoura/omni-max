@@ -20,6 +20,18 @@ export function persistentStore<T>(key: string, initialValue: T): Writable<T> {
 
   if (isChromeStorageAvailable) {
     chrome.storage.sync.get(key).then((result) => {
+      // ADICIONE ESTA VERIFICAÇÃO:
+      if (typeof result !== 'object' || result === null) {
+        console.warn(
+          `[PersistentStore DEBUG] chrome.storage.sync.get for key "${key}" resolved with non-object:`,
+          result,
+          '. Using initial value or current store value.'
+        );
+        // Se result não é um objeto, Object.hasOwn falhará.
+        // A store já tem o initialValue, então podemos apenas retornar se não há nada válido do storage.
+        return;
+      }
+
       if (Object.hasOwn(result, key) && result[key] !== undefined) {
         store.set(result[key]);
       }
