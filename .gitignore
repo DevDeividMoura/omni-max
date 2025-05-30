@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Temporary files/directories
+*.tmp
+*.temp
+tmp/
+temp/
