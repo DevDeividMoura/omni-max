@@ -57,7 +57,6 @@ describe('ClipboardService', () => {
 
     // Restore the original navigator object.
     if (originalNavigatorObject) {
-      // @ts-expect-error: Restoring original navigator.
       global.navigator = originalNavigatorObject;
       originalNavigatorObject = undefined; // Clear for next test if needed
     } else {

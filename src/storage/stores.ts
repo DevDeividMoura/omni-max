@@ -22,12 +22,19 @@ export interface AiCredentials {
   openaiApiKey?: string
   geminiApiKey?: string
   anthropicApiKey?: string
+  ollamaBaseUrl?: string;
 }
 export const aiCredentialsStore =
-  persistentStore<AiCredentials>('omniMaxAiCredentials', { openaiApiKey: '' })
+  persistentStore<AiCredentials>(
+    'omniMaxAiCredentials', 
+    { 
+      openaiApiKey: '', 
+      ollamaBaseUrl: 'http://localhost:11434' 
+    }
+  )
 
 export interface AiProviderConfig {
-  provider: string
+  provider: 'openai' | 'gemini' | 'anthropic' | 'ollama' | string;
   model: string
 }
 export const aiProviderConfigStore =
@@ -54,7 +61,7 @@ export const collapsibleSectionsStateStore =
   persistentStore<CollapsibleSectionsState>('omniMaxCollapsibleSectionsState', {
     modules: false,
     shortcuts: false,
-    ai: false,
+    ai: true,
     prompts: false,
   })
 

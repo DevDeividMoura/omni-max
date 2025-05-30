@@ -12,6 +12,7 @@ import { NotificationService } from './services/NotificationService';
 import { ExtractionService } from './services/ExtractionService';
 import { ShortcutService } from './services/ShortcutService';
 import { TemplateHandlingService } from './services/TemplateHandlingService';
+import { AIServiceManager } from '../ai/AIServiceManager';
 
 import { get } from 'svelte/store';
 import { globalExtensionEnabledStore, moduleStatesStore } from '../storage/stores';
@@ -57,6 +58,9 @@ export function initializeOmniMaxContentScript(): void {
   const clipboardService = new ClipboardService();
   const notificationService = new NotificationService(domService);
   const extractionService = new ExtractionService(CONFIG, domService);
+
+  // Expose aiManager on window for debugging/testing
+  (window as any).omniMaxAiManager = AIServiceManager;
 
   const shortcutService = new ShortcutService(extractionService, clipboardService, notificationService);
   shortcutService.attachListeners();
