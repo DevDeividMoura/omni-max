@@ -5,7 +5,7 @@
  * It initializes and configures all necessary services and event listeners
  * for the extension's in-page functionalities.
  */
-import { CONFIG } from './config';
+import { CONFIG, type Config } from './config';
 import { DomService } from './services/DomService';
 import { ClipboardService } from './services/ClipboardService';
 import { NotificationService } from './services/NotificationService';
@@ -18,6 +18,34 @@ import packageJson from '../../package.json';
 const version = packageJson.version;
 const OMNI_MAX_CONTENT_LOADED_FLAG = `omniMaxContentLoaded_v${version}`;
 
+type Settings = {
+  omniMaxGlobalEnabled?: boolean;
+  omniMaxModuleStates?: Record<string, boolean>;
+};
+
+export async function applyLayoutCorrection(domService: DomService, config: Config) {
+  const settings: Settings = await new Promise(resolve =>
+    chrome.storage.sync.get(
+      // provide defaults
+      { omniMaxGlobalEnabled: true, omniMaxModuleStates: {} },
+      resolve as (items: Settings) => void
+    )
+  );
+
+  const isGlobal = settings.omniMaxGlobalEnabled !== false;
+  const isLayoutEnabled = settings.omniMaxModuleStates?.layoutCorrection !== false;
+  const tabsSel = config.selectors?.tabsList;
+
+  if (isGlobal && isLayoutEnabled && tabsSel) {
+    domService.applyStyles(tabsSel, {
+      float: 'right',
+      maxHeight: '72vh',
+      overflowY: 'auto'
+    });
+  }
+}
+
+
 /**
  * Initializes the Omni Max content script on the current page.
  * Sets up services, attaches event listeners, and applies conditional
@@ -25,7 +53,7 @@ const OMNI_MAX_CONTENT_LOADED_FLAG = `omniMaxContentLoaded_v${version}`;
  * Prevents multiple initializations on the same page, which can occur
  * with HMR (Hot Module Replacement) or if the script is injected multiple times.
  */
-function initializeOmniMaxContentScript(): void {
+export function initializeOmniMaxContentScript(): void {
   if ((window as any)[OMNI_MAX_CONTENT_LOADED_FLAG]) {
     console.log(`Omni Max: Content script v${version} already initialized on this page.`);
     return;
@@ -34,42 +62,26 @@ function initializeOmniMaxContentScript(): void {
 
   console.log(`Omni Max: Content Script v${version} - Initializing...`);
 
-  // Instantiate core services (Dependency Injection)
   const domService = new DomService();
   const clipboardService = new ClipboardService();
   const notificationService = new NotificationService(domService);
   const extractionService = new ExtractionService(CONFIG, domService);
 
-  // Initialize feature-specific services and attach their listeners
-  // These services will internally check their respective module enablement states.
   const shortcutService = new ShortcutService(extractionService, clipboardService, notificationService);
   shortcutService.attachListeners();
 
   const templateHandlingService = new TemplateHandlingService(CONFIG, domService);
   templateHandlingService.attachListeners();
 
-  // Apply layout correction conditionally based on settings
-  // This specific logic remains here as it's a direct DOM manipulation at startup,
-  // not tied to a continuous event listener like shortcuts or template handling.
-  chrome.storage.sync.get(['omniMaxGlobalEnabled', 'omniMaxModuleStates'], (settings) => {
-    const isGlobalEnabled = settings.omniMaxGlobalEnabled !== false; // Default true
-    const moduleStates = settings.omniMaxModuleStates || {};
-    const isLayoutCorrectionEnabled = moduleStates['layoutCorrection'] !== false; // Default true
-
-    if (isGlobalEnabled && isLayoutCorrectionEnabled && CONFIG.selectors.tabsList) {
-      console.log("Omni Max: Applying layout correction.");
-      domService.applyStyles(CONFIG.selectors.tabsList, {
-        float: 'right',
-        maxHeight: '72vh',
-        overflowY: 'auto'
-      });
-    }
-  });
+   // Apply layout correction as part of initialization
+  applyLayoutCorrection(domService, CONFIG)
+    .then(() => console.log(`Omni Max: Layout correction applied.`))
+    .catch(err => console.error(`Omni Max: Layout correction error:`, err));
 
   console.log(`Omni Max: Content Script v${version} - Ready!`);
 }
 
-// Ensure the script runs after the DOM is fully loaded or interactively ready
+// auto-run based on readyState
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initializeOmniMaxContentScript);
 } else {
