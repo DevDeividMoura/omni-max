@@ -3,8 +3,11 @@ import { applyLayoutCorrection, initializeOmniMaxContentScript } from './index';
 import { CONFIG } from './config';
 import { DomService } from './services/DomService';
 import { ShortcutService } from './services/ShortcutService';
-import { TemplateHandlingService } from './services/TemplateHandleService';
+import { TemplateHandlingService } from './services/TemplateHandlingService';
 import { vi, describe, it, beforeEach, afterEach, expect } from 'vitest';
+
+import { get } from 'svelte/store';
+import { globalExtensionEnabledStore, moduleStatesStore } from '../storage/stores';
 
 import packageJson from '../../package.json';
 
@@ -17,7 +20,10 @@ describe('applyLayoutCorrection', () => {
 
   beforeEach(() => {
     mockDom = { applyStyles: vi.fn() } as any;
-    vi.mocked(chrome.storage.sync.get).mockReset();
+    // reset stores
+    globalExtensionEnabledStore.set(true)
+    moduleStatesStore.set({ layoutCorrection: true })
+    
   });
 
   afterEach(() => {
@@ -25,9 +31,6 @@ describe('applyLayoutCorrection', () => {
   });
 
   it('applies styles when global and module enabled and selector defined', async () => {
-    vi.mocked(chrome.storage.sync.get).mockImplementation((defaults, cb) =>
-      cb({ omniMaxGlobalEnabled: true, omniMaxModuleStates: { layoutCorrection: true } })
-    );
     await applyLayoutCorrection(mockDom, CONFIG);
     expect(mockDom.applyStyles).toHaveBeenCalledWith(originalTabs!, {
       float: 'right',
@@ -37,26 +40,20 @@ describe('applyLayoutCorrection', () => {
   });
 
   it('does NOT apply when global disabled', async () => {
-    vi.mocked(chrome.storage.sync.get).mockImplementation((defaults, cb) =>
-      cb({ omniMaxGlobalEnabled: false, omniMaxModuleStates: { layoutCorrection: true } })
-    );
+    globalExtensionEnabledStore.set(false)
+
     await applyLayoutCorrection(mockDom, CONFIG);
     expect(mockDom.applyStyles).not.toHaveBeenCalled();
   });
 
   it('does NOT apply when module disabled', async () => {
-    vi.mocked(chrome.storage.sync.get).mockImplementation((defaults, cb) =>
-      cb({ omniMaxGlobalEnabled: true, omniMaxModuleStates: { layoutCorrection: false } })
-    );
+    moduleStatesStore.set({ layoutCorrection: false })
     await applyLayoutCorrection(mockDom, CONFIG);
     expect(mockDom.applyStyles).not.toHaveBeenCalled();
   });
 
   it('does NOT apply when selector undefined', async () => {
     CONFIG.selectors.tabsList = undefined!;
-    vi.mocked(chrome.storage.sync.get).mockImplementation((defaults, cb) =>
-      cb({ omniMaxGlobalEnabled: true, omniMaxModuleStates: { layoutCorrection: true } })
-    );
     await applyLayoutCorrection(mockDom, CONFIG);
     expect(mockDom.applyStyles).not.toHaveBeenCalled();
   });

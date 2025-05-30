@@ -11,29 +11,20 @@ import { ClipboardService } from './services/ClipboardService';
 import { NotificationService } from './services/NotificationService';
 import { ExtractionService } from './services/ExtractionService';
 import { ShortcutService } from './services/ShortcutService';
-import { TemplateHandlingService } from './services/TemplateHandleService';
+import { TemplateHandlingService } from './services/TemplateHandlingService';
+
+import { get } from 'svelte/store';
+import { globalExtensionEnabledStore, moduleStatesStore } from '../storage/stores';
 
 import packageJson from '../../package.json';
 
 const version = packageJson.version;
 const OMNI_MAX_CONTENT_LOADED_FLAG = `omniMaxContentLoaded_v${version}`;
 
-type Settings = {
-  omniMaxGlobalEnabled?: boolean;
-  omniMaxModuleStates?: Record<string, boolean>;
-};
-
 export async function applyLayoutCorrection(domService: DomService, config: Config) {
-  const settings: Settings = await new Promise(resolve =>
-    chrome.storage.sync.get(
-      // provide defaults
-      { omniMaxGlobalEnabled: true, omniMaxModuleStates: {} },
-      resolve as (items: Settings) => void
-    )
-  );
-
-  const isGlobal = settings.omniMaxGlobalEnabled !== false;
-  const isLayoutEnabled = settings.omniMaxModuleStates?.layoutCorrection !== false;
+  const isGlobal = get(globalExtensionEnabledStore) !== false;
+  const moduleStates = get(moduleStatesStore);
+  const isLayoutEnabled = moduleStates?.layoutCorrection !== false;
   const tabsSel = config.selectors?.tabsList;
 
   if (isGlobal && isLayoutEnabled && tabsSel) {

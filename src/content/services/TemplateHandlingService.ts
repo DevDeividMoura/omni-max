@@ -4,6 +4,8 @@
  * This includes features like auto-formatting customer names (e.g., {FULL NAME} -> Firstname)
  * and selecting placeholder variables (e.g., [VARIABLE]) for quick editing.
  */
+import { get } from 'svelte/store'
+import { globalExtensionEnabledStore, moduleStatesStore } from '../../storage/stores'
 import type { Config } from '../config';
 import type { DomService } from './DomService'; // Corrected import path
 
@@ -145,14 +147,11 @@ export class TemplateHandlingService {
    */
   private async onKeyDown(event: KeyboardEvent): Promise<void> {
     // Check if the "Template Processor" module is enabled
-    const settings = await chrome.storage.sync.get(['omniMaxGlobalEnabled', 'omniMaxModuleStates']);
-    const isGlobalEnabled = settings.omniMaxGlobalEnabled !== false; // Default true
-    const moduleStates = settings.omniMaxModuleStates || {};
-    const isTemplateProcessorEnabled = moduleStates['templateProcessor'] !== false; // Default true
+    const globalEnable = get(globalExtensionEnabledStore)
+    const modules = get(moduleStatesStore)
+    const enabled = modules['templateProcessor'] !== false
+    if (!globalEnable || !enabled) return
 
-    if (!isGlobalEnabled || !isTemplateProcessorEnabled) {
-      return; // Do nothing if the module or global extension is disabled
-    }
 
     // Check if Tab key was pressed and the target is the configured editable chatbox
     if (event.key !== 'Tab' || !(event.target instanceof HTMLElement) || !event.target.matches(this.config.selectors.editableChatbox)) {

@@ -375,7 +375,7 @@
       },
     );
     // Consider closing the popup after applying changes
-    // window.close();
+    window.close();
   }
 
   /**
