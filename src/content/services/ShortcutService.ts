@@ -4,25 +4,13 @@
  * It listens for key combinations (Ctrl+Shift+Key) and triggers actions
  * based on user-configured shortcuts and enabled modules.
  */
-import type { ExtractionService } from './ExtractionService';
-import type { ClipboardService } from './ClipboardService';
-import type { NotificationService } from './NotificationService';
-import type { ShortcutKeysConfig } from '../../storage';
+import { get } from 'svelte/store'
+import { globalExtensionEnabledStore, shortcutsOverallEnabledStore, moduleStatesStore, shortcutKeysStore } from '../../storage/stores'
+import type { ExtractionService } from './ExtractionService'
+import type { ClipboardService } from './ClipboardService'
+import type { NotificationService } from './NotificationService'
+import type { ShortcutKeysConfig } from '../../storage/stores'
 
-/**
- * Defines the structure of settings retrieved from `chrome.storage.sync`
- * relevant to the ShortcutService's operation.
- */
-interface StoredSettings {
-  /** Global enabled state of the entire extension. */
-  globalEnable: boolean;
-  /** Enabled state for the overall "shortcuts" feature group. */
-  shortcutsOverallEnable: boolean;
-  /** State of individual modules (e.g., whether 'shortcutCopyDocumentNumber' is enabled). */
-  moduleStates: Record<string, boolean>;
-  /** User-configured keybindings for each shortcut action. */
-  shortcutKeys: ShortcutKeysConfig;
-}
 
 export class ShortcutService {
   private extractionService: ExtractionService;
@@ -89,27 +77,6 @@ OBS: [OBSERVAÇÕES]`;
   }
 
   /**
-   * Fetches relevant shortcut and module settings from `chrome.storage.sync`.
-   * Provides default values if settings are not yet stored.
-   * @returns {Promise<StoredSettings>} A promise that resolves to the retrieved settings.
-   */
-  private async getSettings(): Promise<StoredSettings> {
-    const keysToGet = [
-      'omniMaxGlobalEnabled',
-      'omniMaxShortcutsOverallEnabled',
-      'omniMaxModuleStates',
-      'omniMaxShortcutKeys'
-    ];
-    const data = await chrome.storage.sync.get(keysToGet);
-    return {
-      globalEnable: data.omniMaxGlobalEnabled !== false, // Defaults to true if undefined
-      shortcutsOverallEnable: data.omniMaxShortcutsOverallEnabled !== false, // Defaults to true
-      moduleStates: data.omniMaxModuleStates || {},
-      shortcutKeys: data.omniMaxShortcutKeys || { shortcutCopyName: 'Z', shortcutCopyDocumentNumber: 'X' } // Fallback default keys
-    };
-  }
-
-  /**
    * Handles the `keydown` event, specifically looking for Ctrl+Shift combinations.
    * If a recognized and enabled shortcut is detected, its action is performed.
    * @param {KeyboardEvent} event The `keydown` event object.
@@ -122,18 +89,20 @@ OBS: [OBSERVAÇÕES]`;
     // console.log("Omni Max [ShortcutService]: Ctrl+Shift key combination detected.");
     event.stopPropagation(); // Stop the event from bubbling further
 
-    const settings = await this.getSettings();
-    if (!settings.globalEnable || !settings.shortcutsOverallEnable) {
-      // console.log("Omni Max [ShortcutService]: Shortcuts globally or sectionally disabled.");
-      return;
-    }
+    // Get current settings from stores
+    const globalEnable = get(globalExtensionEnabledStore)
+    const shortcutsEnable = get(shortcutsOverallEnabledStore)
+    const moduleStates = get(moduleStatesStore)
+    const shortcutKeys = get(shortcutKeysStore)
 
-    const pressedKey = event.key.toUpperCase();
+    if (!globalEnable || !shortcutsEnable) return
+
+    const pressedKey = event.key.toUpperCase()
 
     for (const mappedAction of this.actionsMap) {
       // A module is considered enabled if its state is true or undefined (defaulting to true).
-      const isModuleEnabled = settings.moduleStates[mappedAction.moduleId] !== false;
-      const configuredKey = (settings.shortcutKeys[mappedAction.moduleId] || mappedAction.defaultKey).toUpperCase();
+      const isModuleEnabled = moduleStates[mappedAction.moduleId] !== false
+      const configuredKey = (shortcutKeys[mappedAction.moduleId] || mappedAction.defaultKey).toUpperCase()
 
       if (isModuleEnabled && pressedKey === configuredKey) {
 
