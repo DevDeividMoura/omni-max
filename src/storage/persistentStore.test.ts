@@ -7,7 +7,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { chrome } from 'vitest-chrome';
 import { get } from 'svelte/store';
-import { persistentStore, type PromptsConfig } from './storage'; // Assuming PromptsConfig is exported or used appropriately
+import { persistentStore, type PromptsConfig } from '.'; // Assuming PromptsConfig is exported or used appropriately
 // Note: 'chrome' is globally available and mocked by 'vitest-chrome' via 'vitest-setup.ts'.
 
 /**
