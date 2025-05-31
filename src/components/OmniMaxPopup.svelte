@@ -9,6 +9,7 @@
    * @component
    */
   import { onMount } from "svelte";
+  import { get } from "svelte/store";
   import CollapsibleSection from "./CollapsibleSection.svelte";
   import ToggleSwitch from "./ToggleSwitch.svelte";
   import {
@@ -19,6 +20,8 @@
     XCircle,
     Info,
   } from "lucide-svelte";
+
+  import { AIServiceManager } from "../ai/AIServiceManager";
 
   import {
     globalExtensionEnabledStore,
@@ -37,6 +40,11 @@
     type ShortcutKeysConfig,
   } from "../storage";
 
+  import {
+    defaultStorageAdapter,
+    type IStorageAdapter,
+  } from "../storage/IStorageAdapter";
+
   import { availableModules, type Module } from "../modules"; // Import Module type
   import GithubMarkIcon from "./icons/GithubMarkIcon.svelte";
 
@@ -54,11 +62,40 @@
   let localModuleStates: Record<string, boolean> = {};
   let localShortcutsOverallEnabled: boolean;
   let localAiFeaturesEnabled: boolean;
-  let localAiCredentials: AiCredentials = { openaiApiKey: "" }; // Initialize structure
-  let localAiProviderConfig: AiProviderConfig = {
-    provider: "openai",
-    model: "gpt-4o-mini",
-  };
+  let localAiCredentials = get(aiCredentialsStore);
+  let localAiProviderConfig = get(aiProviderConfigStore);
+  let modelList: string[] = [];
+  let loadingModels = false;
+  let modelError: string | null = null;
+
+  const aiManager = new AIServiceManager();
+
+  /**
+   * Tenta carregar a lista de modelos do provedor ativo.
+   * Se faltar credencial, o próprio manager lança erro, capturamos e mostramos.
+   */
+  async function refreshModelList() {
+    modelError = null;
+    modelList = [];
+    loadingModels = true;
+
+    try {
+      // atualiza o store com o provider selecionado antes de chamar
+      aiProviderConfigStore.set(localAiProviderConfig);
+
+      // esta chamada pode lançar "API key is required" ou "base URL is required"
+      modelList = await aiManager.listModels();
+    } catch (err: any) {
+      modelError = err.message;
+    } finally {
+      loadingModels = false;
+    }
+  }
+
+  // Recarrega sempre que mudar provider ou credenciais
+  $: localAiProviderConfig, refreshModelList();
+  $: localAiCredentials, refreshModelList();
+
   let localPrompts: PromptsConfig = {
     summaryPrompt: "",
     improvementPrompt: "",
@@ -260,6 +297,8 @@
     isLoading = false;
     isFirstSubscriptionCall = false; // After all initial subscriptions might have run
 
+    refreshModelList();
+
     return () => {
       unsubs.forEach((unsub) => unsub());
     };
@@ -334,18 +373,24 @@
    * and disables the "Apply Changes" button.
    * @private
    */
-  function applyChanges(): void {
+  async function applyChanges(): Promise<void> {
     if (isLoading) return;
 
-    globalExtensionEnabledStore.set(localGlobalEnabled);
-    moduleStatesStore.set({ ...localModuleStates });
-    shortcutsOverallEnabledStore.set(localShortcutsOverallEnabled);
-    shortcutKeysStore.set({ ...localShortcutKeys });
-    aiFeaturesEnabledStore.set(localAiFeaturesEnabled);
-    aiCredentialsStore.set({ ...localAiCredentials });
-    aiProviderConfigStore.set({ ...localAiProviderConfig });
-    promptsStore.set({ ...localPrompts });
-    collapsibleSectionsStateStore.set({ ...localOpenSections });
+    const adapter: IStorageAdapter = defaultStorageAdapter;
+    await Promise.all([
+      adapter.set("omniMaxGlobalEnabled", localGlobalEnabled),
+      adapter.set("omniMaxModuleStates", { ...localModuleStates }),
+      adapter.set(
+        "omniMaxShortcutsOverallEnabled",
+        localShortcutsOverallEnabled,
+      ),
+      adapter.set("omniMaxShortcutKeys", { ...localShortcutKeys }),
+      adapter.set("omniMaxAiFeaturesEnabled", localAiFeaturesEnabled),
+      adapter.set("omniMaxAiCredentials", { ...localAiCredentials }),
+      adapter.set("omniMaxAiProviderConfig", { ...localAiProviderConfig }),
+      adapter.set("omniMaxPrompts", { ...localPrompts }),
+      adapter.set("omniMaxCollapsibleSectionsState", { ...localOpenSections }),
+    ]);
 
     // Update initial states to reflect saved changes
     initialGlobalEnabled = localGlobalEnabled;
@@ -586,18 +631,22 @@
                 id="aiModel"
                 class="select-field"
                 bind:value={localAiProviderConfig.model}
-                on:change={markChanged}
-                disabled={!modelOptions[localAiProviderConfig.provider]?.length}
+                on:change={() => {
+                  markChanged();
+                  aiProviderConfigStore.set(localAiProviderConfig);
+                }}
+                disabled={loadingModels || modelList.length === 0}
               >
-                {#if localAiProviderConfig.provider && modelOptions[localAiProviderConfig.provider]}
-                  {#each modelOptions[localAiProviderConfig.provider] as modelName (modelName)}
-                    <option value={modelName}>{modelName}</option>
-                  {/each}
-                {:else}
-                  <option value="" disabled selected
-                    >Selecione um provedor primeiro</option
-                  >
-                {/if}
+                <option value="" disabled>
+                  {#if loadingModels}
+                    Carregando modelos…
+                  {:else if modelList.length === 0}
+                    Forneça e salve a credencial primeiro
+                  {/if}
+                </option>
+                {#each modelList as m}
+                  <option value={m}>{m}</option>
+                {/each}
               </select>
             </div>
             <button

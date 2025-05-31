@@ -2,8 +2,11 @@
  * src/ai/IAiProvider.ts
  * Define a interface para provedores de serviços de Inteligência Artificial.
  */
+
+import type { AiCredentials } from '../storage/stores';
+
 export interface AIRequestOptions {
-  model: string;
+  model?: string;
   apiKey?: string; // Opcional, pois Ollama não usa
   baseUrl?: string; // Para provedores como Ollama
   // Outras opções comuns: temperature, maxTokens, etc.
@@ -12,6 +15,12 @@ export interface AIRequestOptions {
 }
 
 export interface AIiProvider {
+  /** Chave única usada no aiCredentialsStore para este provedor */
+  readonly credentialKey: keyof AiCredentials;
+
+  /** Se aplicável, URL base em vez de API key */
+  readonly urlKey?: keyof AiCredentials;
+
   /**
    * Gera um resumo para um dado texto usando um prompt específico.
    */

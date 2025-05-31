@@ -6,7 +6,11 @@ import { ChatOpenAI } from "@langchain/openai";
 import { PromptTemplate } from "@langchain/core/prompts";
 import { StringOutputParser } from "@langchain/core/output_parsers";
 
+import type { AiCredentials } from '../../storage/stores';
+
 export class OpenAiProvider implements AIiProvider {
+  readonly credentialKey: keyof AiCredentials = 'openaiApiKey';
+
   async generateSummary(
     textToSummarize: string,
     customSummaryPrompt: string,

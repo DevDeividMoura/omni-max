@@ -15,6 +15,7 @@ import { TemplateHandlingService } from './services/TemplateHandlingService';
 import { AIServiceManager } from '../ai/AIServiceManager';
 
 import { get } from 'svelte/store';
+import { defaultStorageAdapter } from '../storage/IStorageAdapter';
 import { globalExtensionEnabledStore, moduleStatesStore } from '../storage/stores';
 
 import packageJson from '../../package.json';
@@ -23,9 +24,20 @@ const version = packageJson.version;
 const OMNI_MAX_CONTENT_LOADED_FLAG = `omniMaxContentLoaded_v${version}`;
 
 export async function applyLayoutCorrection(domService: DomService, config: Config) {
-  const isGlobal = get(globalExtensionEnabledStore) !== false;
-  const moduleStates = get(moduleStatesStore);
-  const isLayoutEnabled = moduleStates?.layoutCorrection !== false;
+  // 1) Leia do storage o valor efetivamente salvo (pode ser undefined)
+  const savedGlobal = await defaultStorageAdapter.get<boolean>('omniMaxGlobalEnabled');
+  const savedModules = await defaultStorageAdapter.get<Record<string, boolean>>('omniMaxModuleStates');
+
+  // 2) Use esses valores, com fallback ao store em memória
+  const isGlobal = savedGlobal !== undefined
+    ? savedGlobal
+    : get(globalExtensionEnabledStore);
+
+  const moduleStates = savedModules !== undefined
+    ? savedModules
+    : get(moduleStatesStore);
+
+  const isLayoutEnabled = moduleStates.layoutCorrection !== false;
   const tabsSel = config.selectors?.tabsList;
 
   if (isGlobal && isLayoutEnabled && tabsSel) {

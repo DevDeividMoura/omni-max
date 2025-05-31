@@ -5,9 +5,11 @@ import type { AIiProvider, AIRequestOptions } from '../AIiProvider';
 import { ChatAnthropic } from "@langchain/anthropic"; // Verifique o pacote correto se mudou
 import { PromptTemplate } from "@langchain/core/prompts";
 import { StringOutputParser } from "@langchain/core/output_parsers";
+import type { AiCredentials } from '../../storage/stores';
 
 
 export class AnthropicProvider implements AIiProvider {
+  readonly credentialKey: keyof AiCredentials = 'anthropicApiKey';
   async generateSummary(text: string, customSummaryPrompt: string, options: AIRequestOptions): Promise<string> {
     if (!options.apiKey) throw new Error('Anthropic API key is missing.');
     // ... (validações de texto e prompt) ...

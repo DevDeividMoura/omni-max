@@ -86,6 +86,7 @@ export class TemplateHandlingService {
     // console.log("Omni Max [TemplateHandling]: Tab key logic initiated...");
     try {
       let currentText = this.dom.getTextSafely(editableDiv); // Get plain text content
+      // console.log("Omni Max [TemplateHandling]: Current text before transformation:", currentText);
       let transformedText = this.transformTemplateText(currentText);
 
       // Update the div's content if transformations occurred.
@@ -122,8 +123,8 @@ export class TemplateHandlingService {
             selection.addRange(range);
             // console.log(`Omni Max [TemplateHandling]: Variable "${firstVariable.word}" selected.`);
           } catch (rangeError) {
-             console.warn("Omni Max [TemplateHandling]: Error setting range for variable selection. Moving cursor to end.", rangeError);
-             this.dom.moveCursorToEnd(editableDiv);
+            console.warn("Omni Max [TemplateHandling]: Error setting range for variable selection. Moving cursor to end.", rangeError);
+            this.dom.moveCursorToEnd(editableDiv);
           }
         } else {
           console.warn("Omni Max [TemplateHandling]: Could not find text nodes for variable selection. Moving cursor to end.");
@@ -158,8 +159,15 @@ export class TemplateHandlingService {
       return;
     }
 
-    event.preventDefault(); // Prevent default Tab behavior (e.g., changing focus)
-    event.stopPropagation(); // Stop the event from bubbling further
+    // wait for the next frame to ensure the DOM is ready for selection changes
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => {
+        setTimeout(resolve, 30);
+      });
+    });
+
+    // event.preventDefault(); // Prevent default Tab behavior (e.g., changing focus)
+    // event.stopPropagation(); // Stop the event from bubbling further
 
     this.handleTabPressLogic(event.target as HTMLElement);
   }

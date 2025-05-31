@@ -1,69 +1,63 @@
-/**
- * src/ai/AiServiceManager.ts
- * Ponto central para interagir com os serviços de IA.
- * Utiliza o padrão Strategy para selecionar e delegar tarefas ao provedor de IA
- * configurado pelo usuário, obtendo configurações através do SettingsService.
- */
+// src/ai/AiServiceManager.ts
 import { get } from 'svelte/store';
-import {
-  aiCredentialsStore,
-  aiProviderConfigStore,
-  promptsStore,
-} from '../storage/stores';
+import { aiCredentialsStore, aiProviderConfigStore, promptsStore } from '../storage/stores';
 import type { AIiProvider, AIRequestOptions } from './AIiProvider';
 import { OpenAiProvider } from './providers/OpenAIProvider';
-import { OllamaProvider } from './providers/OllamaProvider';
-import { AnthropicProvider } from './providers/AnthropicProvider';
 import { GeminiProvider } from './providers/GeminiProvider';
+import { AnthropicProvider } from './providers/AnthropicProvider';
+import { OllamaProvider } from './providers/OllamaProvider';
 
-// Registry for new providers (OCP)
-const providerRegistry: Record<string, new () => AIiProvider> = {
-  openai: OpenAiProvider,
-  gemini: GeminiProvider,
-  anthropic: AnthropicProvider,
-  ollama: OllamaProvider,
+// Em vez de apenas class, registrem instâncias únicas (podem ser singletons)
+const providerRegistry: Record<string, AIiProvider> = {
+  openai: new OpenAiProvider(),
+  gemini: new GeminiProvider(),
+  anthropic: new AnthropicProvider(),
+  ollama: new OllamaProvider(),
 };
 
 export class AIServiceManager {
-  private activeProvider: AIiProvider | null = null;
-  private cachedProviderName: string | null = null;
 
-  private async getProviderConfig() {
-    return get(aiProviderConfigStore);
-  }
-  private async getCredentials() {
-    return get(aiCredentialsStore);
-  }
-  private async getPrompts() {
-    return get(promptsStore);
+  private async loadProvider(): Promise<AIiProvider> {
+    const { provider } = await get(aiProviderConfigStore);
+    const p = providerRegistry[provider.toLowerCase()];
+    if (!p) throw new Error(`Provider ${provider} not found`);
+    return p;
   }
 
-  private async getProviderInstance(): Promise<AIiProvider> {
-    const cfg = await this.getProviderConfig();
-    const name = cfg.provider.toLowerCase();
-    if (this.activeProvider && this.cachedProviderName === name) {
-      return this.activeProvider;
+  private async buildOptions(provider: AIiProvider): Promise<AIRequestOptions> {
+    const creds = await get(aiCredentialsStore);
+    const cfg = await get(aiProviderConfigStore);
+
+    // pega dinamicamente a chave/url da store
+    const opts: AIRequestOptions = { model: cfg.model };
+    const keyName = provider.credentialKey;
+    const urlName = provider.urlKey;
+
+    if (urlName && creds[urlName]) {
+      opts.baseUrl = creds[urlName] as string;
+    } else if (creds[keyName]) {
+      opts.apiKey = creds[keyName] as string;
+    } else {
+      throw new Error(`Missing credentials for provider ${cfg.provider}`);
     }
-    const ProviderClass = providerRegistry[name];
-    if (!ProviderClass) throw new Error(`AI provider not supported: ${cfg.provider}`);
-    this.activeProvider = new ProviderClass();
-    this.cachedProviderName = name;
-    return this.activeProvider;
+
+    return opts;
   }
 
   public async generateSummary(text: string): Promise<string> {
-    const [creds, cfg, prompts] = await Promise.all([
-      this.getCredentials(),
-      this.getProviderConfig(),
-      this.getPrompts(),
-    ]);
-
-    const opts: AIRequestOptions = { model: cfg.model, apiKey: creds.openaiApiKey ?? '' };
-    if (!opts.apiKey) throw new Error('API key not configured');
-
-    const provider = await this.getProviderInstance();
-    return provider.generateSummary(text, prompts.summaryPrompt, opts);
+    const provider = await this.loadProvider();
+    const prompts = await get(promptsStore);
+    const options = await this.buildOptions(provider);
+    return provider.generateSummary(text, prompts.summaryPrompt, options);
   }
 
-  // Future methods (improveText, generateChatResponse) would follow same pattern.
+  public async listModels(): Promise<string[]> {
+    const provider = await this.loadProvider();
+    const options = await this.buildOptions(provider);
+    // pass only baseUrl/apiKey
+    return provider.listModels({
+      apiKey: options.apiKey,
+      baseUrl: options.baseUrl,
+    });
+  }
 }

@@ -5,17 +5,19 @@ import type { AIiProvider, AIRequestOptions } from '../AIiProvider';
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai"; // Ou ChatVertexAI se estiver usando Vertex
 import { PromptTemplate } from "@langchain/core/prompts";
 import { StringOutputParser } from "@langchain/core/output_parsers";
-import { HarmBlockThreshold, HarmCategory } from "@google/generative-ai";
+import type { AiCredentials } from '../../storage/stores';
 
 
 export class GeminiProvider implements AIiProvider {
+  readonly credentialKey: keyof AiCredentials = 'geminiApiKey';
+
   async generateSummary(text: string, customSummaryPrompt: string, options: AIRequestOptions): Promise<string> {
     if (!options.apiKey) throw new Error('Google Gemini API key is missing.');
     // ... (validações de texto e prompt) ...
 
     const llm = new ChatGoogleGenerativeAI({
       apiKey: options.apiKey,
-      model: options.model, // ex: "gemini-1.5-pro-latest" ou "gemini-pro"
+      model: options.model ?? 'gemini-2.0-flash', // ex: "gemini-1.5-pro-latest" ou "gemini-pro"
       // temperature: 0.3,
       // safetySettings: [...] // Pode querer configurar safety settings
     });

@@ -7,6 +7,10 @@ import { PromptTemplate } from "@langchain/core/prompts";
 import { StringOutputParser } from "@langchain/core/output_parsers";
 
 export class OllamaProvider implements AIiProvider {
+  readonly credentialKey = 'ollamaBaseUrl';
+  readonly urlKey = 'ollamaBaseUrl';
+
+  
   async generateSummary(
     textToSummarize: string,
     customSummaryPrompt: string,

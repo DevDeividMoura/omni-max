@@ -16,7 +16,7 @@ export const shortcutsOverallEnabledStore =
 
 // — IA features
 export const aiFeaturesEnabledStore =
-  persistentStore<boolean>('omniMaxAiFeaturesEnabled', false)
+  persistentStore<boolean>('omniMaxAiFeaturesEnabled', true)
 
 export interface AiCredentials {
   openaiApiKey?: string
