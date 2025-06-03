@@ -4,13 +4,18 @@ import type { DomService } from './DomService';
 import type { AIServiceManager } from '../../ai/AIServiceManager';
 import type { MatrixApiService } from './MatrixApiService';
 import type { SummaryCacheService } from './SummaryCacheService';
-import type { ActiveChatContext, Atendimento as UserAtendimento } from '../types';
+import type { ActiveChatContext, CustomerServiceSession } from '../types'; // Updated import
 
+/** SVG icon for the close button. */
 const CLOSE_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>`;
-export const SUMMARY_BUTTON_CLASS = 'omni-max-summary-action-button-preview'; // Usando a classe do seu CSS
+
+/** CSS class for the summary button injected into the page. */
+export const SUMMARY_BUTTON_CLASS = 'omni-max-summary-action-button-preview';
+
+/** ID for the host element of the summary popup (Shadow DOM). */
 const SUMMARY_POPUP_HOST_ID = 'omni-max-summary-popup-host';
 
-// SVG das faíscas (branco)
+/** SVG icon for sparkles, used on the summary button (white version). */
 const SPARKLES_SVG_WHITE = `
 <svg
   width="12"
@@ -36,20 +41,36 @@ const SPARKLES_SVG_WHITE = `
 </svg>
 `;
 
-
+/**
+ * @class SummaryUiService
+ * @description Manages the UI for displaying chat summaries, including injecting
+ * a summary button onto the page and showing a popup with the summary content.
+ * It interacts with AI services for summary generation, caching services,
+ * and API services for fetching chat data.
+ */
 export class SummaryUiService {
-  private summaryPopupHost: HTMLDivElement | null = null;
+  private summaryPopupHostElement: HTMLDivElement | null = null;
   private summaryPopupShadowRoot: ShadowRoot | null = null;
   private popupMainElement: HTMLElement | null = null;
-  private popupContentArea: HTMLElement | null = null;
+  private popupContentAreaElement: HTMLElement | null = null;
   private popupOverlayElement: HTMLElement | null = null;
 
-  private isVisible = false;
-  private isLoading = false;
-  private summaryText = "";
-  private currentPosition = { x: 0, y: 0 };
-  private requestStatus: { [protocolo: string]: boolean } = {};
+  private isPopupVisible = false;
+  private isLoadingSummary = false;
+  private currentSummaryText = "";
+  private currentPopupPosition = { x: 0, y: 0 };
 
+  /** Tracks active summary generation requests to prevent duplicates for the same protocol. Key is protocolNumber. */
+  private activeSummaryRequests: { [protocolNumber: string]: boolean } = {};
+
+  /**
+   * Constructs an instance of SummaryUiService.
+   * @param {DomService} domService Service for DOM manipulations.
+   * @param {AIServiceManager} aiManager Manager for AI service interactions (e.g., summary generation).
+   * @param {MatrixApiService} matrixApiService Service for fetching data from the Matrix API.
+   * @param {SummaryCacheService} summaryCacheService Service for caching and retrieving summaries.
+   * @param {() => ActiveChatContext | null} getActiveChatContextCallback Callback function to get the current active chat context.
+   */
   constructor(
     private domService: DomService,
     private aiManager: AIServiceManager,
@@ -60,18 +81,30 @@ export class SummaryUiService {
     this.initialize();
   }
 
+  /**
+   * Initializes the service, primarily by creating the base layout for the summary popup.
+   * @private
+   */
   private initialize(): void {
     this.createPopupBaseLayout();
   }
 
+  /**
+   * Generates the CSS styles for the summary popup's Shadow DOM.
+   * Includes base styles, layout for loading states, content display, and animations.
+   * Note: Styles for the injected summary button (which lives in the Light DOM) are
+   * also included here for reference but are primarily applied inline or via global CSS.
+   * @returns {string} The CSS style string.
+   * @private
+   */
   private getPopupStyles(): string {
-    // Adiciona o estilo do botão ao CSS do Shadow DOM, caso queira usá-lo lá no futuro,
-    // mas principalmente para ter todas as definições de estilo juntas.
-    // O botão real será injetado no Light DOM e usará estilos globais ou inline.
+    // Styles for the injected button are duplicated: here for reference/Shadow DOM fallback,
+    // and applied inline when the button is created in injectSummaryButton.
+    // Ideally, Light DOM button styling should come from a global stylesheet.
     return `
       :host { all: initial; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif; font-size: 14px; }
       
-      /* Estilos do Popup */
+      /* Popup Styles */
       .popup-wrapper { position: fixed; background-color: white; border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); border: 2px solid transparent; background-clip: padding-box, border-box; background-origin: border-box; background-image: linear-gradient(white, white), linear-gradient(to right, #a9276f, #d02125, #d6621c); z-index: 2147483647; max-width: 48rem; width: 40rem; overflow: hidden; display: none; }
       .popup-inner { padding: 1rem; }
       .popup-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
@@ -105,8 +138,8 @@ export class SummaryUiService {
       @keyframes bounce { 0%, 100% { transform: translateY(-25%); animation-timing-function: cubic-bezier(0.8,0,1,1); } 50% { transform: none; animation-timing-function: cubic-bezier(0,0,0.2,1); } }
       .popup-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 2147483646; background-color: rgba(0,0,0,0.1); }
 
-      /* Estilo para o novo botão "Resumir" (igual ao seu CSS, para referência aqui) */
-      .${SUMMARY_BUTTON_CLASS} { /* A classe real será aplicada ao botão no Light DOM */
+      /* Styles for the summary button (for reference, primarily applied inline or via global CSS) */
+      .${SUMMARY_BUTTON_CLASS} {
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -129,188 +162,294 @@ export class SummaryUiService {
         width: 12px;
         height: 12px;
         margin-right: 5px;
-        fill: "#ffffff"; /* Herda a cor branca do botão */
+        fill: "#ffffff";
       }
     `;
   }
 
-  private createPopupBaseLayout(): void { /* ... (Como antes) ... */
-    if (this.domService.query(`#${SUMMARY_POPUP_HOST_ID}`)) return;
-    this.summaryPopupHost = this.domService.createElementWithOptions('div', { id: SUMMARY_POPUP_HOST_ID });
-    this.summaryPopupShadowRoot = this.summaryPopupHost.attachShadow({ mode: 'open' });
+  /**
+   * Creates the basic HTML structure for the summary popup and appends it to the DOM (hidden initially).
+   * This includes the Shadow DOM host, stylesheet, overlay, and main popup elements.
+   * This method should only execute once.
+   * @private
+   */
+  private createPopupBaseLayout(): void {
+    if (this.domService.query(`#${SUMMARY_POPUP_HOST_ID}`)) return; // Prevent multiple creations
+
+    this.summaryPopupHostElement = this.domService.createElementWithOptions('div', { id: SUMMARY_POPUP_HOST_ID });
+    if (!this.summaryPopupHostElement) {
+        console.error("Omni Max [SummaryUiService]: Failed to create summary popup host element.");
+        return;
+    }
+    this.summaryPopupShadowRoot = this.summaryPopupHostElement.attachShadow({ mode: 'open' });
+
     const styleSheet = this.domService.createElementWithOptions('style', { textContent: this.getPopupStyles() });
-    this.summaryPopupShadowRoot.appendChild(styleSheet); // Adiciona todos estilos, incluindo o do botão para referência
+    if (styleSheet) this.summaryPopupShadowRoot.appendChild(styleSheet);
+
     this.popupOverlayElement = this.domService.createElementWithOptions('div', {
-        className: 'popup-overlay', parent: this.summaryPopupShadowRoot, styles: { display: 'none' },
+      className: 'popup-overlay',
+      parent: this.summaryPopupShadowRoot,
+      styles: { display: 'none' },
     });
-    this.popupOverlayElement.addEventListener('click', () => this.hide());
-    this.popupMainElement = this.domService.createElementWithOptions('div', { className: 'popup-wrapper', parent: this.summaryPopupShadowRoot });
+    if (this.popupOverlayElement) {
+        this.popupOverlayElement.addEventListener('click', () => this.hide());
+    }
+
+    this.popupMainElement = this.domService.createElementWithOptions('div', {
+      className: 'popup-wrapper',
+      parent: this.summaryPopupShadowRoot,
+    });
+    if (!this.popupMainElement) return;
+
     const popupInner = this.domService.createElementWithOptions('div', { className: 'popup-inner', parent: this.popupMainElement });
+    if (!popupInner) return;
+
     const header = this.domService.createElementWithOptions('div', { className: 'popup-header', parent: popupInner });
+    if (!header) return;
+
     this.domService.createElementWithOptions('h3', { className: 'popup-title', textContent: 'Resumo da Conversa', parent: header });
-    const closeButton = this.domService.createElementWithOptions('button', { className: 'close-button', attributes: { title: 'Fechar' }, parent: header });
-    closeButton.innerHTML = CLOSE_ICON_SVG;
-    closeButton.addEventListener('click', () => this.hide());
-    this.popupContentArea = this.domService.createElementWithOptions('div', { id: 'popup-content-area-dynamic', parent: popupInner });
+    const closeButton = this.domService.createElementWithOptions('button', {
+      className: 'close-button',
+      attributes: { title: 'Fechar', 'aria-label': 'Fechar resumo' },
+      parent: header,
+    });
+
+    if (closeButton) {
+      closeButton.innerHTML = CLOSE_ICON_SVG;
+      closeButton.addEventListener('click', () => this.hide());
+    }
+
+    this.popupContentAreaElement = this.domService.createElementWithOptions('div', {
+      id: 'popup-content-area-dynamic', // For potential targeting
+      parent: popupInner,
+    });
   }
 
-  private updatePopupContent(): void { /* ... (Como antes) ... */
-     if (!this.popupContentArea) return;
-     if (this.isLoading) {
-         this.popupContentArea.innerHTML = `
-         <div class="loading-state">
-             <div class="skeleton-lines">
-             <div class="skeleton-line"></div> <div class="skeleton-line w-3-4"></div> <div class="skeleton-line w-1-2"></div>
-             </div>
-             <div class="loading-text-container">
-             <div class="dot"></div><div class="dot"></div><div class="dot"></div>
-             <span class="loading-text-span">Analisando conversa...</span>
-             </div>
-         </div>`;
-     } else {
-         try {
-         const rawHtml = marked.parse(this.summaryText || "Nenhum resumo disponível.");
-         this.popupContentArea.innerHTML = `<div class="summary-content">${rawHtml}</div>`;
-         } catch (e) {
-         console.error("Omni Max [SummaryUiService]: Error parsing Markdown:", e);
-         this.popupContentArea.innerHTML = `<div class="summary-content">Erro ao renderizar resumo.</div>`;
-         }
-     }
+  /**
+   * Updates the content of the summary popup based on the current loading state and summary text.
+   * Renders a loading skeleton or the (Markdown-parsed) summary.
+   * @private
+   */
+  private updatePopupContent(): void {
+    if (!this.popupContentAreaElement) return;
+
+    if (this.isLoadingSummary) {
+      this.popupContentAreaElement.innerHTML = `
+        <div class="loading-state">
+          <div class="skeleton-lines">
+            <div class="skeleton-line"></div>
+            <div class="skeleton-line w-3-4"></div>
+            <div class="skeleton-line w-1-2"></div>
+          </div>
+          <div class="loading-text-container">
+            <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+            <span class="loading-text-span">Analisando conversa...</span>
+          </div>
+        </div>`;
+    } else {
+      try {
+        // Use `marked.parse` for potentially safer HTML output if `this.currentSummaryText` is untrusted.
+        // Ensure `marked` is configured to sanitize if necessary, or trust the source of `currentSummaryText`.
+        const rawHtml = marked.parse(this.currentSummaryText || "Nenhum resumo disponível.");
+        this.popupContentAreaElement.innerHTML = `<div class="summary-content">${rawHtml}</div>`;
+      } catch (error) {
+        console.error("Omni Max [SummaryUiService]: Error parsing Markdown for summary:", error);
+        this.popupContentAreaElement.innerHTML = `<div class="summary-content">Erro ao renderizar o resumo.</div>`;
+      }
+    }
   }
   
-  public injectSummaryButton(hsmButtonsDiv: HTMLDivElement, protocolo:string, contatoId: string): void {
-    if (hsmButtonsDiv.querySelector(`.${SUMMARY_BUTTON_CLASS}`)) {
-      return;
+  /**
+   * Injects a "Resumir" (Summarize) button into the specified container element on the page.
+   * The button, when clicked, will trigger the summary generation and display process.
+   * @param {HTMLDivElement} targetButtonContainerDiv The `div` element where the summary button should be injected.
+   * @param {string} initialProtocolNumber The protocol number associated with the chat context where the button is injected.
+   * @param {string} initialContactId The contact ID associated with the chat context.
+   */
+  public injectSummaryButton(
+    targetButtonContainerDiv: HTMLDivElement,
+    initialProtocolNumber: string,
+    initialContactId: string
+  ): void {
+    if (targetButtonContainerDiv.querySelector(`.${SUMMARY_BUTTON_CLASS}`)) {
+      // console.log("Omni Max [SummaryUiService]: Summary button already injected.");
+      return; // Button already exists
     }
 
     const summaryButtonElement = this.domService.createElementWithOptions('button', {
-      className: SUMMARY_BUTTON_CLASS, // Classe para aplicar seu CSS
-      // Aplicando estilos diretamente para garantir a aparência desejada no Light DOM
+      className: SUMMARY_BUTTON_CLASS,
+      // Inline styles are applied here to ensure consistent appearance in the Light DOM,
+      // regardless of external stylesheets. The class can be used for overrides or global styling.
       styles: {
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '4px 12px',
-        borderRadius: '20px',
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        padding: '4px 12px', borderRadius: '20px',
         backgroundImage: 'linear-gradient(to right, #a9276f, #d02125, #d6621c)',
-        color: 'white',
-        fontSize: '12px',
-        fontWeight: '500',
-        border: 'none',
-        cursor: 'pointer',
-        textDecoration: 'none',
+        color: 'white', fontSize: '12px', fontWeight: '500',
+        border: 'none', cursor: 'pointer', textDecoration: 'none',
         boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-        // Para garantir que se alinhe bem com os outros 'a' tags que podem ter margins padrão
-        verticalAlign: 'middle', 
+        verticalAlign: 'middle', // Helps align with other inline-block elements
       }
     });
+
+    if (!summaryButtonElement) {
+        console.error("Omni Max [SummaryUiService]: Failed to create summary button element.");
+        return;
+    }
     
-    // Adiciona o SVG e o texto ao botão
     summaryButtonElement.innerHTML = `${SPARKLES_SVG_WHITE} <span style="margin-left: 5px;">Resumir</span>`;
-    // Ajuste no estilo do SVG dentro do botão via JS, se necessário, ou confie no CSS da classe
+    // Ensure SVG within the button is styled correctly.
     const svgElement = summaryButtonElement.querySelector('svg');
     if(svgElement) {
         this.domService.applyStyles(svgElement, {
-            width: '14px',
-            height: '14px',
-            // marginRight: '5px', // Já está no span
-            fill: '#ffffff' // Herda a cor do texto do botão (branco)
+            width: '14px', height: '14px', fill: '#ffffff'
         });
     }
 
-
     summaryButtonElement.addEventListener('click', async (event: MouseEvent) => {
-      event.stopPropagation();
-      if (this.isVisible) {
+      event.stopPropagation(); // Prevent event from bubbling up.
+      if (this.isPopupVisible) {
         this.hide();
       } else {
+        let currentProtocolNumber = initialProtocolNumber;
+        let currentContactId = initialContactId;
 
-        if (!protocolo || !contatoId) {
-          const activeTabCtx = this.getActiveChatContextCallback();
-          if (activeTabCtx) {
-            protocolo = activeTabCtx.protocolo;
-            contatoId = activeTabCtx.contatoId;
+        // If initial IDs are not available (e.g., button context changed), try to get active context.
+        if (!currentProtocolNumber || !currentContactId) {
+          const activeChatCtx = this.getActiveChatContextCallback();
+          if (activeChatCtx) {
+            currentProtocolNumber = activeChatCtx.protocolNumber; // Use updated type property
+            currentContactId = activeChatCtx.contactId;         // Use updated type property
           }
         }
         
-        if (protocolo && contatoId) {
+        if (currentProtocolNumber && currentContactId) {
           const buttonRect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-          await this.showAndGenerateSummary(buttonRect, protocolo, contatoId);
+          await this.showAndGenerateSummary(buttonRect, currentProtocolNumber, currentContactId);
         } else {
-          console.warn("Omni Max [SummaryUiService]: Protocolo/ContatoID não pôde ser determinado para o resumo.");
-          alert("Omni Max: Não foi possível identificar o atendimento para resumir.");
+          console.warn("Omni Max [SummaryUiService]: Protocol number or Contact ID could not be determined to generate summary.");
+          alert("Omni Max: Não foi possível identificar o atendimento ativo para resumir.");
         }
       }
     });
 
-    // Inserir como o primeiro filho ou ao lado do primeiro <a> existente
-    const firstLinkOrButton = hsmButtonsDiv.querySelector('a, button');
-    if (firstLinkOrButton) {
-      hsmButtonsDiv.insertBefore(summaryButtonElement, firstLinkOrButton);
+    // Insert the button strategically, e.g., before the first existing link or button.
+    const firstInteractiveElement = targetButtonContainerDiv.querySelector('a, button');
+    if (firstInteractiveElement) {
+      targetButtonContainerDiv.insertBefore(summaryButtonElement, firstInteractiveElement);
     } else {
-      hsmButtonsDiv.appendChild(summaryButtonElement); // Fallback
+      targetButtonContainerDiv.appendChild(summaryButtonElement); // Fallback if no other elements
     }
     
-    console.log(`Omni Max [SummaryUiService]: Botão de resumo (novo estilo) injetado em:`, hsmButtonsDiv);
+    console.log(`Omni Max [SummaryUiService]: Summary button injected into:`, targetButtonContainerDiv);
   }
 
-  public async showAndGenerateSummary(buttonRect: DOMRect, protocolo: string, contatoId: string): Promise<void> {
-    // ... (lógica como definida anteriormente) ...
-    if (!buttonRect || !this.summaryPopupHost || !this.popupMainElement || !this.popupOverlayElement) {
-        console.error("Omni Max [SummaryUiService]: Elementos do popup não inicializados."); return;
+  /**
+   * Shows the summary popup, positions it near the trigger button, and initiates
+   * the summary generation process (fetching from cache or generating via AI).
+   * @param {DOMRect} triggerButtonRect The DOMRect of the button that triggered the popup, used for positioning.
+   * @param {string} protocolNumber The protocol number of the chat to summarize.
+   * @param {string} contactId The contact ID associated with the chat.
+   * @public
+   */
+  public async showAndGenerateSummary(
+    triggerButtonRect: DOMRect,
+    protocolNumber: string,
+    contactId: string
+  ): Promise<void> {
+    if (!triggerButtonRect || !this.summaryPopupHostElement || !this.popupMainElement || !this.popupOverlayElement) {
+      console.error("Omni Max [SummaryUiService]: Popup elements not properly initialized. Cannot show summary.");
+      return;
     }
-    this.currentPosition = { x: buttonRect.left + buttonRect.width / 2, y: buttonRect.top };
-    this.isVisible = true; this.isLoading = true; this.summaryText = "";
-    if (!this.summaryPopupHost.isConnected) document.body.appendChild(this.summaryPopupHost);
-    this.domService.applyStyles(this.popupMainElement, { left: `${this.currentPosition.x}px`, bottom: `${window.innerHeight - this.currentPosition.y + 10}px`, transform: 'translateX(-50%)', display: 'block' });
+
+    this.currentPopupPosition = { x: triggerButtonRect.left + triggerButtonRect.width / 2, y: triggerButtonRect.top };
+    this.isPopupVisible = true;
+    this.isLoadingSummary = true;
+    this.currentSummaryText = ""; // Clear previous summary
+
+    if (!this.summaryPopupHostElement.isConnected) {
+      document.body.appendChild(this.summaryPopupHostElement);
+    }
+
+    this.domService.applyStyles(this.popupMainElement, {
+      left: `${this.currentPopupPosition.x}px`,
+      bottom: `${window.innerHeight - this.currentPopupPosition.y + 10}px`, // Position above button
+      transform: 'translateX(-50%)',
+      display: 'block',
+    });
     this.domService.applyStyles(this.popupOverlayElement, { display: 'block' });
-    document.body.style.overflow = 'hidden';
-    this.updatePopupContent();
+    document.body.style.overflow = 'hidden'; // Prevent page scroll when popup is open
+    this.updatePopupContent(); // Show loading state
     document.addEventListener('keydown', this.handleEscapeKey);
 
-    if (this.requestStatus[protocolo]) { console.log(`Omni Max: Resumo para ${protocolo} já em andamento.`); return; }
-    this.requestStatus[protocolo] = true;
+    if (this.activeSummaryRequests[protocolNumber]) {
+      console.log(`Omni Max [SummaryUiService]: Summary generation for protocol ${protocolNumber} is already in progress.`);
+      return;
+    }
+    this.activeSummaryRequests[protocolNumber] = true;
 
     try {
-      const cachedSummary = await this.summaryCacheService.getSummary(protocolo);
+      const cachedSummary = await this.summaryCacheService.getSummary(protocolNumber);
       if (cachedSummary) {
-        this.summaryText = cachedSummary; this.isLoading = false;
-        console.log(`Omni Max: Cache hit para ${protocolo}.`);
+        this.currentSummaryText = cachedSummary;
+        this.isLoadingSummary = false;
+        console.log(`Omni Max [SummaryUiService]: Summary for protocol ${protocolNumber} retrieved from cache.`);
       } else {
-        console.log(`Omni Max: Cache miss para ${protocolo}. Buscando dados...`);
-        const todosAtendimentosDoContato = await this.matrixApiService.getAtendimentosByContato(contatoId);
-        const atendimentoAtual = todosAtendimentosDoContato.find(at => at.protocolo === protocolo);
-        if (atendimentoAtual && atendimentoAtual.mensagens.length > 0) {
-          const conversationString = atendimentoAtual.mensagens.map(m => `${m.role === 'atendente' ? 'Atendente' : 'Cliente'}: ${m.message}`).join('\n\n');
-          console.log(`Omni Max: Gerando resumo para ${protocolo} (${conversationString.length} chars).`);
+        console.log(`Omni Max [SummaryUiService]: Cache miss for protocol ${protocolNumber}. Fetching chat data...`);
+        // Fetch all service sessions (atendimentos) for the contact.
+        // The MatrixApiService should return data mapped to `CustomerServiceSession[]`.
+        const allContactSessions: CustomerServiceSession[] = await this.matrixApiService.getAtendimentosByContato(contactId);
+        const currentSession = allContactSessions.find(session => session.protocolNumber === protocolNumber);
+
+        if (currentSession && currentSession.messages.length > 0) {
+          // Construct conversation string using the application's internal `Message` type.
+          const conversationString = currentSession.messages
+            .map(m => `${m.role === 'agent' ? 'Atendente' : 'Cliente'}: ${m.content}`) // Use updated property names
+            .join('\n\n');
+          
+          console.log(`Omni Max [SummaryUiService]: Generating summary for protocol ${protocolNumber} (conversation length: ${conversationString.length} chars).`);
           const newSummary = await this.aiManager.generateSummary(conversationString);
-          await this.summaryCacheService.saveSummary(protocolo, newSummary);
-          this.summaryText = newSummary;
+          await this.summaryCacheService.saveSummary(protocolNumber, newSummary);
+          this.currentSummaryText = newSummary;
         } else {
-          this.summaryText = "Mensagens não encontradas para este atendimento.";
-          console.warn(`Omni Max: Sem mensagens para ${protocolo} (contato ${contatoId}).`);
+          this.currentSummaryText = "Nenhuma mensagem encontrada para este atendimento ou protocolo.";
+          console.warn(`Omni Max [SummaryUiService]: No messages found for protocol ${protocolNumber} (contact ID ${contactId}).`);
         }
-        this.isLoading = false;
+        this.isLoadingSummary = false;
       }
     } catch (error: any) {
-      console.error(`Omni Max: Erro ao processar ${protocolo}:`, error);
-      this.isLoading = false; this.summaryText = `Erro: ${error.message || 'Desconhecido'}`;
+      console.error(`Omni Max [SummaryUiService]: Error processing summary for protocol ${protocolNumber}:`, error);
+      this.isLoadingSummary = false;
+      this.currentSummaryText = `Erro ao gerar resumo: ${error.message || 'Erro desconhecido.'}`;
     } finally {
-      delete this.requestStatus[protocolo];
-      if (this.isVisible) this.updatePopupContent();
+      delete this.activeSummaryRequests[protocolNumber];
+      if (this.isPopupVisible) {
+        this.updatePopupContent(); // Update with summary or error message
+      }
     }
   }
 
-  public hide(): void { /* ... (Como antes) ... */
+  /**
+   * Hides the summary popup and restores page scroll.
+   * @public
+   */
+  public hide(): void {
     if (!this.popupMainElement || !this.popupOverlayElement) return;
-    this.isVisible = false;
+    this.isPopupVisible = false;
     this.domService.applyStyles(this.popupMainElement, { display: 'none' });
     this.domService.applyStyles(this.popupOverlayElement, { display: 'none' });
-    document.body.style.overflow = '';
+    document.body.style.overflow = ''; // Restore page scroll
     document.removeEventListener('keydown', this.handleEscapeKey);
   }
 
-  private handleEscapeKey = (event: KeyboardEvent): void => { /* ... (Como antes) ... */
-    if (event.key === 'Escape') this.hide();
-  }
+  /**
+   * Handles the 'Escape' key press to hide the summary popup.
+   * @param {KeyboardEvent} event The keyboard event.
+   * @private
+   */
+  private handleEscapeKey = (event: KeyboardEvent): void => {
+    // Bound function for add/removeEventListener
+    if (event.key === 'Escape') {
+      this.hide();
+    }
+  };
 }

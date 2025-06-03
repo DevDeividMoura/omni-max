@@ -57,13 +57,13 @@ export const availableModules: Module[] = [
     id: 'aiChatSummary',
     name: 'IA: Resumir Atendimento',
     description: 'Gera um resumo do histórico da conversa (protocolo) atual utilizando Inteligência Artificial.',
-    defaultEnabled: true,
+    defaultEnabled: false,
   },
   {
     id: 'aiResponseReview',
     name: 'IA: Revisar e Melhorar Resposta',
     description: 'Utiliza IA para analisar e sugerir melhorias no texto da sua resposta antes do envio.',
-    defaultEnabled: true,
+    defaultEnabled: false,
   }
 ];
 
