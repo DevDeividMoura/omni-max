@@ -16,23 +16,52 @@ describe('MatrixApiService', () => {
   let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
+  // Guardar a referência original de window.location
+  const originalWindowLocation = window.location;
+
   beforeEach(() => {
     service = new MatrixApiService();
     mockFetch = vi.fn();
-    global.fetch = mockFetch; // Mock global fetch
+    global.fetch = mockFetch;
 
     consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => { });
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
 
-    // Mock window.location.origin
-    // @ts-expect-error - Modificando propriedade somente leitura para teste
-    delete window.location;
-    // @ts-expect-error - Modificando propriedade somente leitura para teste
-    window.location = { origin: 'http://mockorigin.com' } as Location;
+    // Mock window.location de forma robusta
+    Object.defineProperty(window, 'location', {
+      configurable: true, // Essencial para poder restaurar no afterEach
+      writable: true,     // Permite que o valor seja alterado (embora não vamos alterar aqui)
+      value: {
+        origin: 'http://mockorigin.com',
+        // Adicione outras propriedades do Location que seu serviço ou código testado possam usar
+        // Se apenas 'origin' é usado, isso é suficiente.
+        // Para um mock mais completo do Location, você adicionaria href, pathname, etc.
+        // Exemplo mínimo para satisfazer a interface Location se necessário:
+        href: 'http://mockorigin.com',
+        pathname: '/',
+        search: '',
+        hash: '',
+        hostname: 'mockorigin.com',
+        port: '',
+        protocol: 'http:',
+        assign: vi.fn(),
+        reload: vi.fn(),
+        replace: vi.fn(),
+        toString: () => 'http://mockorigin.com/',
+        ancestorOrigins: {} as DOMStringList, // Cast para tipo correto
+        host: 'mockorigin.com',
+      },
+    });
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+    // Restaurar window.location original
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      writable: false, // Ou a 'writable' original se souber
+      value: originalWindowLocation,
+    });
   });
 
   describe('parseDateForSorting', () => {
