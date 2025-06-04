@@ -21,6 +21,12 @@
     Info,
   } from "lucide-svelte";
 
+  import {
+    PROVIDER_METADATA_LIST,
+    PROVIDER_METADATA_MAP,
+    type ProviderMetadata,
+  } from "../ai/providerMetadata";
+
   import { AIServiceManager } from "../ai/AIServiceManager";
 
   import {
@@ -438,6 +444,43 @@
       modelError = null;
     }
   }
+
+  // Variável reativa para os metadados do provedor selecionado
+  let selectedProviderMetadata: ProviderMetadata | undefined;
+  $: selectedProviderMetadata = PROVIDER_METADATA_MAP.get(
+    localAiProviderConfig.provider,
+  );
+
+  // Ajuste no on:change do select de provedor para usar o defaultModel do metadado, se houver
+  function handleProviderChange() {
+    markChanged();
+    const currentMeta = PROVIDER_METADATA_MAP.get(
+      localAiProviderConfig.provider,
+    );
+    localAiProviderConfig.model = currentMeta?.defaultModel || ""; // Usa defaultModel do metadado ou vazio
+    refreshModelList();
+  }
+
+  // No botão "Cancelar" do modal de credenciais:
+  function handleCancelCredentialsModal() {
+    if (selectedProviderMetadata && initialAiCredentials) {
+      // Reverte apenas as credenciais relevantes para o provedor atual
+      if (selectedProviderMetadata.apiKeySettings?.credentialKey) {
+        const key = selectedProviderMetadata.apiKeySettings.credentialKey;
+        (localAiCredentials as any)[key] = initialAiCredentials[key];
+      }
+      if (selectedProviderMetadata.baseUrlSettings?.credentialKey) {
+        const key = selectedProviderMetadata.baseUrlSettings.credentialKey;
+        (localAiCredentials as any)[key] = initialAiCredentials[key];
+      }
+      // Força a reatividade do objeto se necessário, ou se estiver usando $state,
+      // Svelte 5 deve lidar com isso. Para Svelte < 5:
+      localAiCredentials = { ...localAiCredentials };
+    }
+    showCredentialsModal = false;
+    // A lógica para verificar hasPendingChanges ao cancelar pode ser complexa,
+    // é mais simples deixar o usuário clicar em "Descartar" principal se quiser reverter tudo.
+  }
 </script>
 
 <div class="omni-max-popup-container-fixed-layout">
@@ -622,16 +665,13 @@
                 id="aiProvider"
                 class="select-field"
                 bind:value={localAiProviderConfig.provider}
-                on:change={() => {
-                  markChanged();
-                  localAiProviderConfig.model = ""; // Reset model when provider changes
-                  refreshModelList(); // Fetch models for the new provider
-                }}
+                on:change={handleProviderChange}
               >
-                <option value="openai">OpenAI</option>
-                <option value="gemini">Google Gemini</option>
-                <option value="anthropic">Anthropic</option>
-                <option value="ollama">Ollama</option>
+                {#each PROVIDER_METADATA_LIST as providerMeta (providerMeta.id)}
+                  <option value={providerMeta.id}
+                    >{providerMeta.displayName}</option
+                  >
+                {/each}
               </select>
             </div>
 
@@ -815,137 +855,77 @@
   </div>
 
   {#if showCredentialsModal}
-    <div
-      class="modal-overlay"
-      role="presentation"
-      on:click|self={() => (showCredentialsModal = false)}
-      on:keydown={(event) => {
-        if (event.key === "Escape") showCredentialsModal = false;
-      }}
-    >
-      <!-- svelte-ignore a11y_click_events_have_key_events -->
-      <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-      <div
-        class="modal-content"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="credentials-modal-title"
-        on:click|stopPropagation
-      >
-        <div class="modal-header">
-          <h3 id="credentials-modal-title">
-            Credenciais: {localAiProviderConfig.provider
-              ? localAiProviderConfig.provider.charAt(0).toUpperCase() +
-                localAiProviderConfig.provider.slice(1)
-              : "IA"}
-          </h3>
-          <button
-            class="close-button"
-            on:click={() => (showCredentialsModal = false)}
-            aria-label="Fechar modal de credenciais"
-            title="Fechar"><XCircle size={20} /></button
-          >
+  <div class="modal-overlay" >
+    <div class="modal-content" >
+      <div class="modal-header">
+        <h3 id="credentials-modal-title">
+          Credenciais: {selectedProviderMetadata?.displayName || localAiProviderConfig.provider}
+        </h3>
         </div>
-        <div class="modal-body">
-          {#if localAiProviderConfig.provider === "openai"}
+      <div class="modal-body">
+        {#if selectedProviderMetadata}
+          {#if selectedProviderMetadata.apiKeySettings}
+            {@const settings = selectedProviderMetadata.apiKeySettings}
             <div class="input-group">
-              <label for="openaiApiKey">OpenAI API Key</label>
+              <label for={settings.credentialKey}>{settings.label}</label>
               <input
-                type="password"
-                id="openaiApiKey"
+                type={settings.inputType || 'password'}
+                id={settings.credentialKey}
                 class="input-field"
-                bind:value={localAiCredentials.openaiApiKey}
+                bind:value={localAiCredentials[settings.credentialKey]}
                 on:input={() => markChanged()}
-                placeholder="sk-..."
+                placeholder={settings.placeholder || ''}
+                autocomplete="new-password"
+              />
+            </div>
+          {/if}
+          {#if selectedProviderMetadata.baseUrlSettings}
+            {@const settings = selectedProviderMetadata.baseUrlSettings}
+            <div class="input-group">
+              <label for={settings.credentialKey}>{settings.label}</label>
+              <input
+                type={settings.inputType || 'text'}
+                id={settings.credentialKey}
+                class="input-field"
+                bind:value={localAiCredentials[settings.credentialKey]}
+                on:input={() => markChanged()}
+                placeholder={settings.placeholder || ''}
                 autocomplete="off"
               />
             </div>
-          {:else if localAiProviderConfig.provider === "gemini"}
-            <div class="input-group">
-              <label for="geminiApiKey">Google Gemini API Key</label>
-              <input
-                type="password"
-                id="geminiApiKey"
-                class="input-field"
-                bind:value={localAiCredentials.geminiApiKey}
-                on:input={() => markChanged()}
-                placeholder="Seu Gemini API Key..."
-                autocomplete="off"
-              />
-            </div>
-          {:else if localAiProviderConfig.provider === "anthropic"}
-            <div class="input-group">
-              <label for="anthropicApiKey">Anthropic API Key</label>
-              <input
-                type="password"
-                id="anthropicApiKey"
-                class="input-field"
-                bind:value={localAiCredentials.anthropicApiKey}
-                on:input={() => markChanged()}
-                placeholder="Seu Anthropic API Key..."
-                autocomplete="off"
-              />
-            </div>
-          {:else if localAiProviderConfig.provider === "ollama"}
-            <div class="input-group">
-              <label for="ollamaBaseUrl">Ollama Base URL</label>
-              <input
-                type="text"
-                id="ollamaBaseUrl"
-                class="input-field"
-                bind:value={localAiCredentials.ollamaBaseUrl}
-                on:input={() => markChanged()}
-                placeholder="Ex: http://localhost:11434"
-                autocomplete="off"
-              />
-            </div>
-          {:else}
-            <p class="placeholder-text">
-              <Info size={16} class="placeholder-icon" /> Provedor de IA não selecionado
-              ou configuração de credenciais indisponível.
+          {/if}
+          {#if selectedProviderMetadata.documentationLink}
+            <p style="font-size:0.8em; margin-top: 12px; text-align: center;">
+              <a href={selectedProviderMetadata.documentationLink} target="_blank" rel="noopener noreferrer" style="color: var(--color-primary, #a9276f);">
+                Como obter {selectedProviderMetadata.apiKeySettings?.label || selectedProviderMetadata.baseUrlSettings?.label}?
+              </a>
             </p>
           {/if}
-        </div>
-        <div class="modal-footer">
-          <button
-            class="button-secondary"
-            on:click={() => {
-              // Revert credentials for the current provider if user cancels
-              if (localAiProviderConfig.provider === "openai")
-                localAiCredentials.openaiApiKey =
-                  initialAiCredentials.openaiApiKey;
-              else if (localAiProviderConfig.provider === "gemini")
-                localAiCredentials.geminiApiKey =
-                  initialAiCredentials.geminiApiKey;
-              else if (localAiProviderConfig.provider === "anthropic")
-                localAiCredentials.anthropicApiKey =
-                  initialAiCredentials.anthropicApiKey;
-              else if (localAiProviderConfig.provider === "ollama")
-                localAiCredentials.ollamaBaseUrl =
-                  initialAiCredentials.ollamaBaseUrl;
-              showCredentialsModal = false;
-              // Check if this revert actually removed the 'pending' status
-              if (
-                JSON.stringify(localAiCredentials) ===
-                JSON.stringify(initialAiCredentials)
-              ) {
-                // Simple check, a more robust one would compare all states
-                // hasPendingChanges = false; // Be careful with this, other unrelated changes might exist
-              }
-            }}>Cancelar</button
-          >
-          <button
-            class="button-primary"
-            on:click={() => {
-              showCredentialsModal = false;
-              markChanged(); // Ensure changes are marked
-              refreshModelList(); // Refresh model list with potentially new credentials
-            }}>OK</button
-          >
-        </div>
+          {#if selectedProviderMetadata.credentialType === 'none'}
+             <p class="placeholder-text">Este provedor não requer credenciais adicionais.</p>
+          {/if}
+        {:else}
+          <p class="placeholder-text">
+            <Info size={16} class="placeholder-icon" /> Selecione um provedor de IA válido.
+          </p>
+        {/if}
+      </div>
+      <div class="modal-footer">
+        <button class="button-secondary" on:click={handleCancelCredentialsModal}>
+          Cancelar
+        </button>
+        <button
+          class="button-primary"
+          on:click={() => {
+            showCredentialsModal = false;
+            markChanged(); 
+            refreshModelList(); 
+          }}>OK</button
+        >
       </div>
     </div>
-  {/if}
+  </div>
+{/if}
 </div>
 
 <!-- svelte-ignore css-unused-selector -->
