@@ -13,6 +13,8 @@ export interface RawMessageFromApi {
    */
   bol_entrante: "0" | "1";
 
+  bol_automatica?: "0" | "1"; // Optional, indicates if the message is automated (e.g., from a chatbot)
+
   /** The raw text content of the message. */
   dsc_msg: string;
 
@@ -56,6 +58,8 @@ export interface RawServiceItemFromApi {
   /** Optional contact name associated with this service session. */
   nom_contato?: string;
 
+  nom_agente?: string;
+
   /** Optional CPF or CNPJ number of the contact. */
   num_cpf?: string; // Could be CPF or CNPJ
 
@@ -89,7 +93,9 @@ export interface ApiResponse {
  */
 export interface Message {
   /** The role of the message sender. */
-  role: 'agent' | 'customer';
+  role: 'agent' | 'customer'| 'system';
+
+  senderName: string;
 
   /** The content of the message. */
   content: string;
@@ -99,6 +105,7 @@ export interface Message {
 
   /** The Date object representing the message's timestamp, used for internal sorting and processing. */
   timestamp: Date;
+  originalAttendanceId?: string;
 }
 
 /**

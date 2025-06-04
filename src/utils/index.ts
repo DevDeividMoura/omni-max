@@ -57,3 +57,59 @@ export const capitalizeFirstLetterOfWords = (str: string | null | undefined): st
     return p1 + p2.toUpperCase();
   });
 };
+
+/**
+ * Decodes HTML entities in a string.
+ * Example: '&amp;' becomes '&'.
+ * @param text The string with HTML entities.
+ * @returns The decoded string.
+ */
+export function decodeHtmlEntities(text: string): string {
+  // Verifica se estamos em um ambiente de navegador que tem DOMParser
+  if (typeof DOMParser !== 'undefined') {
+    const parser = new DOMParser();
+    const decodedString = parser.parseFromString(`<!doctype html><body>${text}`, 'text/html').body.textContent;
+    return decodedString || "";
+  }
+  // Fallback simples (pode não cobrir todas as entidades, mas lida com as mais comuns)
+  // ou se você tiver uma biblioteca para isso, use-a.
+  // Esta implementação de fallback é muito básica.
+  if (typeof document !== 'undefined') { // Fallback adicional se DOMParser não estiver disponível mas document sim
+      const textarea = document.createElement('textarea');
+      textarea.innerHTML = text;
+      return textarea.value;
+  }
+  // Se não houver como decodificar (ex: ambiente Node.js puro sem JSDOM), retorna o texto original.
+  // Isso pode ser aceitável se o conteúdo principal não tiver entidades complexas nos números.
+  console.warn("Omni Max [Utils]: decodeHtmlEntities - DOMParser and document not available. HTML entities might not be fully decoded.");
+  return text;
+}
+
+/**
+ * Masks CPF and CNPJ numbers in a given text, handling various formats.
+ * Replaces them with a specified placeholder.
+ * @param text The text to sanitize (ideally after HTML entities have been decoded).
+ * @param placeholder The placeholder to use, e.g., "[DOCUMENTO_CLIENTE]".
+ * @returns The text with CPF/CNPJ masked.
+ */
+export function maskSensitiveDocumentNumbers(text: string, placeholder: string = "[DOCUMENTO_CLIENTE]"): string {
+  if (!text || typeof text !== 'string') return "";
+
+  // Regex para CPF:
+  // Aceita: ddd.ddd.ddd-dd | ddd ddd ddd dd | ddddddddddd
+  // O \b garante que não pegamos parte de números maiores.
+  const cpfPattern = /\b(?:\d{3}(?:[.\s])?\d{3}(?:[.\s])?\d{3}(?:[-\s])?\d{2}|\d{11})\b/g;
+
+  // Regex para CNPJ:
+  // Aceita: dd.ddd.ddd/dddd-dd | dd ddd ddd dddd dd | dddddddddddddd
+  // O [\/\.\s] permite barra, ponto ou espaço como separador antes dos 4 dígitos do milhar.
+  const cnpjPattern = /\b(?:\d{2}(?:[.\s])?\d{3}(?:[.\s])?\d{3}(?:[\/.\s])?\d{4}(?:[-\s])?\d{2}|\d{14})\b/g;
+
+  let maskedText = text;
+  
+  // Mascarar CNPJ primeiro (padrão mais longo) para evitar conflitos parciais se um CPF pudesse ser parte de um CNPJ (improvável aqui).
+  maskedText = maskedText.replace(cnpjPattern, placeholder);
+  maskedText = maskedText.replace(cpfPattern, placeholder);
+
+  return maskedText;
+}

@@ -61,7 +61,7 @@ export class MatrixApiService {
   public async getAtendimentosByContato(contactId: string): Promise<CustomerServiceSession[]> {
     const baseUrl = window.location.origin;
     const page = 1; 
-    const rowsToFetch = 100; // Number of records to fetch per request. Adjust if more are typically needed.
+    const rowsToFetch = 10; // Number of records to fetch per request. Adjust if more are typically needed.
 
     try {
       const response = await fetch(`${baseUrl}/Painel/atendimento/get-atendimentos/cod_contato/${contactId}`, {
@@ -88,82 +88,98 @@ export class MatrixApiService {
 
         const rawServiceItems: RawServiceItemFromApi[] = apiResponse.data;
 
-        // 1. Extract all messages, associate them with their protocol and attendance ID, and convert to `Message` format.
-        const allMessagesWithDetails: Array<Message & { protocolNumber: string, attendanceId: string }> = [];
-        rawServiceItems.forEach(item => {
-          const protocolNumber = String(item.num_protocolo);
-          const attendanceId = String(item.cod_atendimento);
-          if (Array.isArray(item.msgs)) {
-            item.msgs.forEach((rawMsg: RawMessageFromApi) => {
-              allMessagesWithDetails.push({
-                protocolNumber,
-                attendanceId,
-                role: rawMsg.bol_entrante === "0" ? 'agent' : 'customer', // "0" for agent (outgoing), "1" for customer (incoming)
-                content: rawMsg.dsc_msg,
-                displayTimestamp: rawMsg.dat_msg, // For display
-                timestamp: this.parseDateForSorting(rawMsg.dat_original || rawMsg.dat_msg) // For sorting
-              });
+        const agentNameByAttendanceId: Record<string, string | undefined> = {};
+            rawServiceItems.forEach(item => {
+                agentNameByAttendanceId[String(item.cod_atendimento)] = item.nom_agente;
             });
-          }
-        });
 
-        // 2. Sort all extracted messages globally by their processed timestamp.
-        allMessagesWithDetails.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+            const allMessagesWithContext: Array<Message & { // Usando a interface Message atualizada
+                protocolNumber: string;
+                // attendanceId já está em originalAttendanceId dentro de Message
+            }> = [];
 
-        // 3. Group messages by protocol number into `CustomerServiceSession` objects.
-        const groupedSessions = new Map<string, CustomerServiceSession>();
+       rawServiceItems.forEach(item => {
+                const protocolNumber = String(item.num_protocolo);
+                const currentAttendanceId = String(item.cod_atendimento);
+                const customerName = item.nom_contato || "Cliente"; // Nome do cliente para este RawServiceItem
+                const agentName = item.nom_agente || "Atendente";     // Nome do agente para este RawServiceItem
 
-        for (const messageDetail of allMessagesWithDetails) {
-          const { protocolNumber, attendanceId, ...messageData } = messageDetail; // `messageData` is now a `Message` object
+                if (Array.isArray(item.msgs)) {
+                    item.msgs.forEach((rawMsg: RawMessageFromApi) => {
+                        let role: Message['role'];
+                        let senderName: string;
 
-          if (groupedSessions.has(protocolNumber)) {
-            const existingSession = groupedSessions.get(protocolNumber)!;
-            existingSession.messages.push(messageData);
-            // Add original attendance ID if not already present for this protocol.
-            if (!existingSession.originalAttendanceIds.includes(attendanceId)) {
-              existingSession.originalAttendanceIds.push(attendanceId);
+                        if (rawMsg.bol_entrante === "1") { // Mensagem do cliente
+                            role = 'customer';
+                            senderName = customerName; // Usar o nome do contato do item de atendimento
+                        } else { // Mensagem do sistema/agente (bol_entrante === "0")
+                            if (rawMsg.bol_automatica === "1") {
+                                role = 'system';
+                                senderName = "Chatbot"; // Ou um nome mais específico se a API fornecer
+                            } else {
+                                role = 'agent';
+                                // Idealmente, a API da mensagem teria o nome do agente.
+                                // Na ausência, usamos o nome do agente do RawServiceItem atual.
+                                senderName = agentName;
+                            }
+                        }
+
+                        allMessagesWithContext.push({
+                            protocolNumber,
+                            role,
+                            senderName,
+                            content: rawMsg.dsc_msg, // Conteúdo original com HTML e entidades
+                            displayTimestamp: rawMsg.dat_msg,
+                            timestamp: this.parseDateForSorting(rawMsg.dat_original || rawMsg.dat_msg),
+                            originalAttendanceId: currentAttendanceId
+                        });
+                    });
+                }
+            });
+
+            allMessagesWithContext.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+
+            const groupedSessions = new Map<string, CustomerServiceSession>();
+
+            for (const messageDetail of allMessagesWithContext) {
+                const { protocolNumber, ...messageData } = messageDetail;
+                // messageData é agora um objeto Message completo
+
+                if (groupedSessions.has(protocolNumber)) {
+                    const existingSession = groupedSessions.get(protocolNumber)!;
+                    existingSession.messages.push(messageData);
+                    if (messageData.originalAttendanceId && !existingSession.originalAttendanceIds.includes(messageData.originalAttendanceId)) {
+                        existingSession.originalAttendanceIds.push(messageData.originalAttendanceId);
+                    }
+                    // Atualizar lastMessageTimestamp (o último da lista ordenada de mensagens)
+                    existingSession.lastMessageTimestamp = messageData.displayTimestamp;
+                } else {
+                    // Primeira mensagem para este protocolo
+                    const sourceApiItemForSession = rawServiceItems.find(item => String(item.num_protocolo) === protocolNumber);
+                    groupedSessions.set(protocolNumber, {
+                        protocolNumber: protocolNumber,
+                        contactId: String(contactId),
+                        messages: [messageData],
+                        contactName: sourceApiItemForSession?.nom_contato || "Cliente Desconhecido",
+                        documentNumber: sourceApiItemForSession?.num_cpf,
+                        contactPhone: sourceApiItemForSession?.telefone_contato,
+                        firstMessageTimestamp: messageData.displayTimestamp,
+                        lastMessageTimestamp: messageData.displayTimestamp,
+                        originalAttendanceIds: messageData.originalAttendanceId ? [messageData.originalAttendanceId] : []
+                    });
+                }
             }
-            // Update the last message timestamp for the session.
-            // Using `dat_original` (via `messageData.timestamp`) would be more robust for chronological accuracy
-            // if `displayTimestamp` (dat_msg) isn't guaranteed to be sortable or consistent.
-            // For simplicity, if displayTimestamp is what's shown, it can be used for lastMessageTimestamp.
-            // Let's assume dat_original from the message is preferred for these boundary timestamps.
-            existingSession.lastMessageTimestamp = allMessagesWithDetails
-                .filter(m => m.protocolNumber === protocolNumber)
-                .sort((a,b) => b.timestamp.getTime() - a.timestamp.getTime())[0]
-                .displayTimestamp; // Or use rawMsg.dat_original for consistency with firstMessageTimestamp's potential source
-          } else {
-            // This is the first message encountered for this protocol number. Create a new session.
-            // Find the original API item that sourced this protocol to get master data like contact name, CPF.
-            // This assumes the first API item encountered for a protocol has the representative contact details.
-            const sourceApiItem = rawServiceItems.find(item => String(item.num_protocolo) === protocolNumber);
             
-            groupedSessions.set(protocolNumber, {
-              protocolNumber: protocolNumber,
-              contactId: String(contactId), // The contact ID for which this fetch was made
-              messages: [messageData],
-              contactName: sourceApiItem?.nom_contato,
-              documentNumber: sourceApiItem?.num_cpf, // API might send CPF or CNPJ here
-              contactPhone: sourceApiItem?.telefone_contato,
-              // Use the current message's timestamp as both first and last initially.
-              // Prefer `dat_original` for these if available and reliable.
-              firstMessageTimestamp: messageData.displayTimestamp, // Or sourceApiItem.msgs[0].dat_original etc.
-              lastMessageTimestamp: messageData.displayTimestamp,
-              originalAttendanceIds: [attendanceId]
+            const result: CustomerServiceSession[] = Array.from(groupedSessions.values());
+            // Ordenar as sessões agrupadas pela última mensagem, se necessário
+            result.sort((a, b) => {
+                const dateA = a.lastMessageTimestamp ? this.parseDateForSorting(a.lastMessageTimestamp) : new Date(0);
+                const dateB = b.lastMessageTimestamp ? this.parseDateForSorting(b.lastMessageTimestamp) : new Date(0);
+                return dateB.getTime() - dateA.getTime(); // Mais recente primeiro
             });
-          }
-        }
-        
-        const result: CustomerServiceSession[] = Array.from(groupedSessions.values());
-        // Optionally, re-sort sessions themselves if needed, e.g., by last message date.
-        result.sort((a,b) => {
-            const dateA = a.lastMessageTimestamp ? this.parseDateForSorting(a.lastMessageTimestamp) : new Date(0);
-            const dateB = b.lastMessageTimestamp ? this.parseDateForSorting(b.lastMessageTimestamp) : new Date(0);
-            return dateB.getTime() - dateA.getTime(); // Sort descending by last message
-        });
 
-        console.log(`Omni Max [MatrixApiService]: Consolidated service sessions for contact ${contactId}:`, result);
-        return result;
+            // console.log(`Omni Max [MatrixApiService]: Consolidated service sessions for contact ${contactId}:`, result);
+            return result;
 
       } else {
         console.error('Omni Max [MatrixApiService]: Error fetching service sessions or unexpected data structure:', apiResponse);

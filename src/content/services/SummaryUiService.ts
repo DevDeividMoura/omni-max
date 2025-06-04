@@ -4,7 +4,8 @@ import type { DomService } from './DomService';
 import type { AIServiceManager } from '../../ai/AIServiceManager';
 import type { MatrixApiService } from './MatrixApiService';
 import type { SummaryCacheService } from './SummaryCacheService';
-import type { ActiveChatContext, CustomerServiceSession } from '../types'; // Updated import
+import type { ActiveChatContext, CustomerServiceSession } from '../types';
+import { maskSensitiveDocumentNumbers, decodeHtmlEntities } from '../../utils';
 
 /** SVG icon for the close button. */
 const CLOSE_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>`;
@@ -389,44 +390,65 @@ export class SummaryUiService {
     this.activeSummaryRequests[protocolNumber] = true;
 
     try {
-      const cachedSummary = await this.summaryCacheService.getSummary(protocolNumber);
-      if (cachedSummary) {
-        this.currentSummaryText = cachedSummary;
-        this.isLoadingSummary = false;
-        console.log(`Omni Max [SummaryUiService]: Summary for protocol ${protocolNumber} retrieved from cache.`);
-      } else {
-        console.log(`Omni Max [SummaryUiService]: Cache miss for protocol ${protocolNumber}. Fetching chat data...`);
-        // Fetch all service sessions (atendimentos) for the contact.
-        // The MatrixApiService should return data mapped to `CustomerServiceSession[]`.
-        const allContactSessions: CustomerServiceSession[] = await this.matrixApiService.getAtendimentosByContato(contactId);
-        const currentSession = allContactSessions.find(session => session.protocolNumber === protocolNumber);
+            const cachedSummary = await this.summaryCacheService.getSummary(protocolNumber);
+            if (cachedSummary) {
+                this.currentSummaryText = cachedSummary;
+                this.isLoadingSummary = false;
+            } else {
+                const allContactSessions: CustomerServiceSession[] = await this.matrixApiService.getAtendimentosByContato(contactId);
+                const currentSession = allContactSessions.find(session => session.protocolNumber === protocolNumber);
 
-        if (currentSession && currentSession.messages.length > 0) {
-          // Construct conversation string using the application's internal `Message` type.
-          const conversationString = currentSession.messages
-            .map(m => `${m.role === 'agent' ? 'Atendente' : 'Cliente'}: ${m.content}`) // Use updated property names
-            .join('\n\n');
-          
-          console.log(`Omni Max [SummaryUiService]: Generating summary for protocol ${protocolNumber} (conversation length: ${conversationString.length} chars).`);
-          const newSummary = await this.aiManager.generateSummary(conversationString);
-          await this.summaryCacheService.saveSummary(protocolNumber, newSummary);
-          this.currentSummaryText = newSummary;
-        } else {
-          this.currentSummaryText = "Nenhuma mensagem encontrada para este atendimento ou protocolo.";
-          console.warn(`Omni Max [SummaryUiService]: No messages found for protocol ${protocolNumber} (contact ID ${contactId}).`);
+                if (currentSession && currentSession.messages.length > 0) {
+                    const customerNameForContext = currentSession.contactName || "Cliente";
+                    
+                    // Adiciona informações do cabeçalho do atendimento
+                    let conversationPreamble = `Início do atendimento do protocolo ${protocolNumber} com ${customerNameForContext}.\n`;
+                    if(currentSession.originalAttendanceIds.length > 1) {
+                        conversationPreamble += `Este protocolo inclui múltiplos segmentos de atendimento fundidos (IDs: ${currentSession.originalAttendanceIds.join(', ')}).\n`;
+                    }
+                    conversationPreamble += "\n";
+
+                    const conversationTurns = currentSession.messages.map(msg => {
+                        const decodedContent = decodeHtmlEntities(msg.content); // Decodifica HTML entities
+                        const maskedContent = maskSensitiveDocumentNumbers(decodedContent); // Mascara documentos
+                        
+                        // Determina o display name do remetente.
+                        // msg.senderName já foi preenchido pelo MatrixApiService.
+                        let senderDisplayName = msg.senderName;
+
+                        // Para clareza, podemos adicionar o tipo de remetente (Cliente, Atendente, Sistema)
+                        let roleLabel = "Desconhecido";
+                        if (msg.role === 'customer') roleLabel = "Cliente";
+                        else if (msg.role === 'agent') roleLabel = "Atendente";
+                        else if (msg.role === 'system') roleLabel = "Sistema/Chatbot";
+                        
+                        return `${senderDisplayName} (${roleLabel}): ${maskedContent}`;
+                    }).join('\n\n');
+                    
+                    const fullConversationForAI = conversationPreamble + conversationTurns;
+
+                    console.log(`Omni Max [SummaryUiService]: Generating summary for protocol ${protocolNumber}. Full context for AI: ${fullConversationForAI.substring(0,1000)}...`);
+                    const newSummary = await this.aiManager.generateSummary(fullConversationForAI);
+                    
+                    // Decidir se o newSummary precisa ser mascarado também.
+                    // Por enquanto, vamos assumir que o prompt da IA cuida disso.
+                    await this.summaryCacheService.saveSummary(protocolNumber, newSummary);
+                    this.currentSummaryText = newSummary;
+                } else {
+                    this.currentSummaryText = "Nenhuma mensagem encontrada para este atendimento ou protocolo.";
+                }
+                this.isLoadingSummary = false;
+            }
+        } catch (error: any) {
+            console.error(`Omni Max [SummaryUiService]: Error processing summary for protocol ${protocolNumber}:`, error);
+            this.isLoadingSummary = false;
+            this.currentSummaryText = `Erro ao gerar resumo: ${error.message || 'Erro desconhecido.'}`;
+        } finally {
+            delete this.activeSummaryRequests[protocolNumber];
+            if (this.isPopupVisible) {
+                this.updatePopupContent();
+            }
         }
-        this.isLoadingSummary = false;
-      }
-    } catch (error: any) {
-      console.error(`Omni Max [SummaryUiService]: Error processing summary for protocol ${protocolNumber}:`, error);
-      this.isLoadingSummary = false;
-      this.currentSummaryText = `Erro ao gerar resumo: ${error.message || 'Erro desconhecido.'}`;
-    } finally {
-      delete this.activeSummaryRequests[protocolNumber];
-      if (this.isPopupVisible) {
-        this.updatePopupContent(); // Update with summary or error message
-      }
-    }
   }
 
   /**
