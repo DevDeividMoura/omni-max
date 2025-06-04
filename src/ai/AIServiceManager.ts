@@ -5,8 +5,10 @@ import { OpenAiProvider } from './providers/OpenAIProvider';
 import { GeminiProvider } from './providers/GeminiProvider';
 import { AnthropicProvider } from './providers/AnthropicProvider';
 import { OllamaProvider } from './providers/OllamaProvider';
+import { GroqProvider } from './providers/GroqProvider';
 
 const providerRegistry: Record<string, AIiProvider> = {
+    groq: new GroqProvider(),
     openai: new OpenAiProvider(),
     gemini: new GeminiProvider(),
     anthropic: new AnthropicProvider(),
@@ -16,8 +18,8 @@ const providerRegistry: Record<string, AIiProvider> = {
 export class AIServiceManager {
 
     private async loadProvider(): Promise<AIiProvider> {
-        const config = await get(aiProviderConfigStore); // Use get from svelte/store
-        const providerKey = config.provider?.toLowerCase(); // Handle potential undefined provider
+        const config = await get(aiProviderConfigStore);
+        const providerKey = config.provider?.toLowerCase();
         if (!providerKey) throw new Error("Provedor de IA não configurado.");
         
         const p = providerRegistry[providerKey];
@@ -30,8 +32,8 @@ export class AIServiceManager {
         const cfg = await get(aiProviderConfigStore);
     
         const opts: AIRequestOptions = { model: cfg.model };
-        const keyName = providerInstance.credentialKey; // Use providerInstance passed as arg
-        const urlName = providerInstance.urlKey;      // Use providerInstance passed as arg
+        const keyName = providerInstance.credentialKey;
+        const urlName = providerInstance.urlKey;
     
         if (urlName && creds[urlName]) {
             opts.baseUrl = creds[urlName] as string;

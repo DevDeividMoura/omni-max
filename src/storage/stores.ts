@@ -1,6 +1,7 @@
 // src/storage/stores.ts
 import { persistentStore } from './persistentStore';
 import { getInitialModuleStates } from '../modules';
+import { PROVIDER_METADATA_LIST } from '../ai/providerMetadata';
 
 // --- Defaults ---
 export const GlobalExtensionEnabledDefault = true;
@@ -9,12 +10,14 @@ export const ShortcutsOverallEnabledDefault = true;
 export const AiFeaturesEnabledDefault = false;
 
 export interface AiCredentials {
+  groqApiKey?: string;
   openaiApiKey?: string;
   geminiApiKey?: string;
   anthropicApiKey?: string;
   ollamaBaseUrl?: string;
 }
 export const AiCredentialsDefaults: AiCredentials = {
+  groqApiKey: '',
   openaiApiKey: '',
   geminiApiKey: '',
   anthropicApiKey: '',
@@ -22,12 +25,13 @@ export const AiCredentialsDefaults: AiCredentials = {
 };
 
 export interface AiProviderConfig {
-  provider: 'openai' | 'gemini' | 'anthropic' | 'ollama' | string;
+  provider: string;
   model: string;
 }
 export const AiProviderConfigDefaults: AiProviderConfig = {
-  provider: 'openai',
-  model: '',
+  // Usa o ID do primeiro provedor na lista de metadados como default, ou um fallback.
+  provider: PROVIDER_METADATA_LIST.length > 0 ? PROVIDER_METADATA_LIST[0].id : 'openai',
+  model: PROVIDER_METADATA_LIST.length > 0 ? (PROVIDER_METADATA_LIST[0].defaultModel || '') : '',
 };
 
 export interface PromptsConfig {
