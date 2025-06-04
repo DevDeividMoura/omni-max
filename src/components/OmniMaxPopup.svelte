@@ -45,7 +45,7 @@
     type IStorageAdapter,
   } from "../storage/IStorageAdapter";
 
-  import { availableModules, type Module } from "../modules"; // Import Module type
+  import { availableModules, type Module } from "../modules";
   import GithubMarkIcon from "./icons/GithubMarkIcon.svelte";
 
   // --- UI Control States ---
@@ -54,19 +54,64 @@
   let showCredentialsModal: boolean = false;
 
   // --- Local Copies of Stored Settings ---
-  let localGlobalEnabled: boolean;
-  let localModuleStates: Record<string, boolean> = {};
-  let localShortcutsOverallEnabled: boolean;
-  let localAiFeaturesEnabled: boolean;
-  // Use get() for initial values, but they will be updated by subscriptions
-  let localAiCredentials = JSON.parse(JSON.stringify(get(aiCredentialsStore))); // Deep copy
-  let localAiProviderConfig = JSON.parse(
+  let localGlobalEnabled: boolean = get(globalExtensionEnabledStore);
+  let localModuleStates: Record<string, boolean> = JSON.parse(
+    JSON.stringify(get(moduleStatesStore)),
+  );
+  let localShortcutsOverallEnabled: boolean = get(shortcutsOverallEnabledStore);
+  let localAiFeaturesEnabled: boolean = get(aiFeaturesEnabledStore);
+  let localAiCredentials: AiCredentials = JSON.parse(
+    JSON.stringify(get(aiCredentialsStore)),
+  );
+  let localAiProviderConfig: AiProviderConfig = JSON.parse(
     JSON.stringify(get(aiProviderConfigStore)),
-  ); // Deep copy
+  );
+  let localPrompts: PromptsConfig = JSON.parse(
+    JSON.stringify(get(promptsStore)),
+  );
+  let localOpenSections: CollapsibleSectionsState = JSON.parse(
+    JSON.stringify(get(collapsibleSectionsStateStore)),
+  );
+  let localShortcutKeys: ShortcutKeysConfig = JSON.parse(
+    JSON.stringify(get(shortcutKeysStore)),
+  );
 
   let modelList: string[] = [];
   let loadingModels = false;
   let modelError: string | null = null;
+
+  let initialGlobalEnabled: boolean;
+  let initialModuleStates: Record<string, boolean>;
+  let initialShortcutsOverallEnabled: boolean;
+  let initialAiFeaturesEnabled: boolean;
+  let initialAiCredentials: AiCredentials;
+  let initialAiProviderConfig: AiProviderConfig;
+  let initialPrompts: PromptsConfig;
+  let initialOpenSections: CollapsibleSectionsState;
+  let initialShortcutKeys: ShortcutKeysConfig;
+
+  const generalModules: Module[] = availableModules.filter(
+    (m) =>
+      ["layoutCorrection", "templateProcessor"].includes(m.id) &&
+      m.released !== false,
+  );
+  const shortcutModules: Module[] = availableModules.filter(
+    (m) =>
+      [
+        "shortcutCopyName",
+        "shortcutCopyDocumentNumber",
+        "shortcutServiceOrderTemplate",
+      ].includes(m.id) && m.released !== false,
+  );
+  const aiModules: Module[] = availableModules.filter(
+    (m) =>
+      ["aiChatSummary", "aiResponseReview"].includes(m.id) &&
+      m.released !== false,
+  );
+  let promotableAiModules: Module[];
+  $: promotableAiModules = aiModules.filter(
+    (m) => m.promptSettings && m.released !== false,
+  );
 
   const aiManager = new AIServiceManager();
 
@@ -143,208 +188,114 @@
     }
   }
 
-  let localPrompts: PromptsConfig = {
-    summaryPrompt: "",
-    improvementPrompt: "",
-  };
-  let localOpenSections: CollapsibleSectionsState = {
-    modules: false,
-    shortcuts: false,
-    ai: false,
-    prompts: false,
-  };
-  let localShortcutKeys: ShortcutKeysConfig = {};
-
-  let initialGlobalEnabled: boolean;
-  let initialModuleStates: Record<string, boolean>;
-  let initialShortcutsOverallEnabled: boolean;
-  let initialAiFeaturesEnabled: boolean;
-  let initialAiCredentials: AiCredentials;
-  let initialAiProviderConfig: AiProviderConfig;
-  let initialPrompts: PromptsConfig;
-  let initialOpenSections: CollapsibleSectionsState;
-  let initialShortcutKeys: ShortcutKeysConfig;
-
-  const generalModules: Module[] = availableModules.filter((m) =>
-    ["layoutCorrection", "templateProcessor"].includes(m.id),
-  );
-  const shortcutModules: Module[] = availableModules.filter((m) =>
-    [
-      "shortcutCopyName",
-      "shortcutCopyDocumentNumber",
-      "shortcutServiceOrderTemplate",
-    ].includes(m.id),
-  );
-  const aiModules: Module[] = availableModules.filter(
-    (m) =>
-      ["aiChatSummary", "aiResponseReview"].includes(m.id) &&
-      m.released !== false,
-  );
-
-  // Para os prompts, filtramos os módulos de IA que estão liberados E têm configurações de prompt
-  let promotableAiModules: Module[];
-  $: promotableAiModules = aiModules.filter((m) => m.promptSettings); // Recalcula quando aiModules mudar
-
-  // This static list is now a fallback; actual models come from refreshModelList()
-  // const modelOptions: Record<string, string[]> = { ... }; // Removed, no longer primary source
-
   onMount(() => {
     const unsubs: (() => void)[] = [];
-    let isFirstSubscriptionCall = true;
 
-    const setupInitialValue = <T,>(
-      value: T,
-      initialSetter: (val: T) => void,
-      localSetter: (val: T) => void,
-    ) => {
-      // Deep copy for objects/arrays to avoid direct mutation of store's initial value
-      const copiedValue = JSON.parse(JSON.stringify(value));
-      localSetter(copiedValue);
-      if (isFirstSubscriptionCall) {
-        initialSetter(JSON.parse(JSON.stringify(value))); // Store a separate deep copy for initial state
-      }
-    };
-
+    // Subscreve para atualizar as variáveis locais `local*`
+    // E marca `hasPendingChanges` APÓS o carregamento inicial
+    // O valor inicial síncrono já foi pego acima. As subscrições irão pegar
+    // os valores atualizados do storage quando o persistentStore os carregar.
     unsubs.push(
-      globalExtensionEnabledStore.subscribe((val) =>
-        setupInitialValue(
-          val,
-          (v) => (initialGlobalEnabled = v),
-          (v) => (localGlobalEnabled = v),
-        ),
-      ),
-    );
-    unsubs.push(
-      shortcutsOverallEnabledStore.subscribe((val) =>
-        setupInitialValue(
-          val,
-          (v) => (initialShortcutsOverallEnabled = v),
-          (v) => (localShortcutsOverallEnabled = v),
-        ),
-      ),
-    );
-    unsubs.push(
-      aiFeaturesEnabledStore.subscribe((val) =>
-        setupInitialValue(
-          val,
-          (v) => (initialAiFeaturesEnabled = v),
-          (v) => (localAiFeaturesEnabled = v),
-        ),
-      ),
-    );
-    unsubs.push(
-      aiCredentialsStore.subscribe((val) => {
-        const currentVal = val || {
-          openaiApiKey: "",
-          geminiApiKey: "",
-          anthropicApiKey: "",
-          ollamaBaseUrl: "http://localhost:11434",
-        };
-        setupInitialValue(
-          currentVal,
-          (v) => (initialAiCredentials = v),
-          (v) => (localAiCredentials = v),
-        );
+      globalExtensionEnabledStore.subscribe((v) => {
+        localGlobalEnabled = v;
+        if (!isLoading) markChanged();
       }),
     );
     unsubs.push(
-      aiProviderConfigStore.subscribe((val) => {
-        const currentVal = val || { provider: "openai", model: "gpt-4o-mini" };
-        setupInitialValue(
-          currentVal,
-          (v) => (initialAiProviderConfig = v),
-          (v) => (localAiProviderConfig = v),
-        );
+      moduleStatesStore.subscribe((v) => {
+        localModuleStates = JSON.parse(JSON.stringify(v));
+        if (!isLoading) markChanged();
       }),
     );
     unsubs.push(
-      promptsStore.subscribe((val) =>
-        setupInitialValue(
-          val || { summaryPrompt: "", improvementPrompt: "" },
-          (v) => (initialPrompts = v),
-          (v) => (localPrompts = v),
-        ),
-      ),
+      shortcutsOverallEnabledStore.subscribe((v) => {
+        localShortcutsOverallEnabled = v;
+        if (!isLoading) markChanged();
+      }),
     );
     unsubs.push(
-      collapsibleSectionsStateStore.subscribe((val) =>
-        setupInitialValue(
-          val || {
-            modules: false,
-            shortcuts: false,
-            ai: false,
-            prompts: false,
-          },
-          (v) => (initialOpenSections = v),
-          (v) => (localOpenSections = v),
-        ),
-      ),
-    );
-
-    unsubs.push(
-      moduleStatesStore.subscribe((storedStates) => {
-        const currentLocal: Record<string, boolean> = {};
-        const currentInitial: Record<string, boolean> = {};
-        for (const module of availableModules) {
-          currentLocal[module.id] =
-            storedStates[module.id] ?? module.defaultEnabled;
-          if (isFirstSubscriptionCall) {
-            currentInitial[module.id] =
-              storedStates[module.id] ?? module.defaultEnabled;
+      aiFeaturesEnabledStore.subscribe((v) => {
+        const prevAiFeaturesEnabled = localAiFeaturesEnabled;
+        localAiFeaturesEnabled = v;
+        if (!isLoading) {
+          markChanged();
+          if (prevAiFeaturesEnabled !== localAiFeaturesEnabled) {
+            if (localAiFeaturesEnabled && localGlobalEnabled) {
+              refreshModelList();
+            } else {
+              modelList = [];
+              modelError = localGlobalEnabled
+                ? "Recursos de IA desabilitados."
+                : "Extensão desabilitada.";
+              if (localAiProviderConfig.model) localAiProviderConfig.model = "";
+            }
           }
         }
-        localModuleStates = currentLocal;
-        if (isFirstSubscriptionCall) {
-          initialModuleStates = currentInitial;
-        }
       }),
     );
-
     unsubs.push(
-      shortcutKeysStore.subscribe((storedKeys) => {
-        const currentLocal: ShortcutKeysConfig = {};
-        const currentInitial: ShortcutKeysConfig = {};
-        const defaultShortcutValues =
-          (shortcutKeysStore as any).initialValue || {};
-
-        for (const module of shortcutModules) {
-          let defaultKey =
-            defaultShortcutValues[module.id] ||
-            (module.id === "shortcutCopyName"
-              ? "Z"
-              : module.id === "shortcutCopyDocumentNumber"
-                ? "X"
-                : module.id === "shortcutServiceOrderTemplate"
-                  ? "S"
-                  : "?");
-          currentLocal[module.id] = storedKeys[module.id] ?? defaultKey;
-          if (isFirstSubscriptionCall) {
-            currentInitial[module.id] = storedKeys[module.id] ?? defaultKey;
-          }
-        }
-        localShortcutKeys = currentLocal;
-        if (isFirstSubscriptionCall) {
-          initialShortcutKeys = currentInitial;
-        }
+      aiCredentialsStore.subscribe((v) => {
+        localAiCredentials = JSON.parse(JSON.stringify(v));
+        if (!isLoading) markChanged();
+      }),
+    );
+    unsubs.push(
+      aiProviderConfigStore.subscribe((v) => {
+        localAiProviderConfig = JSON.parse(JSON.stringify(v));
+        if (!isLoading) markChanged();
+      }),
+    );
+    unsubs.push(
+      promptsStore.subscribe((v) => {
+        localPrompts = JSON.parse(JSON.stringify(v));
+        if (!isLoading) markChanged();
+      }),
+    );
+    unsubs.push(
+      collapsibleSectionsStateStore.subscribe((v) => {
+        localOpenSections = JSON.parse(JSON.stringify(v));
+        if (!isLoading) markChanged();
+      }),
+    );
+    unsubs.push(
+      shortcutKeysStore.subscribe((v) => {
+        localShortcutKeys = JSON.parse(JSON.stringify(v));
+        if (!isLoading) markChanged();
       }),
     );
 
-    isLoading = false; // General UI loading might be complete here
-    isFirstSubscriptionCall = false; // Mark that initial calls from subscriptions are done for setupInitialValue logic
-
-    // Defer the very first refresh to allow stores to load from chrome.storage
-    // and update local Svelte component state variables (localAiCredentials, localAiProviderConfig) via their subscriptions.
+    // Espera um tempo para as stores carregarem do chrome.storage
     setTimeout(() => {
+      // Captura os valores locais (que foram atualizados pelas stores com os dados do storage, ou mantiveram os defaults)
+      // como os valores iniciais para o "Descartar".
+      initialGlobalEnabled = localGlobalEnabled;
+      initialModuleStates = JSON.parse(JSON.stringify(localModuleStates));
+      initialShortcutsOverallEnabled = localShortcutsOverallEnabled;
+      initialAiFeaturesEnabled = localAiFeaturesEnabled;
+      initialAiCredentials = JSON.parse(JSON.stringify(localAiCredentials));
+      initialAiProviderConfig = JSON.parse(
+        JSON.stringify(localAiProviderConfig),
+      );
+      initialPrompts = JSON.parse(JSON.stringify(localPrompts));
+      initialOpenSections = JSON.parse(JSON.stringify(localOpenSections));
+      initialShortcutKeys = JSON.parse(JSON.stringify(localShortcutKeys));
+
+      isLoading = false;
+      hasPendingChanges = false;
+
+      console.log("OmniMaxPopup: Initial states captured.", {
+        initialAiCredentials: { ...initialAiCredentials },
+      });
+
       if (localGlobalEnabled && localAiFeaturesEnabled) {
-        console.log(
-          "onMount (deferred): Initial refreshModelList. Credentials:",
-          JSON.stringify(localAiCredentials),
-          "ProviderCfg:",
-          JSON.stringify(localAiProviderConfig),
-        );
         refreshModelList();
+      } else if (!localGlobalEnabled || !localAiFeaturesEnabled) {
+        modelList = [];
+        modelError = localGlobalEnabled
+          ? "Recursos de IA desabilitados."
+          : "Extensão desabilitada.";
       }
-    }, 250); // Increased timeout slightly for safety, adjust if needed. This is a workaround for async store loading.
+    }, 350);
 
     return () => {
       unsubs.forEach((unsub) => unsub());
@@ -352,7 +303,9 @@
   });
 
   function markChanged(): void {
-    hasPendingChanges = true;
+    if (!isLoading) {
+      hasPendingChanges = true;
+    }
   }
 
   function toggleSectionCollapse(
@@ -445,37 +398,37 @@
     ]);
 
     initialGlobalEnabled = localGlobalEnabled;
-    initialModuleStates = { ...localModuleStates };
+    initialModuleStates = JSON.parse(JSON.stringify(localModuleStates));
     initialShortcutsOverallEnabled = localShortcutsOverallEnabled;
-    initialShortcutKeys = { ...localShortcutKeys };
     initialAiFeaturesEnabled = localAiFeaturesEnabled;
-    initialAiCredentials = { ...localAiCredentials };
-    initialAiProviderConfig = { ...localAiProviderConfig };
-    initialPrompts = { ...localPrompts };
-    initialOpenSections = { ...localOpenSections };
+    initialAiCredentials = JSON.parse(JSON.stringify(localAiCredentials));
+    initialAiProviderConfig = JSON.parse(JSON.stringify(localAiProviderConfig));
+    initialPrompts = JSON.parse(JSON.stringify(localPrompts));
+    initialOpenSections = JSON.parse(JSON.stringify(localOpenSections));
+    initialShortcutKeys = JSON.parse(JSON.stringify(localShortcutKeys));
 
     hasPendingChanges = false;
     alert("Configurações aplicadas com sucesso!");
 
-    // chrome.tabs.query({ url: "https://vipmax.matrixdobrasil.ai/Painel/*" }, (tabs) => {
-    //   for (const tab of tabs) {
-    //     if (tab.id) chrome.tabs.reload(tab.id);
-    //   }
-    // });
-    // window.close();
+    window.close();
   }
 
   function discardChanges(): void {
     if (isLoading) return;
     localGlobalEnabled = initialGlobalEnabled;
-    localModuleStates = { ...initialModuleStates };
+    localModuleStates = JSON.parse(JSON.stringify(initialModuleStates));
     localShortcutsOverallEnabled = initialShortcutsOverallEnabled;
-    localShortcutKeys = { ...initialShortcutKeys };
     localAiFeaturesEnabled = initialAiFeaturesEnabled;
-    localAiCredentials = { ...initialAiCredentials };
-    localAiProviderConfig = { ...initialAiProviderConfig };
-    localPrompts = { ...initialPrompts };
-    localOpenSections = { ...initialOpenSections };
+    localAiCredentials = JSON.parse(JSON.stringify(initialAiCredentials));
+    localAiProviderConfig = JSON.parse(JSON.stringify(initialAiProviderConfig));
+    localPrompts = JSON.parse(JSON.stringify(initialPrompts));
+    localOpenSections = JSON.parse(JSON.stringify(initialOpenSections));
+    localShortcutKeys = JSON.parse(JSON.stringify(initialShortcutKeys));
+
+    console.log("OmniMaxPopup: Changes discarded. Restored AI creds:", {
+      ...localAiCredentials,
+    });
+
     hasPendingChanges = false;
     // After discarding, refresh model list to match the reverted settings
     if (localAiFeaturesEnabled && localGlobalEnabled) {
@@ -485,26 +438,6 @@
       modelError = null;
     }
   }
-
-  // When AI features are toggled, refresh model list or clear it
-  $: () => {
-    if (isLoading) return; // Evita execuções durante o carregamento inicial
-
-    if (localAiFeaturesEnabled && localGlobalEnabled) {
-      refreshModelList();
-    } else {
-      modelList = [];
-      // Se AI está desabilitada, não é um "erro" de modelo, mas um estado.
-      modelError = localGlobalEnabled
-        ? "Recursos de IA desabilitados."
-        : "Extensão desabilitada.";
-      if (localAiProviderConfig.model) {
-        // Limpa o modelo selecionado se AI for desativada
-        localAiProviderConfig.model = "";
-        markChanged(); // Marca que houve uma alteração a ser salva
-      }
-    }
-  };
 </script>
 
 <div class="omni-max-popup-container-fixed-layout">
