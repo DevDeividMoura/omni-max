@@ -27,256 +27,286 @@ import { get } from 'svelte/store';
 import packageJson from '../../package.json';
 
 const extensionVersion = packageJson.version;
-/** Flag to prevent multiple initializations of this content script version. */
-const OMNI_MAX_CONTENT_LOADED_FLAG = `omniMaxContentLoaded_v${extensionVersion}_summaryFeature`;
+const OMNI_MAX_CONTENT_LOADED_FLAG = `omniMaxContentLoaded_v${extensionVersion}_layoutFix`; // Updated flag version
+
+const MAX_LAYOUT_RETRIES = 15; // Aumentado para mais chances em páginas lentas
+const LAYOUT_RETRY_DELAY = 300; // ms entre tentativas
 
 /**
- * Applies layout corrections to the target platform's UI based on extension settings.
+ * Applies styles to a selector with retries if the element is not immediately found.
+ * @param domService Instance of DomService.
+ * @param selector The CSS selector for the target element.
+ * @param styles The styles to apply.
+ * @param retries Number of retries remaining.
+ * @returns Promise<boolean> True if styles were applied, false otherwise.
+ */
+async function applyLayoutStylesWithRetry(
+    domService: DomService,
+    selector: string,
+    styles: Partial<CSSStyleDeclaration>,
+    retries = MAX_LAYOUT_RETRIES
+): Promise<boolean> {
+    const targetElement = domService.query(selector);
+    if (targetElement) {
+        domService.applyStyles(targetElement, styles);
+        // console.log(`Omni Max [ContentIndex]: Styles successfully applied to "${selector}".`);
+        return true;
+    } else if (retries > 0) {
+        // console.warn(`Omni Max [ContentIndex]: Element "${selector}" not found for layout. Retrying... (${retries} retries left)`);
+        await new Promise(resolve => setTimeout(resolve, LAYOUT_RETRY_DELAY));
+        return applyLayoutStylesWithRetry(domService, selector, styles, retries - 1);
+    } else {
+        console.error(`Omni Max [ContentIndex]: Element "${selector}" not found after ${MAX_LAYOUT_RETRIES} retries. Cannot apply layout styles.`);
+        return false;
+    }
+}
+
+/**
+ * Applies or removes layout corrections to the target platform's UI based on extension settings.
+ * Uses a retry mechanism to ensure the target element is found.
  * @param {DomService} domService - Instance of DomService for DOM manipulations.
  * @param {Config} config - The application configuration object containing selectors.
+ * @param {boolean} moduleEnabled - Whether the layout correction module is specifically enabled.
+ * @param {boolean} globalEnabled - Whether the extension is globally enabled.
  * @public
  */
-export async function applyLayoutCorrection(domService: DomService, config: Config): Promise<void> {
-  const isGloballyEnabled = get(globalExtensionEnabledStore) !== false;
-  const currentModuleStates = get(moduleStatesStore);
-  const isLayoutModuleEnabled = currentModuleStates?.layoutCorrection !== false;
-  const tabsListSelector = config.selectors?.tabsList;
-
-  if (isGloballyEnabled && isLayoutModuleEnabled && tabsListSelector) {
-    domService.applyStyles(tabsListSelector, {
-      float: 'right',
-      maxHeight: '72vh',
-      overflowY: 'auto'
-    });
-    console.log(`Omni Max [ContentIndex]: Layout correction applied to "${tabsListSelector}".`);
-  }
-}
-
-/**
- * Identifies the active chat context (protocol number, attendance ID, contact ID, and panel element)
- * by querying the active navigation tab in the Matrix Go UI.
- * @param {DomService} domService - Instance of DomService for DOM querying.
- * @returns {ActiveChatContext | null} The active chat context, or null if not determinable.
- * @private
- */
-function getActiveTabChatContext(domService: DomService): ActiveChatContext | null {
-  const activeTabLinkElement = domService.query<HTMLAnchorElement>('ul#tabs li.active a');
-  if (activeTabLinkElement) {
-    // Attribute names like 'data-protocolo' are from the target page's HTML.
-    const protocolNumber = activeTabLinkElement.dataset.protocolo;
-    const attendanceId = activeTabLinkElement.dataset.atendimento; // HTML uses data-atendimento
-    const contactId = activeTabLinkElement.dataset.contato;     // HTML uses data-contato
-    
-    // Attempt to find the corresponding panel element.
-    const panelElement = attendanceId ? domService.query<HTMLElement>(`#aba_${attendanceId}`) : null;
-
-    if (protocolNumber && attendanceId && contactId) {
-      return {
-        protocolNumber,
-        attendanceId,
-        contactId,
-        panelElement: panelElement || undefined // Ensure panelElement is explicitly undefined if null
-      };
-    }
-  }
-  // console.warn("Omni Max [ContentIndex]: Active chat context could not be determined from tabs.");
-  return null;
-}
-
-/**
- * Initializes the Omni Max content script.
- * Sets up all services, observers, and initial UI modifications.
- * Prevents multiple initializations.
- * @public
- * @async
- */
-export async function initializeOmniMaxContentScript(): Promise<void> {
-  if ((window as any)[OMNI_MAX_CONTENT_LOADED_FLAG]) {
-    console.log(`Omni Max: Content script v${extensionVersion} (with summary feature) already initialized.`);
-    return;
-  }
-  (window as any)[OMNI_MAX_CONTENT_LOADED_FLAG] = true;
-
-  console.log(`Omni Max: Content Script v${extensionVersion} (with summary feature) - Initializing...`);
-
-  // Instantiate core services
-  const domService = new DomService();
-  const clipboardService = new ClipboardService();
-  const notificationService = new NotificationService(domService); // Assuming NotificationService takes DomService
-  const extractionService = new ExtractionService(CONFIG, domService);
-  const shortcutService = new ShortcutService(extractionService, clipboardService, notificationService);
-  const templateHandlingService = new TemplateHandlingService(CONFIG, domService);
-  
-  // Instantiate services for the summary functionality
-  const aiManager = new AIServiceManager();
-  const matrixApiService = new MatrixApiService();
-  const summaryCacheService = new SummaryCacheService(defaultStorageAdapter);
-
-  const summaryUiService = new SummaryUiService(
-    domService,
-    aiManager,
-    matrixApiService,
-    summaryCacheService,
-    () => getActiveTabChatContext(domService) // Pass callback to get active context
-  );
-
-  /**
-   * Sets up (injects or removes) the summary button for the currently active chat panel
-   * based on the extension's global and module-specific enablement states.
-   * It attempts to find the correct DOM location for the button using several fallback strategies.
-   * @private
-   */
-  const setupSummaryButtonForActivePanel = (): void => {
-    const isGloballyEnabled = get(globalExtensionEnabledStore) !== false;
-    const isAiFeaturesOverallEnabled = get(aiFeaturesEnabledStore) !== false;
-    const currentModuleStates = get(moduleStatesStore);
-    const isChatSummaryModuleEnabled = currentModuleStates?.aiChatSummary !== false;
-
-    if (!isGloballyEnabled || !isAiFeaturesOverallEnabled || !isChatSummaryModuleEnabled) {
-      // console.log("Omni Max [ContentIndex]: AI summary feature is disabled in settings. Removing button if present.");
-      // If feature is disabled, remove any existing summary buttons.
-      const existingButtons = domService.queryAll<HTMLButtonElement>(`.${SUMMARY_BUTTON_CLASS}`);
-      existingButtons.forEach(btn => btn.remove());
-      return;
-    }
-    
-    const activeChatCtx = getActiveTabChatContext(domService);
-    // Ensure a valid context with protocol number and contact ID is found.
-    // Attendance ID is also crucial for some DOM targeting logic.
-    if (!activeChatCtx || !activeChatCtx.protocolNumber || !activeChatCtx.contactId || !activeChatCtx.attendanceId) {
-        // console.warn("Omni Max [ContentIndex]: Insufficient active chat context to set up summary button.");
+export async function handleLayoutCorrection(domService: DomService, config: Config, moduleEnabled: boolean, globalEnabled: boolean): Promise<void> {
+    const tabsListSelector = config.selectors?.tabsList;
+    if (!tabsListSelector) {
+        console.warn("Omni Max [ContentIndex]: tabsList selector is not defined in config. Cannot handle layout correction.");
         return;
     }
 
-    // Attempt to find the `div.hsm_buttons` container for the button.
-    let hsmButtonsContainer: HTMLDivElement | null = null;
-
-    // 1. Try finding within the identified active panel element.
-    if (activeChatCtx.panelElement) {
-      hsmButtonsContainer = domService.query<HTMLDivElement>('div.hsm_buttons', activeChatCtx.panelElement);
-    }
-    
-    // 2. Fallback: Try finding based on data attributes of links within any hsm_buttons div.
-    // This is more fragile but can work if panelElement isn't reliably found or structured.
-    if (!hsmButtonsContainer) {
-      const allHsmButtonDivs = domService.queryAll<HTMLDivElement>('div.hsm_buttons');
-      for (const div of allHsmButtonDivs) {
-        // Check if this div contains a link matching the active context's IDs
-        const matchingLink = domService.query<HTMLAnchorElement>(
-            `a[data-atendimento="${activeChatCtx.attendanceId}"][data-contato="${activeChatCtx.contactId}"]`,
-            div
-        );
-        if (matchingLink) {
-            hsmButtonsContainer = div;
-            break;
-        }
-      }
-    }
-    
-    // 3. Broader Fallback: Look for hsm_buttons within any 'active' tab pane.
-    if (!hsmButtonsContainer) {
-      const genericActivePanel = domService.query<HTMLElement>('div.tab-pane.active');
-      if (genericActivePanel) {
-        hsmButtonsContainer = domService.query<HTMLDivElement>('div.hsm_buttons', genericActivePanel);
-      }
-    }
-
-    if (hsmButtonsContainer) {
-      summaryUiService.injectSummaryButton(
-        hsmButtonsContainer,
-        activeChatCtx.protocolNumber,
-        activeChatCtx.contactId
-      );
+    if (globalEnabled && moduleEnabled) {
+        // console.log(`Omni Max [ContentIndex]: Attempting to apply layout correction to "${tabsListSelector}".`);
+        await applyLayoutStylesWithRetry(domService, tabsListSelector, {
+            float: 'right',
+            maxHeight: '72vh',
+            overflowY: 'auto'
+        });
     } else {
-      console.warn(`Omni Max [ContentIndex]: Could not find 'div.hsm_buttons' for active panel (protocol: ${activeChatCtx.protocolNumber}). Summary button not injected.`);
+        // console.log(`Omni Max [ContentIndex]: Attempting to remove layout correction from "${tabsListSelector}".`);
+        await applyLayoutStylesWithRetry(domService, tabsListSelector, {
+            float: '',
+            maxHeight: '',
+            overflowY: ''
+        });
     }
-  };
+}
 
-  // --- MutationObserver for Tab Changes and Content Updates ---
-  // This observer watches for changes in the active tab (to re-inject button)
-  // and for tab removals (to clear associated summaries from cache).
-  const tabsUlElement = domService.query('ul#tabs');
-  if (tabsUlElement) {
-    console.log('Omni Max [ContentIndex]: Setting up MutationObserver for ul#tabs.');
-    const tabObserver = new MutationObserver(async (mutationsList) => {
-      let needsButtonSetup = false;
-      let activeProtocolsChanged = false;
 
-      for (const mutation of mutationsList) {
-        if (mutation.type === 'attributes' && mutation.attributeName === 'class' &&
-            mutation.target.nodeName === 'LI' && (mutation.target as HTMLLIElement).classList.contains('active')) {
-          // console.log("Omni Max [ContentIndex]: Chat tab became active (observed).");
-          needsButtonSetup = true;
-          activeProtocolsChanged = true; // Change in active tab usually means protocols list might need re-evaluation for cache cleanup
+function getActiveTabChatContext(domService: DomService): ActiveChatContext | null {
+    const activeTabLinkElement = domService.query<HTMLAnchorElement>('ul#tabs li.active a');
+    if (activeTabLinkElement) {
+        const protocolNumber = activeTabLinkElement.dataset.protocolo;
+        const attendanceId = activeTabLinkElement.dataset.atendimento;
+        const contactId = activeTabLinkElement.dataset.contato;    
+        
+        const panelElement = attendanceId ? domService.query<HTMLElement>(`#aba_${attendanceId}`) : null;
+
+        if (protocolNumber && attendanceId && contactId) {
+            return {
+                protocolNumber,
+                attendanceId,
+                contactId,
+                panelElement: panelElement || undefined 
+            };
         }
-        if (mutation.type === 'childList') {
-          activeProtocolsChanged = true; // Tab added or removed, re-evaluate active protocols
-          mutation.removedNodes.forEach(async removedNode => {
-            if (removedNode.nodeName === 'LI' && removedNode instanceof HTMLLIElement) {
-              const linkElement = domService.query<HTMLAnchorElement>('a', removedNode);
-              const protocolNumberToRemove = linkElement?.dataset.protocolo;
-              if (protocolNumberToRemove) {
-                // console.log(`Omni Max [ContentIndex]: Tab removed for protocol ${protocolNumberToRemove}. Scheduling summary cache removal.`);
-                // Delay removal slightly to handle UI flickers or rapid tab closing/opening.
-                setTimeout(async () => {
-                  const currentActiveTabElements = domService.queryAll<HTMLAnchorElement>('ul#tabs li a');
-                  const currentActiveProtocolNumbers = currentActiveTabElements
-                    .map(tab => tab.dataset.protocolo)
-                    .filter(Boolean) as string[];
-                  // Only remove from cache if it's truly no longer an active tab.
-                  if (!currentActiveProtocolNumbers.includes(protocolNumberToRemove)) {
-                    await summaryCacheService.removeSummary(protocolNumberToRemove);
-                  }
-                }, 7000); // 7-second delay
-              }
+    }
+    return null;
+}
+
+export async function initializeOmniMaxContentScript(): Promise<void> {
+    if ((window as any)[OMNI_MAX_CONTENT_LOADED_FLAG]) {
+        // console.log(`Omni Max: Content script v${extensionVersion} (layoutFix) already initialized.`);
+        return;
+    }
+    (window as any)[OMNI_MAX_CONTENT_LOADED_FLAG] = true;
+
+    console.log(`Omni Max: Content Script v${extensionVersion} (layoutFix) - Initializing...`);
+
+    const domService = new DomService();
+    const clipboardService = new ClipboardService();
+    const notificationService = new NotificationService(domService);
+    const extractionService = new ExtractionService(CONFIG, domService);
+    const shortcutService = new ShortcutService(extractionService, clipboardService, notificationService);
+    const templateHandlingService = new TemplateHandlingService(CONFIG, domService);
+    
+    const aiManager = new AIServiceManager();
+    const matrixApiService = new MatrixApiService();
+    const summaryCacheService = new SummaryCacheService(defaultStorageAdapter);
+
+    const summaryUiService = new SummaryUiService(
+        domService,
+        aiManager,
+        matrixApiService,
+        summaryCacheService,
+        () => getActiveTabChatContext(domService)
+    );
+
+    const refreshSummaryButtonLogic = () => {
+        // console.log("Omni Max [ContentIndex]: Settings changed, refreshing summary button logic.");
+        setupSummaryButtonForActivePanel(); // Esta função já decide se injeta ou remove
+    };
+
+    const setupSummaryButtonForActivePanel = (): void => {
+        const isGloballyEnabled = get(globalExtensionEnabledStore) !== false;
+        const isAiFeaturesOverallEnabled = get(aiFeaturesEnabledStore) !== false;
+        const currentModuleStates = get(moduleStatesStore);
+        const isChatSummaryModuleEnabled = currentModuleStates?.aiChatSummary !== false;
+
+        if (!isGloballyEnabled || !isAiFeaturesOverallEnabled || !isChatSummaryModuleEnabled) {
+            const existingButtons = domService.queryAll<HTMLButtonElement>(`.${SUMMARY_BUTTON_CLASS}`);
+            existingButtons.forEach(btn => btn.remove());
+            return;
+        }
+        
+        const activeChatCtx = getActiveTabChatContext(domService);
+        if (!activeChatCtx || !activeChatCtx.protocolNumber || !activeChatCtx.contactId || !activeChatCtx.attendanceId) {
+            return;
+        }
+
+        let hsmButtonsContainer: HTMLDivElement | null = null;
+        if (activeChatCtx.panelElement) {
+            hsmButtonsContainer = domService.query<HTMLDivElement>('div.hsm_buttons', activeChatCtx.panelElement);
+        }
+        
+        if (!hsmButtonsContainer) {
+            const allHsmButtonDivs = domService.queryAll<HTMLDivElement>('div.hsm_buttons');
+            for (const div of allHsmButtonDivs) {
+                const matchingLink = domService.query<HTMLAnchorElement>(
+                    `a[data-atendimento="${activeChatCtx.attendanceId}"][data-contato="${activeChatCtx.contactId}"]`,
+                    div
+                );
+                if (matchingLink) {
+                    hsmButtonsContainer = div;
+                    break;
+                }
             }
-          });
         }
-      }
+        
+        if (!hsmButtonsContainer) {
+            const genericActivePanel = domService.query<HTMLElement>('div.tab-pane.active');
+            if (genericActivePanel) {
+                hsmButtonsContainer = domService.query<HTMLDivElement>('div.hsm_buttons', genericActivePanel);
+            }
+        }
 
-      if (needsButtonSetup) {
-        // Short delay to ensure the tab panel content is likely rendered.
-        setTimeout(setupSummaryButtonForActivePanel, 250);
-      }
-      if (activeProtocolsChanged) {
-        const currentActiveTabElements = domService.queryAll<HTMLAnchorElement>('ul#tabs li a');
-        const currentActiveProtocolNumbers = currentActiveTabElements
-          .map(tab => tab.dataset.protocolo)
-          .filter(p => !!p) as string[]; // Ensure only defined protocol numbers
-        await summaryCacheService.clearInvalidSummaries(currentActiveProtocolNumbers);
-      }
-    });
-    tabObserver.observe(tabsUlElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+        if (hsmButtonsContainer) {
+            summaryUiService.injectSummaryButton(
+                hsmButtonsContainer,
+                activeChatCtx.protocolNumber,
+                activeChatCtx.contactId
+            );
+        } else {
+            // console.warn(`Omni Max [ContentIndex]: Could not find 'div.hsm_buttons' for active panel (protocol: ${activeChatCtx.protocolNumber}). Summary button not injected.`);
+        }
+    };
     
-    // Initial setup actions after observer is ready
-    setTimeout(setupSummaryButtonForActivePanel, 1500); // Initial delay for page UI to settle
-    
-    const initialActiveTabElements = domService.queryAll<HTMLAnchorElement>('ul#tabs li a');
-    const initialActiveProtocolNumbers = initialActiveTabElements
-      .map(tab => tab.dataset.protocolo)
-      .filter(p => !!p) as string[];
-    await summaryCacheService.clearInvalidSummaries(initialActiveProtocolNumbers);
+    const tabsUlElement = domService.query('ul#tabs');
+    if (tabsUlElement) {
+        const tabObserver = new MutationObserver(async (mutationsList) => {
+            let needsButtonSetup = false;
+            let activeProtocolsChanged = false;
 
-  } else {
-    console.error('Omni Max [ContentIndex]: Target ul#tabs for MutationObserver not found.');
-  }
-  
-  // Attach listeners for other services
-  shortcutService.attachListeners();
-  templateHandlingService.attachListeners();
-  
-  // Apply layout corrections
-  applyLayoutCorrection(domService, CONFIG)
-    // .then(() => console.log(`Omni Max [ContentIndex]: Layout correction attempt finished.`)) // Less verbose
-    .catch(err => console.error(`Omni Max [ContentIndex]: Layout correction process failed:`, err));
-  
-  console.log(`Omni Max [ContentIndex]: Content script v${extensionVersion} (with summary feature) is ready.`);
+            for (const mutation of mutationsList) {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'class' &&
+                    mutation.target.nodeName === 'LI' && (mutation.target as HTMLLIElement).classList.contains('active')) {
+                    needsButtonSetup = true;
+                    activeProtocolsChanged = true;
+                }
+                if (mutation.type === 'childList') {
+                    activeProtocolsChanged = true;
+                    mutation.removedNodes.forEach(async removedNode => {
+                        if (removedNode.nodeName === 'LI' && removedNode instanceof HTMLLIElement) {
+                            const linkElement = domService.query<HTMLAnchorElement>('a', removedNode);
+                            const protocolNumberToRemove = linkElement?.dataset.protocolo;
+                            if (protocolNumberToRemove) {
+                                setTimeout(async () => {
+                                    const currentActiveTabElements = domService.queryAll<HTMLAnchorElement>('ul#tabs li a');
+                                    const currentActiveProtocolNumbers = currentActiveTabElements
+                                        .map(tab => tab.dataset.protocolo)
+                                        .filter(Boolean) as string[];
+                                    if (!currentActiveProtocolNumbers.includes(protocolNumberToRemove)) {
+                                        await summaryCacheService.removeSummary(protocolNumberToRemove);
+                                    }
+                                }, 7000); 
+                            }
+                        }
+                    });
+                }
+            }
+
+            if (needsButtonSetup) {
+                setTimeout(setupSummaryButtonForActivePanel, 250);
+            }
+            if (activeProtocolsChanged) {
+                const currentActiveTabElements = domService.queryAll<HTMLAnchorElement>('ul#tabs li a');
+                const currentActiveProtocolNumbers = currentActiveTabElements
+                    .map(tab => tab.dataset.protocolo)
+                    .filter(p => !!p) as string[];
+                await summaryCacheService.clearInvalidSummaries(currentActiveProtocolNumbers);
+            }
+        });
+        tabObserver.observe(tabsUlElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+        
+        setTimeout(setupSummaryButtonForActivePanel, 1500); 
+        
+        const initialActiveTabElements = domService.queryAll<HTMLAnchorElement>('ul#tabs li a');
+        const initialActiveProtocolNumbers = initialActiveTabElements
+            .map(tab => tab.dataset.protocolo)
+            .filter(p => !!p) as string[];
+        await summaryCacheService.clearInvalidSummaries(initialActiveProtocolNumbers);
+
+    } else {
+        console.warn('Omni Max [ContentIndex]: Target ul#tabs for MutationObserver not found. Summary button might not be injected on tab changes.');
+        setTimeout(setupSummaryButtonForActivePanel, 1500);
+    }
+    
+
+    // --- Subscrições às Stores para Reatividade do Botão de Resumo e Layout ---
+    const updateUiBasedOnSettings = () => {
+        // Layout Correction
+        const isGloballyEnabledForLayout = get(globalExtensionEnabledStore);
+        const currentModuleStatesForLayout = get(moduleStatesStore);
+        const isLayoutModuleEnabled = currentModuleStatesForLayout?.layoutCorrection;
+        handleLayoutCorrection(
+            domService,
+            CONFIG,
+            isLayoutModuleEnabled ?? false, 
+            isGloballyEnabledForLayout ?? true 
+        ).catch(err => console.error(`Omni Max [ContentIndex]: Layout correction handling failed:`, err));
+
+        // Summary Button (já chamado pelo setupSummaryButtonForActivePanel, que é chamado abaixo)
+        refreshSummaryButtonLogic();
+    };
+    
+    // Inscrever-se nas mudanças das stores relevantes
+    // Qualquer mudança nessas stores acionará uma reavaliação completa da UI.
+    const unsubGlobal = globalExtensionEnabledStore.subscribe(updateUiBasedOnSettings);
+    const unsubModules = moduleStatesStore.subscribe(updateUiBasedOnSettings);
+    const unsubAiFeatures = aiFeaturesEnabledStore.subscribe(updateUiBasedOnSettings); 
+    // Adicionar unsubAiFeatures para garantir que o botão de resumo reaja se a feature de IA geral for (des)ativada
+
+    
+    // console.log("Omni Max [ContentIndex]: Subscribed to store changes for layout updates.");
+
+    // A primeira chamada a `updateLayout` já ocorre devido à subscrição.
+    // A lógica de retentativa em `handleLayoutCorrection` cuidará do timing do DOM.
+
+    shortcutService.attachListeners();
+    templateHandlingService.attachListeners();
+    
+    console.log(`Omni Max: Content Script v${extensionVersion} (layoutFix) initialization sequence complete.`);
 }
 
 // --- Script Auto-Execution ---
-// Ensures the script runs after the DOM is sufficiently loaded.
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initializeOmniMaxContentScript);
+    document.addEventListener('DOMContentLoaded', () => {
+        // console.log("Omni Max [ContentIndex]: DOMContentLoaded event fired.");
+        initializeOmniMaxContentScript();
+    });
 } else {
-  initializeOmniMaxContentScript();
+    // console.log(`Omni Max [ContentIndex]: DOM already loaded (readyState: ${document.readyState}). Initializing.`);
+    initializeOmniMaxContentScript();
 }

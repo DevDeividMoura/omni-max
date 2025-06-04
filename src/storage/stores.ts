@@ -44,11 +44,14 @@ export interface PromptsConfig {
   summaryPrompt: string
   improvementPrompt: string
 }
-export const promptsStore =
-  persistentStore<PromptsConfig>('omniMaxPrompts', {
+
+export const PromptsConfigDefaults: PromptsConfig = {
     summaryPrompt: 'Resuma esta conversa de atendimento ao cliente de forma concisa, destacando o problema principal e a resolução.',
     improvementPrompt: 'Revise a seguinte resposta para um cliente, tornando-a mais clara, empática e profissional, mantendo o significado original:',
-  })
+  };
+
+export const promptsStore =
+  persistentStore<PromptsConfig>('omniMaxPrompts', PromptsConfigDefaults)
 
 // — estados de seções colapsáveis
 export interface CollapsibleSectionsState {

@@ -306,6 +306,7 @@ export class SummaryUiService {
     }
 
     summaryButtonElement.addEventListener('click', async (event: MouseEvent) => {
+       event.preventDefault();
       event.stopPropagation(); // Prevent event from bubbling up.
       if (this.isPopupVisible) {
         this.hide();

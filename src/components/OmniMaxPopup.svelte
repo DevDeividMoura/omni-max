@@ -60,7 +60,9 @@
   let localAiFeaturesEnabled: boolean;
   // Use get() for initial values, but they will be updated by subscriptions
   let localAiCredentials = JSON.parse(JSON.stringify(get(aiCredentialsStore))); // Deep copy
-  let localAiProviderConfig = JSON.parse(JSON.stringify(get(aiProviderConfigStore))); // Deep copy
+  let localAiProviderConfig = JSON.parse(
+    JSON.stringify(get(aiProviderConfigStore)),
+  ); // Deep copy
 
   let modelList: string[] = [];
   let loadingModels = false;
@@ -76,8 +78,6 @@
    */
   async function refreshModelList() {
     // Ensure AIServiceManager uses the most current UI selections by temporarily updating stores.
-    await aiProviderConfigStore.set(localAiProviderConfig);
-    await aiCredentialsStore.set(localAiCredentials);
 
     modelError = null;
     let newModelList: string[] = [];
@@ -86,34 +86,54 @@
     const previouslySelectedModel = localAiProviderConfig.model;
 
     try {
-      console.log("refreshModelList: Fetching models with creds:", JSON.stringify(localAiCredentials), "and provider config:", JSON.stringify(localAiProviderConfig));
+      await aiProviderConfigStore.set(localAiProviderConfig);
+      await aiCredentialsStore.set(localAiCredentials);
+
+      console.log(
+        "refreshModelList: Fetching models with creds:",
+        JSON.stringify(localAiCredentials),
+        "and provider config:",
+        JSON.stringify(localAiProviderConfig),
+      );
       newModelList = await aiManager.listModels();
       // Successfully fetched models (or an empty list if provider has none)
       modelList = newModelList; // Update the main model list with the new list
 
       if (modelList.length === 0) {
         // No error thrown, but list is empty (e.g. Ollama has no models installed)
-        modelError = "No models found for this provider or configuration.";
+        modelError =
+          "Nenhum modelo encontrado para este provedor. Verifique a URL (Ollama) ou se há modelos disponíveis.";
         if (previouslySelectedModel) {
-            localAiProviderConfig.model = ""; // Clear model if list is genuinely empty
-            markChanged();
-            console.log("refreshModelList: Successfully fetched an empty model list. Cleared selected model.");
+          localAiProviderConfig.model = ""; // Clear model if list is genuinely empty
+          markChanged();
+          console.log(
+            "refreshModelList: Successfully fetched an empty model list. Cleared selected model.",
+          );
         }
       } else {
         // Models were successfully fetched and list is not empty
-        if (previouslySelectedModel && !modelList.includes(previouslySelectedModel)) {
+        if (
+          previouslySelectedModel &&
+          !modelList.includes(previouslySelectedModel)
+        ) {
           localAiProviderConfig.model = ""; // Old model not in new list, clear it
           markChanged();
-          console.log("refreshModelList: Previously selected model not in new list. Cleared selected model.");
+          console.log(
+            "refreshModelList: Previously selected model not in new list. Cleared selected model.",
+          );
         }
         // If previouslySelectedModel IS in modelList, it remains selected, no action needed.
         // If no model was previously selected, user will pick one, no action needed here.
       }
-
     } catch (err: any) {
-      modelError = err.message || "Failed to load models. Check credentials and provider access.";
+      modelError =
+        err.message ||
+        "Falha ao carregar modelos. Verifique as credenciais e o acesso ao provedor.";
       modelList = []; // Ensure list is empty on any error from aiManager
-      console.error("refreshModelList: Error caught:", modelError);
+      console.error(
+        "refreshModelList: Error caught from aiManager:",
+        modelError,
+      );
       // DO NOT CLEAR localAiProviderConfig.model here if the error might be transient (e.g. "Missing credentials" due to timing).
       // The UI will show the error, the select will be empty/disabled.
       // If the selected model was valid before this transient error, it should remain selected in the config.
@@ -145,8 +165,8 @@
   let initialOpenSections: CollapsibleSectionsState;
   let initialShortcutKeys: ShortcutKeysConfig;
 
-  const generalModules: Module[] = availableModules.filter(
-    (m) => ["layoutCorrection", "templateProcessor"].includes(m.id),
+  const generalModules: Module[] = availableModules.filter((m) =>
+    ["layoutCorrection", "templateProcessor"].includes(m.id),
   );
   const shortcutModules: Module[] = availableModules.filter((m) =>
     [
@@ -155,9 +175,15 @@
       "shortcutServiceOrderTemplate",
     ].includes(m.id),
   );
-  const aiModules: Module[] = availableModules.filter((m) =>
-    ["aiChatSummary", "aiResponseReview"].includes(m.id),
+  const aiModules: Module[] = availableModules.filter(
+    (m) =>
+      ["aiChatSummary", "aiResponseReview"].includes(m.id) &&
+      m.released !== false,
   );
+
+  // Para os prompts, filtramos os módulos de IA que estão liberados E têm configurações de prompt
+  let promotableAiModules: Module[];
+  $: promotableAiModules = aiModules.filter((m) => m.promptSettings); // Recalcula quando aiModules mudar
 
   // This static list is now a fallback; actual models come from refreshModelList()
   // const modelOptions: Record<string, string[]> = { ... }; // Removed, no longer primary source
@@ -208,8 +234,13 @@
     );
     unsubs.push(
       aiCredentialsStore.subscribe((val) => {
-        const currentVal = val || { openaiApiKey: "", geminiApiKey: "", anthropicApiKey: "", ollamaBaseUrl: "http://localhost:11434" };
-         setupInitialValue(
+        const currentVal = val || {
+          openaiApiKey: "",
+          geminiApiKey: "",
+          anthropicApiKey: "",
+          ollamaBaseUrl: "http://localhost:11434",
+        };
+        setupInitialValue(
           currentVal,
           (v) => (initialAiCredentials = v),
           (v) => (localAiCredentials = v),
@@ -238,7 +269,12 @@
     unsubs.push(
       collapsibleSectionsStateStore.subscribe((val) =>
         setupInitialValue(
-          val || { modules: false, shortcuts: false, ai: false, prompts: false },
+          val || {
+            modules: false,
+            shortcuts: false,
+            ai: false,
+            prompts: false,
+          },
           (v) => (initialOpenSections = v),
           (v) => (localOpenSections = v),
         ),
@@ -250,9 +286,11 @@
         const currentLocal: Record<string, boolean> = {};
         const currentInitial: Record<string, boolean> = {};
         for (const module of availableModules) {
-          currentLocal[module.id] = storedStates[module.id] ?? module.defaultEnabled;
+          currentLocal[module.id] =
+            storedStates[module.id] ?? module.defaultEnabled;
           if (isFirstSubscriptionCall) {
-            currentInitial[module.id] = storedStates[module.id] ?? module.defaultEnabled;
+            currentInitial[module.id] =
+              storedStates[module.id] ?? module.defaultEnabled;
           }
         }
         localModuleStates = currentLocal;
@@ -266,13 +304,19 @@
       shortcutKeysStore.subscribe((storedKeys) => {
         const currentLocal: ShortcutKeysConfig = {};
         const currentInitial: ShortcutKeysConfig = {};
-        const defaultShortcutValues = (shortcutKeysStore as any).initialValue || {};
+        const defaultShortcutValues =
+          (shortcutKeysStore as any).initialValue || {};
 
         for (const module of shortcutModules) {
-          let defaultKey = defaultShortcutValues[module.id] ||
-            (module.id === "shortcutCopyName" ? "Z" :
-             module.id === "shortcutCopyDocumentNumber" ? "X" :
-             module.id === "shortcutServiceOrderTemplate" ? "S" : "?");
+          let defaultKey =
+            defaultShortcutValues[module.id] ||
+            (module.id === "shortcutCopyName"
+              ? "Z"
+              : module.id === "shortcutCopyDocumentNumber"
+                ? "X"
+                : module.id === "shortcutServiceOrderTemplate"
+                  ? "S"
+                  : "?");
           currentLocal[module.id] = storedKeys[module.id] ?? defaultKey;
           if (isFirstSubscriptionCall) {
             currentInitial[module.id] = storedKeys[module.id] ?? defaultKey;
@@ -291,10 +335,15 @@
     // Defer the very first refresh to allow stores to load from chrome.storage
     // and update local Svelte component state variables (localAiCredentials, localAiProviderConfig) via their subscriptions.
     setTimeout(() => {
-        if (localGlobalEnabled && localAiFeaturesEnabled) {
-            console.log("onMount (deferred): Initial refreshModelList. Credentials:", JSON.stringify(localAiCredentials), "ProviderCfg:", JSON.stringify(localAiProviderConfig));
-            refreshModelList();
-        }
+      if (localGlobalEnabled && localAiFeaturesEnabled) {
+        console.log(
+          "onMount (deferred): Initial refreshModelList. Credentials:",
+          JSON.stringify(localAiCredentials),
+          "ProviderCfg:",
+          JSON.stringify(localAiProviderConfig),
+        );
+        refreshModelList();
+      }
     }, 250); // Increased timeout slightly for safety, adjust if needed. This is a workaround for async store loading.
 
     return () => {
@@ -306,10 +355,17 @@
     hasPendingChanges = true;
   }
 
-  function toggleSectionCollapse(sectionKeyToToggle: keyof CollapsibleSectionsState): void {
+  function toggleSectionCollapse(
+    sectionKeyToToggle: keyof CollapsibleSectionsState,
+  ): void {
     if (localOpenSections) {
       const isCurrentlyOpen = localOpenSections[sectionKeyToToggle];
-      const newOpenState: CollapsibleSectionsState = { modules: false, shortcuts: false, ai: false, prompts: false };
+      const newOpenState: CollapsibleSectionsState = {
+        modules: false,
+        shortcuts: false,
+        ai: false,
+        prompts: false,
+      };
       if (!isCurrentlyOpen) {
         newOpenState[sectionKeyToToggle] = true;
       }
@@ -333,14 +389,53 @@
   async function applyChanges(): Promise<void> {
     if (isLoading) return;
 
-    // Ensure the latest selections for AI provider and model are in localAiProviderConfig
-    // This should already be the case due to two-way binding and on:change handlers.
+    // Validação da configuração da IA
+    if (localAiFeaturesEnabled && localGlobalEnabled) {
+      const isStateMessage =
+        modelError === "Recursos de IA desabilitados." ||
+        modelError === "Extensão desabilitada.";
+
+      // Verifica se modelError é uma string (não nulo) e não é uma mensagem de estado informativa.
+      if (typeof modelError === "string" && !isStateMessage) {
+        // Agora modelError é definitivamente uma string de erro de configuração
+        if (modelList.length === 0) {
+          // E impediu o carregamento de modelos
+          alert(
+            `Erro na configuração de IA: ${modelError}. Por favor, corrija antes de salvar.`,
+          );
+          // Checagem segura de toLowerCase após confirmar que modelError é uma string
+          if (
+            modelError.toLowerCase().includes("credenciais") ||
+            modelError.toLowerCase().includes("chave")
+          ) {
+            showCredentialsModal = true;
+          }
+          return; // Impede o salvamento
+        }
+      }
+
+      // Se não há erro impeditivo (ou o erro é apenas de estado),
+      // mas nenhum modelo foi selecionado
+      if (!localAiProviderConfig.model) {
+        alert(
+          "Configuração de IA incompleta: Por favor, selecione um modelo de IA.",
+        );
+        const modelSelect = document.getElementById(
+          "aiModel",
+        ) as HTMLSelectElement | null;
+        if (modelSelect) modelSelect.focus();
+        return; // Impede o salvamento
+      }
+    }
 
     const adapter: IStorageAdapter = defaultStorageAdapter;
     await Promise.all([
       adapter.set("omniMaxGlobalEnabled", localGlobalEnabled),
       adapter.set("omniMaxModuleStates", { ...localModuleStates }),
-      adapter.set("omniMaxShortcutsOverallEnabled", localShortcutsOverallEnabled),
+      adapter.set(
+        "omniMaxShortcutsOverallEnabled",
+        localShortcutsOverallEnabled,
+      ),
       adapter.set("omniMaxShortcutKeys", { ...localShortcutKeys }),
       adapter.set("omniMaxAiFeaturesEnabled", localAiFeaturesEnabled),
       adapter.set("omniMaxAiCredentials", { ...localAiCredentials }),
@@ -360,14 +455,14 @@
     initialOpenSections = { ...localOpenSections };
 
     hasPendingChanges = false;
-    alert("Alterações aplicadas! A aba da plataforma Matrix Go será recarregada para aplicar todas as mudanças.");
+    alert("Configurações aplicadas com sucesso!");
 
-    chrome.tabs.query({ url: "https://vipmax.matrixdobrasil.ai/Painel/*" }, (tabs) => {
-      for (const tab of tabs) {
-        if (tab.id) chrome.tabs.reload(tab.id);
-      }
-    });
-    window.close();
+    // chrome.tabs.query({ url: "https://vipmax.matrixdobrasil.ai/Painel/*" }, (tabs) => {
+    //   for (const tab of tabs) {
+    //     if (tab.id) chrome.tabs.reload(tab.id);
+    //   }
+    // });
+    // window.close();
   }
 
   function discardChanges(): void {
@@ -392,16 +487,24 @@
   }
 
   // When AI features are toggled, refresh model list or clear it
-  $: if (!isLoading && aiFeaturesEnabledStore) { // Check store to avoid premature calls
-      if (localAiFeaturesEnabled && localGlobalEnabled) {
-          refreshModelList();
-      } else {
-          modelList = [];
-          modelError = "AI features are disabled."; // Or a more neutral message
-          localAiProviderConfig.model = ""; // Clear selected model if AI is off
-      }
-  }
+  $: () => {
+    if (isLoading) return; // Evita execuções durante o carregamento inicial
 
+    if (localAiFeaturesEnabled && localGlobalEnabled) {
+      refreshModelList();
+    } else {
+      modelList = [];
+      // Se AI está desabilitada, não é um "erro" de modelo, mas um estado.
+      modelError = localGlobalEnabled
+        ? "Recursos de IA desabilitados."
+        : "Extensão desabilitada.";
+      if (localAiProviderConfig.model) {
+        // Limpa o modelo selecionado se AI for desativada
+        localAiProviderConfig.model = "";
+        markChanged(); // Marca que houve uma alteração a ser salva
+      }
+    }
+  };
 </script>
 
 <div class="omni-max-popup-container-fixed-layout">
@@ -418,12 +521,20 @@
           onChange={(val) => {
             localGlobalEnabled = val;
             markChanged();
-            if (val && localAiFeaturesEnabled) refreshModelList(); // Refresh if enabling
-            else if (!val) { modelList = []; modelError = "Extension is disabled."; }
+            if (val && localAiFeaturesEnabled)
+              refreshModelList(); // Refresh if enabling
+            else if (!val) {
+              modelList = [];
+              modelError = "Extension is disabled.";
+            }
           }}
           ariaLabel="Habilitar ou desabilitar toda a extensão Omni Max"
         />
-        <span class="global-status-indicator {localGlobalEnabled ? 'active' : 'inactive'}">
+        <span
+          class="global-status-indicator {localGlobalEnabled
+            ? 'active'
+            : 'inactive'}"
+        >
           {localGlobalEnabled ? "Ativa" : "Desativada"}
         </span>
       </div>
@@ -458,7 +569,10 @@
               <ToggleSwitch
                 enabled={localModuleStates[module.id]}
                 onChange={(val) => {
-                  localModuleStates = {...localModuleStates, [module.id]: val,};
+                  localModuleStates = {
+                    ...localModuleStates,
+                    [module.id]: val,
+                  };
                   markChanged();
                 }}
                 disabled={!localGlobalEnabled}
@@ -500,33 +614,44 @@
                   <ToggleSwitch
                     enabled={localModuleStates[module.id]}
                     onChange={(val) => {
-                      localModuleStates = {...localModuleStates, [module.id]: val,};
+                      localModuleStates = {
+                        ...localModuleStates,
+                        [module.id]: val,
+                      };
                       markChanged();
                     }}
-                    disabled={!localGlobalEnabled || !localShortcutsOverallEnabled}
+                    disabled={!localGlobalEnabled ||
+                      !localShortcutsOverallEnabled}
                     ariaLabel={`Ativar ou desativar o atalho ${module.name}`}
                   />
-                  <span class="shortcut-prefix" aria-hidden="true">Ctrl + Shift +</span>
+                  <span class="shortcut-prefix" aria-hidden="true"
+                    >Ctrl + Shift +</span
+                  >
                   <input
                     type="text"
                     class="shortcut-key-input-editable"
                     value={localShortcutKeys[module.id] || ""}
-                    on:input={(event) => handleShortcutKeyChange(module.id, event)}
+                    on:input={(event) =>
+                      handleShortcutKeyChange(module.id, event)}
                     maxlength="1"
                     placeholder="Tecla"
                     aria-label={`Tecla para ${module.name}`}
-                    disabled={!localGlobalEnabled || !localShortcutsOverallEnabled || !localModuleStates[module.id]}
+                    disabled={!localGlobalEnabled ||
+                      !localShortcutsOverallEnabled ||
+                      !localModuleStates[module.id]}
                   />
                 </div>
               </div>
             {/each}
           {:else if !localGlobalEnabled}
             <p class="placeholder-text">
-              <Info size={16} class="placeholder-icon" /> Habilite a extensão para configurar atalhos.
+              <Info size={16} class="placeholder-icon" /> Habilite a extensão para
+              configurar atalhos.
             </p>
           {:else if !localShortcutsOverallEnabled}
             <p class="placeholder-text">
-              <Info size={16} class="placeholder-icon" /> Habilite "Todos os Atalhos" para configurar individualmente.
+              <Info size={16} class="placeholder-icon" /> Habilite "Todos os Atalhos"
+              para configurar individualmente.
             </p>
           {/if}
         </div>
@@ -584,28 +709,52 @@
                 class="select-field"
                 bind:value={localAiProviderConfig.model}
                 on:change={() => markChanged()}
-                disabled={loadingModels || (modelList.length === 0 && !modelError && !loadingModels) || !!modelError }
+                disabled={loadingModels ||
+                  (modelList.length === 0 && !modelError && !loadingModels) ||
+                  !!modelError}
               >
                 {#if loadingModels}
-                  <option value="" disabled selected>Carregando modelos…</option>
+                  <option value="" disabled selected>Carregando modelos…</option
+                  >
                 {:else if modelError}
-                  <option value="" disabled selected>{modelError.length > 40 ? modelError.substring(0,37) + '...' : modelError}</option>
+                  <option value="" disabled selected
+                    >{modelError.length > 40
+                      ? modelError.substring(0, 37) + "..."
+                      : modelError}</option
+                  >
                 {:else if modelList.length === 0}
-                  <option value="" disabled selected>Nenhum modelo (verifique credenciais)</option>
+                  <option value="" disabled selected
+                    >Nenhum modelo (verifique credenciais)</option
+                  >
                 {:else}
-                  <option value="" selected={!localAiProviderConfig.model || !modelList.includes(localAiProviderConfig.model)} disabled>Selecione um modelo</option>
+                  <option
+                    value=""
+                    selected={!localAiProviderConfig.model ||
+                      !modelList.includes(localAiProviderConfig.model)}
+                    disabled>Selecione um modelo</option
+                  >
                   {#each modelList as m (m)}
-                    <option value={m} selected={m === localAiProviderConfig.model}>{m}</option>
+                    <option
+                      value={m}
+                      selected={m === localAiProviderConfig.model}>{m}</option
+                    >
                   {/each}
                 {/if}
               </select>
               {#if modelError && !loadingModels}
-                <p class="popup-error-text" style="font-size: 0.8em; color: var(--color-error, red); margin-top: 4px;">
+                <p
+                  class="popup-error-text"
+                  style="font-size: 0.8em; color: var(--color-error, red); margin-top: 4px;"
+                >
                   {modelError}
                 </p>
-              {:else if !loadingModels && modelList.length === 0 && !modelError }
-                <p class="popup-info-text" style="font-size: 0.8em; color: var(--color-text-secondary, #555); margin-top: 4px;">
-                  Para listar modelos, adicione as credenciais no modal abaixo e salve.
+              {:else if !loadingModels && modelList.length === 0 && !modelError}
+                <p
+                  class="popup-info-text"
+                  style="font-size: 0.8em; color: var(--color-text-secondary, #555); margin-top: 4px;"
+                >
+                  Para listar modelos, adicione as credenciais no modal abaixo e
+                  salve.
                 </p>
               {/if}
             </div>
@@ -615,20 +764,27 @@
               on:click={() => (showCredentialsModal = true)}
             >
               Gerenciar Credenciais ({localAiProviderConfig.provider
-                ? localAiProviderConfig.provider.charAt(0).toUpperCase() + localAiProviderConfig.provider.slice(1)
+                ? localAiProviderConfig.provider.charAt(0).toUpperCase() +
+                  localAiProviderConfig.provider.slice(1)
                 : "IA"})
             </button>
             <hr class="sub-separator" />
             <p class="section-subtitle">Módulos de IA Individuais:</p>
             {#each aiModules as module (module.id)}
               <div class="module-item-container">
-                <span class="module-name-with-tooltip" title={module.description}>
+                <span
+                  class="module-name-with-tooltip"
+                  title={module.description}
+                >
                   {module.name}
                 </span>
                 <ToggleSwitch
                   enabled={localModuleStates[module.id]}
                   onChange={(val) => {
-                    localModuleStates = {...localModuleStates, [module.id]: val,};
+                    localModuleStates = {
+                      ...localModuleStates,
+                      [module.id]: val,
+                    };
                     markChanged();
                   }}
                   disabled={!localGlobalEnabled || !localAiFeaturesEnabled}
@@ -637,16 +793,19 @@
               </div>
             {:else}
               <p class="placeholder-text">
-                <Info size={16} class="placeholder-icon" /> Nenhuma funcionalidade de IA configurada.
+                <Info size={16} class="placeholder-icon" /> Nenhuma funcionalidade
+                de IA configurada.
               </p>
             {/each}
           {:else if !localGlobalEnabled}
             <p class="placeholder-text">
-              <Info size={16} class="placeholder-icon" /> Habilite a extensão para usar IA.
+              <Info size={16} class="placeholder-icon" /> Habilite a extensão para
+              usar IA.
             </p>
           {:else}
             <p class="placeholder-text">
-              <Info size={16} class="placeholder-icon" /> Habilite "Todas as Funções de IA" para configurar.
+              <Info size={16} class="placeholder-icon" /> Habilite "Todas as Funções
+              de IA" para configurar.
             </p>
           {/if}
         </div>
@@ -661,31 +820,31 @@
         <div class="section-item-space">
           {#if !localGlobalEnabled || !localAiFeaturesEnabled}
             <p class="placeholder-text">
-              <Info size={16} class="placeholder-icon" /> Prompts disponíveis quando a extensão e as funções de IA estiverem habilitadas.
+              <Info size={16} class="placeholder-icon" /> Prompts disponíveis quando
+              a extensão e as funções de IA estiverem habilitadas.
             </p>
+          {:else if promotableAiModules.length > 0}
+            {#each promotableAiModules as module (module.id)}
+              {@const promptKey = module.promptSettings!.configKey}
+              {@const promptLabel = module.promptSettings!.label}
+              {@const promptPlaceholder = module.promptSettings!.placeholder}
+              <div class="input-group">
+                <label for={promptKey}>{promptLabel}</label>
+                <textarea
+                  id={promptKey}
+                  class="textarea-field"
+                  rows="3"
+                  placeholder={promptPlaceholder}
+                  bind:value={localPrompts[promptKey]}
+                  on:input={markChanged}
+                ></textarea>
+              </div>
+            {/each}
           {:else}
-            <div class="input-group">
-              <label for="summaryPrompt">Prompt de Resumo</label>
-              <textarea
-                id="summaryPrompt"
-                class="textarea-field"
-                rows="3"
-                placeholder="Ex: Resuma esta conversa de forma concisa, destacando o problema principal e a resolução."
-                bind:value={localPrompts.summaryPrompt}
-                on:input={markChanged}
-              ></textarea>
-            </div>
-            <div class="input-group">
-              <label for="improvementPrompt">Prompt de Melhoria de Resposta</label>
-              <textarea
-                id="improvementPrompt"
-                class="textarea-field"
-                rows="3"
-                placeholder="Ex: Revise a seguinte resposta, tornando-a mais clara, empática e profissional..."
-                bind:value={localPrompts.improvementPrompt}
-                on:input={markChanged}
-              ></textarea>
-            </div>
+            <p class="placeholder-text">
+              <Info size={16} class="placeholder-icon" /> Nenhuma configuração de
+              prompt disponível para as funcionalidades de IA ativas.
+            </p>
           {/if}
         </div>
       </CollapsibleSection>
@@ -713,7 +872,11 @@
 
   <div class="app-credits-footer">
     Feito com ❤️ por
-    <a href="https://github.com/DevDeividMoura" target="_blank" rel="noopener noreferrer">
+    <a
+      href="https://github.com/DevDeividMoura"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
       @DevDeividMoura
     </a>
   </div>
@@ -723,9 +886,10 @@
       class="modal-overlay"
       role="presentation"
       on:click|self={() => (showCredentialsModal = false)}
-      on:keydown={(event) => { if (event.key === "Escape") showCredentialsModal = false; }}
+      on:keydown={(event) => {
+        if (event.key === "Escape") showCredentialsModal = false;
+      }}
     >
-
       <!-- svelte-ignore a11y_click_events_have_key_events -->
       <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
       <div
@@ -738,7 +902,8 @@
         <div class="modal-header">
           <h3 id="credentials-modal-title">
             Credenciais: {localAiProviderConfig.provider
-              ? localAiProviderConfig.provider.charAt(0).toUpperCase() + localAiProviderConfig.provider.slice(1)
+              ? localAiProviderConfig.provider.charAt(0).toUpperCase() +
+                localAiProviderConfig.provider.slice(1)
               : "IA"}
           </h3>
           <button
@@ -803,7 +968,8 @@
             </div>
           {:else}
             <p class="placeholder-text">
-              <Info size={16} class="placeholder-icon" /> Provedor de IA não selecionado ou configuração de credenciais indisponível.
+              <Info size={16} class="placeholder-icon" /> Provedor de IA não selecionado
+              ou configuração de credenciais indisponível.
             </p>
           {/if}
         </div>
@@ -812,13 +978,24 @@
             class="button-secondary"
             on:click={() => {
               // Revert credentials for the current provider if user cancels
-              if (localAiProviderConfig.provider === "openai") localAiCredentials.openaiApiKey = initialAiCredentials.openaiApiKey;
-              else if (localAiProviderConfig.provider === "gemini") localAiCredentials.geminiApiKey = initialAiCredentials.geminiApiKey;
-              else if (localAiProviderConfig.provider === "anthropic") localAiCredentials.anthropicApiKey = initialAiCredentials.anthropicApiKey;
-              else if (localAiProviderConfig.provider === "ollama") localAiCredentials.ollamaBaseUrl = initialAiCredentials.ollamaBaseUrl;
+              if (localAiProviderConfig.provider === "openai")
+                localAiCredentials.openaiApiKey =
+                  initialAiCredentials.openaiApiKey;
+              else if (localAiProviderConfig.provider === "gemini")
+                localAiCredentials.geminiApiKey =
+                  initialAiCredentials.geminiApiKey;
+              else if (localAiProviderConfig.provider === "anthropic")
+                localAiCredentials.anthropicApiKey =
+                  initialAiCredentials.anthropicApiKey;
+              else if (localAiProviderConfig.provider === "ollama")
+                localAiCredentials.ollamaBaseUrl =
+                  initialAiCredentials.ollamaBaseUrl;
               showCredentialsModal = false;
               // Check if this revert actually removed the 'pending' status
-              if (JSON.stringify(localAiCredentials) === JSON.stringify(initialAiCredentials)) {
+              if (
+                JSON.stringify(localAiCredentials) ===
+                JSON.stringify(initialAiCredentials)
+              ) {
                 // Simple check, a more robust one would compare all states
                 // hasPendingChanges = false; // Be careful with this, other unrelated changes might exist
               }
@@ -1101,15 +1278,15 @@
     min-height: 70px;
     resize: vertical;
   }
-  .select-field[disabled] { /* More specific selector for disabled select */
+  .select-field[disabled] {
+    /* More specific selector for disabled select */
     background-color: #f3f4f6 !important; /* Ensure override */
     color: #9ca3af !important;
     cursor: not-allowed;
   }
   .select-field option[disabled] {
-      color: #9ca3af;
+    color: #9ca3af;
   }
-
 
   .button-primary,
   .button-secondary {
@@ -1239,9 +1416,8 @@
     margin-top: 4px;
   }
   .popup-info-text {
-      font-size: 0.8em;
-      color: #555; /* A neutral, informative color */
-      margin-top: 4px;
+    font-size: 0.8em;
+    color: #555; /* A neutral, informative color */
+    margin-top: 4px;
   }
-
 </style>
