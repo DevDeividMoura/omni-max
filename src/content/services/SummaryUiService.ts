@@ -179,8 +179,8 @@ export class SummaryUiService {
 
     this.summaryPopupHostElement = this.domService.createElementWithOptions('div', { id: SUMMARY_POPUP_HOST_ID });
     if (!this.summaryPopupHostElement) {
-        console.error("Omni Max [SummaryUiService]: Failed to create summary popup host element.");
-        return;
+      console.error("Omni Max [SummaryUiService]: Failed to create summary popup host element.");
+      return;
     }
     this.summaryPopupShadowRoot = this.summaryPopupHostElement.attachShadow({ mode: 'open' });
 
@@ -193,7 +193,7 @@ export class SummaryUiService {
       styles: { display: 'none' },
     });
     if (this.popupOverlayElement) {
-        this.popupOverlayElement.addEventListener('click', () => this.hide());
+      this.popupOverlayElement.addEventListener('click', () => this.hide());
     }
 
     this.popupMainElement = this.domService.createElementWithOptions('div', {
@@ -259,7 +259,7 @@ export class SummaryUiService {
       }
     }
   }
-  
+
   /**
    * Injects a "Resumir" (Summarize) button into the specified container element on the page.
    * The button, when clicked, will trigger the summary generation and display process.
@@ -293,21 +293,21 @@ export class SummaryUiService {
     });
 
     if (!summaryButtonElement) {
-        console.error("Omni Max [SummaryUiService]: Failed to create summary button element.");
-        return;
+      console.error("Omni Max [SummaryUiService]: Failed to create summary button element.");
+      return;
     }
-    
+
     summaryButtonElement.innerHTML = `${SPARKLES_SVG_WHITE} <span style="margin-left: 5px;">Resumir</span>`;
     // Ensure SVG within the button is styled correctly.
     const svgElement = summaryButtonElement.querySelector('svg');
-    if(svgElement) {
-        this.domService.applyStyles(svgElement, {
-            width: '14px', height: '14px', fill: '#ffffff'
-        });
+    if (svgElement) {
+      this.domService.applyStyles(svgElement, {
+        width: '14px', height: '14px', fill: '#ffffff'
+      });
     }
 
     summaryButtonElement.addEventListener('click', async (event: MouseEvent) => {
-       event.preventDefault();
+      event.preventDefault();
       event.stopPropagation(); // Prevent event from bubbling up.
       if (this.isPopupVisible) {
         this.hide();
@@ -323,7 +323,7 @@ export class SummaryUiService {
             currentContactId = activeChatCtx.contactId;         // Use updated type property
           }
         }
-        
+
         if (currentProtocolNumber && currentContactId) {
           const buttonRect = (event.currentTarget as HTMLElement).getBoundingClientRect();
           await this.showAndGenerateSummary(buttonRect, currentProtocolNumber, currentContactId);
@@ -341,7 +341,7 @@ export class SummaryUiService {
     } else {
       targetButtonContainerDiv.appendChild(summaryButtonElement); // Fallback if no other elements
     }
-    
+
     console.log(`Omni Max [SummaryUiService]: Summary button injected into:`, targetButtonContainerDiv);
   }
 
@@ -390,65 +390,65 @@ export class SummaryUiService {
     this.activeSummaryRequests[protocolNumber] = true;
 
     try {
-            const cachedSummary = await this.summaryCacheService.getSummary(protocolNumber);
-            if (cachedSummary) {
-                this.currentSummaryText = cachedSummary;
-                this.isLoadingSummary = false;
-            } else {
-                const allContactSessions: CustomerServiceSession[] = await this.matrixApiService.getAtendimentosByContato(contactId);
-                const currentSession = allContactSessions.find(session => session.protocolNumber === protocolNumber);
+      const cachedSummary = await this.summaryCacheService.getSummary(protocolNumber);
+      if (cachedSummary) {
+        this.currentSummaryText = cachedSummary;
+        this.isLoadingSummary = false;
+      } else {
+        const allContactSessions: CustomerServiceSession[] = await this.matrixApiService.getAtendimentosByContato(contactId);
+        const currentSession = allContactSessions.find(session => session.protocolNumber === protocolNumber);
 
-                if (currentSession && currentSession.messages.length > 0) {
-                    const customerNameForContext = currentSession.contactName || "Cliente";
-                    
-                    // Adiciona informações do cabeçalho do atendimento
-                    let conversationPreamble = `Início do atendimento do protocolo ${protocolNumber} com ${customerNameForContext}.\n`;
-                    if(currentSession.originalAttendanceIds.length > 1) {
-                        conversationPreamble += `Este protocolo inclui múltiplos segmentos de atendimento fundidos (IDs: ${currentSession.originalAttendanceIds.join(', ')}).\n`;
-                    }
-                    conversationPreamble += "\n";
+        if (currentSession && currentSession.messages.length > 0) {
+          const customerNameForContext = currentSession.contactName || "Cliente";
 
-                    const conversationTurns = currentSession.messages.map(msg => {
-                        const decodedContent = decodeHtmlEntities(msg.content); // Decodifica HTML entities
-                        const maskedContent = maskSensitiveDocumentNumbers(decodedContent); // Mascara documentos
-                        
-                        // Determina o display name do remetente.
-                        // msg.senderName já foi preenchido pelo MatrixApiService.
-                        let senderDisplayName = msg.senderName;
+          // Adiciona informações do cabeçalho do atendimento
+          let conversationPreamble = `Início do atendimento do protocolo ${protocolNumber} com ${customerNameForContext}.\n`;
+          if (currentSession.originalAttendanceIds.length > 1) {
+            conversationPreamble += `Este protocolo inclui múltiplos segmentos de atendimento fundidos (IDs: ${currentSession.originalAttendanceIds.join(', ')}).\n`;
+          }
+          conversationPreamble += "\n";
 
-                        // Para clareza, podemos adicionar o tipo de remetente (Cliente, Atendente, Sistema)
-                        let roleLabel = "Desconhecido";
-                        if (msg.role === 'customer') roleLabel = "Cliente";
-                        else if (msg.role === 'agent') roleLabel = "Atendente";
-                        else if (msg.role === 'system') roleLabel = "Sistema/Chatbot";
-                        
-                        return `${senderDisplayName} (${roleLabel}): ${maskedContent}`;
-                    }).join('\n\n');
-                    
-                    const fullConversationForAI = conversationPreamble + conversationTurns;
+          const conversationTurns = currentSession.messages.map(msg => {
+            const decodedContent = decodeHtmlEntities(msg.content); // Decodifica HTML entities
+            const maskedContent = maskSensitiveDocumentNumbers(decodedContent); // Mascara documentos
 
-                    console.log(`Omni Max [SummaryUiService]: Generating summary for protocol ${protocolNumber}. Full context for AI: ${fullConversationForAI.substring(0,1000)}...`);
-                    const newSummary = await this.aiManager.generateSummary(fullConversationForAI);
-                    
-                    // Decidir se o newSummary precisa ser mascarado também.
-                    // Por enquanto, vamos assumir que o prompt da IA cuida disso.
-                    await this.summaryCacheService.saveSummary(protocolNumber, newSummary);
-                    this.currentSummaryText = newSummary;
-                } else {
-                    this.currentSummaryText = "Nenhuma mensagem encontrada para este atendimento ou protocolo.";
-                }
-                this.isLoadingSummary = false;
-            }
-        } catch (error: any) {
-            console.error(`Omni Max [SummaryUiService]: Error processing summary for protocol ${protocolNumber}:`, error);
-            this.isLoadingSummary = false;
-            this.currentSummaryText = `Erro ao gerar resumo: ${error.message || 'Erro desconhecido.'}`;
-        } finally {
-            delete this.activeSummaryRequests[protocolNumber];
-            if (this.isPopupVisible) {
-                this.updatePopupContent();
-            }
+            // Determina o display name do remetente.
+            // msg.senderName já foi preenchido pelo MatrixApiService.
+            let senderDisplayName = msg.senderName;
+
+            // Para clareza, podemos adicionar o tipo de remetente (Cliente, Atendente, Sistema)
+            let roleLabel = "Desconhecido";
+            if (msg.role === 'customer') roleLabel = "Cliente";
+            else if (msg.role === 'agent') roleLabel = "Atendente";
+            else if (msg.role === 'system') roleLabel = "Sistema/Chatbot";
+
+            return `${senderDisplayName} (${roleLabel}): ${maskedContent}`;
+          }).join('\n\n');
+
+          const fullConversationForAI = conversationPreamble + conversationTurns;
+
+          console.log(`Omni Max [SummaryUiService]: Generating summary for protocol ${protocolNumber}. Full context for AI: ${fullConversationForAI.substring(0, 1000)}...`);
+          const newSummary = await this.aiManager.generateSummary(fullConversationForAI);
+
+          // Decidir se o newSummary precisa ser mascarado também.
+          // Por enquanto, vamos assumir que o prompt da IA cuida disso.
+          await this.summaryCacheService.saveSummary(protocolNumber, newSummary);
+          this.currentSummaryText = newSummary;
+        } else {
+          this.currentSummaryText = "Nenhuma mensagem encontrada para este atendimento ou protocolo.";
         }
+        this.isLoadingSummary = false;
+      }
+    } catch (error: any) {
+      console.error(`Omni Max [SummaryUiService]: Error processing summary for protocol ${protocolNumber}:`, error);
+      this.isLoadingSummary = false;
+      this.currentSummaryText = `Erro ao gerar resumo: ${error.message || 'Erro desconhecido.'}`;
+    } finally {
+      delete this.activeSummaryRequests[protocolNumber];
+      if (this.isPopupVisible) {
+        this.updatePopupContent();
+      }
+    }
   }
 
   /**
