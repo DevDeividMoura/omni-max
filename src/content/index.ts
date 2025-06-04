@@ -27,7 +27,7 @@ import { get } from 'svelte/store';
 import packageJson from '../../package.json';
 
 const extensionVersion = packageJson.version;
-const OMNI_MAX_CONTENT_LOADED_FLAG = `omniMaxContentLoaded_v${extensionVersion}_layoutFix`; // Updated flag version
+export const OMNI_MAX_CONTENT_LOADED_FLAG = `omniMaxContentLoaded_v${extensionVersion}_layoutFix`;
 
 const MAX_LAYOUT_RETRIES = 15; // Aumentado para mais chances em páginas lentas
 const LAYOUT_RETRY_DELAY = 300; // ms entre tentativas
