@@ -179,7 +179,7 @@ export class ExtractionService {
 
       if (protocolNumber) {
         console.log("Omni Max [ExtractionService]: Protocolo extraído:", protocolNumber);
-        return protocolNumber.replace(/\D/g, ''); // Retorna apenas números por padrão
+        return protocolNumber.replace(/\D/g, ''); 
       }
     }
     console.warn(`Omni Max [ExtractionService]: Label de Protocolo "${this.config.textMarkers.protocolLabel}" ou valor não encontrados.`);

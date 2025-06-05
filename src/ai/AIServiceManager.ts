@@ -1,72 +1,133 @@
+/**
+ * @file src/ai/AIServiceManager.ts
+ * @description Manages interactions with various AI service providers.
+ * It handles loading the appropriate provider based on configuration,
+ * building request options with necessary credentials, and delegating
+ * AI tasks like summary generation and model listing.
+ */
 import { get } from 'svelte/store'; // Ensure get is imported
 import { aiCredentialsStore, aiProviderConfigStore, promptsStore } from '../storage/stores';
-import type { AIiProvider, AIRequestOptions } from './AIiProvider';
+import type { AIiProvider, AIRequestOptions } from './AIiProvider'; // Corrected interface name
 import { OpenAiProvider } from './providers/OpenAIProvider';
 import { GeminiProvider } from './providers/GeminiProvider';
 import { AnthropicProvider } from './providers/AnthropicProvider';
 import { OllamaProvider } from './providers/OllamaProvider';
 import { GroqProvider } from './providers/GroqProvider';
 
+/**
+ * @const {Record<string, AIiProvider>} providerRegistry
+ * @description A registry mapping provider IDs (lowercase) to their respective service instances.
+ */
 const providerRegistry: Record<string, AIiProvider> = {
-    groq: new GroqProvider(),
-    openai: new OpenAiProvider(),
-    gemini: new GeminiProvider(),
-    anthropic: new AnthropicProvider(),
-    ollama: new OllamaProvider(),
+  groq: new GroqProvider(),
+  openai: new OpenAiProvider(),
+  gemini: new GeminiProvider(),
+  anthropic: new AnthropicProvider(),
+  ollama: new OllamaProvider(),
 };
 
+/**
+ * @class AIServiceManager
+ * @description Central class for managing and interacting with different AI providers.
+ */
 export class AIServiceManager {
 
-    private async loadProvider(): Promise<AIiProvider> {
-        const config = await get(aiProviderConfigStore);
-        const providerKey = config.provider?.toLowerCase();
-        if (!providerKey) throw new Error("Provedor de IA não configurado.");
-        
-        const p = providerRegistry[providerKey];
-        if (!p) throw new Error(`Provedor ${config.provider} não encontrado.`);
-        return p;
+  /**
+   * Loads the currently configured AI provider instance from the registry.
+   * @private
+   * @async
+   * @returns {Promise<AIiProvider>} A promise that resolves with the loaded AI provider instance.
+   * @throws {Error} If the AI provider is not configured or not found in the registry.
+   */
+  private async loadProvider(): Promise<AIiProvider> {
+    const config = get(aiProviderConfigStore); // `get` is synchronous here
+    const providerKey = config.provider?.toLowerCase();
+
+    if (!providerKey) {
+      throw new Error("AI provider is not configured.");
     }
 
-    private async buildOptions(providerInstance: AIiProvider): Promise<AIRequestOptions> {
-        const creds = await get(aiCredentialsStore);
-        const cfg = await get(aiProviderConfigStore);
-    
-        const opts: AIRequestOptions = { model: cfg.model };
-        const keyName = providerInstance.credentialKey;
-        const urlName = providerInstance.urlKey;
-    
-        if (urlName && creds[urlName]) {
-            opts.baseUrl = creds[urlName] as string;
-        } else if (keyName && creds[keyName]) { // Check if keyName itself is defined before accessing creds[keyName]
-            opts.apiKey = creds[keyName] as string;
-        } else {
-            // This error will be caught by refreshModelList and set as modelError
-            const credentialType = urlName ? "URL Base" : "Chave API";
-            throw new Error(`Credenciais (${credentialType}) ausentes para o provedor ${cfg.provider}.`);
-        }
-        return opts;
+    const providerInstance = providerRegistry[providerKey];
+    if (!providerInstance) {
+      throw new Error(`Provider "${config.provider}" not found or not supported.`);
+    }
+    return providerInstance;
+  }
+
+  /**
+   * Builds the request options object for an AI provider, including model, API key, or base URL.
+   * @private
+   * @async
+   * @param {AIiProvider} providerInstance - The AI provider instance for which to build options.
+   * @returns {Promise<AIRequestOptions>} A promise that resolves with the AI request options.
+   * @throws {Error} If necessary credentials (API key or Base URL) for the provider are missing.
+   */
+  private async buildOptions(providerInstance: AIiProvider): Promise<AIRequestOptions> {
+    const credentials = get(aiCredentialsStore); // `get` is synchronous
+    const providerConfig = get(aiProviderConfigStore); // `get` is synchronous
+
+    const options: AIRequestOptions = { model: providerConfig.model };
+    const apiKeyName = providerInstance.credentialKey; // e.g., 'openaiApiKey'
+    const baseUrlName = providerInstance.urlKey;       // e.g., 'ollamaBaseUrl'
+
+    let credentialTypeForError = "API key"; // Default error message part
+
+    if (baseUrlName && credentials[baseUrlName]) {
+      options.baseUrl = credentials[baseUrlName] as string;
+    } else if (apiKeyName && credentials[apiKeyName]) {
+      options.apiKey = credentials[apiKeyName] as string;
+    } else {
+      // Determine credential type for a more specific error message
+      if (baseUrlName) { // If a baseUrlName was expected (e.g. Ollama)
+        credentialTypeForError = "Base URL";
+      }
+      // This error will be caught by methods like listModels and can be displayed in the UI.
+      throw new Error(`Required credentials (${credentialTypeForError}) are missing for provider "${providerConfig.provider}".`);
+    }
+    return options;
+  }
+
+  /**
+   * Generates a summary for the given text using the configured AI provider and prompt.
+   * @public
+   * @async
+   * @param {string} text - The text to summarize.
+   * @returns {Promise<string>} A promise that resolves with the generated summary.
+   */
+  public async generateSummary(text: string): Promise<string> {
+    const provider = await this.loadProvider();
+    const prompts = get(promptsStore); // `get` is synchronous
+    const options = await this.buildOptions(provider);
+    return provider.generateSummary(text, prompts.summaryPrompt, options);
+  }
+
+  /**
+   * Lists available models for the currently configured AI provider.
+   * Handles potential errors during option building (e.g., missing credentials).
+   * @public
+   * @async
+   * @returns {Promise<string[]>} A promise that resolves with an array of model names.
+   * @throws {Error} If options cannot be built (e.g., missing credentials) or provider fails to list models.
+   */
+  public async listModels(): Promise<string[]> {
+    const provider = await this.loadProvider();
+    let optionsForListing: Pick<AIRequestOptions, 'apiKey' | 'baseUrl'>;
+
+    try {
+      // Attempt to build full options to get potential apiKey or baseUrl
+      const fullOptions = await this.buildOptions(provider);
+      optionsForListing = {
+        apiKey: fullOptions.apiKey,
+        baseUrl: fullOptions.baseUrl,
+      };
+    } catch (error) {
+      // If buildOptions throws (e.g., missing credentials needed even for listing models for some providers,
+      // or if the provider itself needs certain config to list models),
+      // this error should be propagated to be handled by the UI (e.g., in OmniMaxPopup's refreshModelList).
+      console.error("[AIServiceManager] Error building options for listModels:", (error as Error).message);
+      throw error; // Re-throw the original error to be caught by the caller
     }
 
-    public async generateSummary(text: string): Promise<string> {
-        const provider = await this.loadProvider();
-        const prompts = await get(promptsStore);
-        const options = await this.buildOptions(provider);
-        return provider.generateSummary(text, prompts.summaryPrompt, options);
-    }
-
-    public async listModels(): Promise<string[]> {
-        const provider = await this.loadProvider();
-        // Pass only necessary parts of options, buildOptions will internally get provider details
-        const optionsForListing = await this.buildOptions(provider).catch(err => {
-            // If buildOptions throws (e.g. missing credentials for model selection itself),
-            // re-throw to be caught by OmniMaxPopup's refreshModelList
-            console.error("AIServiceManager: Error building options for listModels:", err.message);
-            throw err; // Crucial to propagate the error
-        });
-
-        return provider.listModels({
-            apiKey: optionsForListing.apiKey,
-            baseUrl: optionsForListing.baseUrl,
-        });
-    }
+    return provider.listModels(optionsForListing);
+  }
 }

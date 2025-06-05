@@ -1,4 +1,3 @@
-// vi.fn<() => ActiveChatContext | null>(); 
 // src/content/services/SummaryUiService.test.ts
 import { describe, it, expect, vi, beforeEach, afterEach, type Mocked, type Mock } from 'vitest';
 import { SummaryUiService, SUMMARY_BUTTON_CLASS } from './SummaryUiService';
