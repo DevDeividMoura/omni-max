@@ -1,33 +1,46 @@
 // src/content/index.test.ts
 import {
   initializeOmniMaxContentScript,
-  OMNI_MAX_CONTENT_LOADED_FLAG, // Importar a flag diretamente
-  handleLayoutCorrection, // A função já estava sendo importada como 'handleLayoutCorrection'
-} from './index';
-import { CONFIG } from './config';
+  OMNI_MAX_CONTENT_LOADED_FLAG,
+  handleLayoutCorrection,
+} from './index'; // O caminho './index' já importa de src/content/index.ts
+import { CONFIG, type Config } from './config'; // Importar Config explicitamente
 import { DomService } from './services/DomService';
 import { ShortcutService } from './services/ShortcutService';
 import { TemplateHandlingService } from './services/TemplateHandlingService';
-import { vi, describe, it, beforeEach, afterEach, expect, type Mocked } from 'vitest'; // Adicionado Mocked type
+import { vi, describe, it, beforeEach, afterEach, expect, type Mocked } from 'vitest';
 
 import { get } from 'svelte/store';
 import { globalExtensionEnabledStore, moduleStatesStore } from '../storage/stores';
 
-// packageJson não é mais necessário aqui se a flag for importada
-// import packageJson from '../../package.json';
-// const version = packageJson.version;
-// Não defina OMNI_MAX_CONTENT_LOADED_FLAG aqui, use a importada
+// Constante para o número de retries, para manter os testes sincronizados com a implementação
+// Idealmente, esta constante viria da própria implementação ou seria mockável.
+// Para este exemplo, vamos usar o valor conhecido (15 retries + 1 chamada inicial = 16)
+const MAX_EXPECTED_QUERY_CALLS_ON_FAILURE = 16;
+
 
 describe('handleLayoutCorrection', () => {
-  // Usar Mocked<DomService> para tipagem correta do mock
   let mockDomService: Mocked<DomService>;
-  const originalTabsSelector = CONFIG.selectors.tabsList; // Renomeado para clareza
+  // Salva o valor original do seletor para restaurá-lo,
+  // garantindo isolamento entre testes que modificam CONFIG.
+  let originalTabsListSelectorValue: string | undefined;
 
   beforeEach(() => {
-    // Criar um mock completo para DomService para cada teste
+    vi.useFakeTimers(); // <<< Ponto crucial: Habilita fake timers
+
+    // Salva e restaura o valor original de CONFIG.selectors.tabsList
+    // Isso é feito aqui para garantir que cada teste comece com o valor original da CONFIG,
+    // antes que qualquer teste (como '...when selector undefined') o modifique.
+    if (originalTabsListSelectorValue === undefined && 'tabsList' in CONFIG.selectors) {
+        originalTabsListSelectorValue = CONFIG.selectors.tabsList;
+    }
+    // Restaura para o valor salvo, ou o valor atual de CONFIG se for a primeira vez.
+    CONFIG.selectors.tabsList = originalTabsListSelectorValue || CONFIG.selectors.tabsList;
+
+
     mockDomService = {
       applyStyles: vi.fn(),
-      query: vi.fn(), // Adicionar outros métodos se handleLayoutCorrection os usar internamente
+      query: vi.fn(),
       queryAll: vi.fn(),
       getTextSafely: vi.fn(),
       waitNextFrame: vi.fn().mockResolvedValue(undefined),
@@ -36,44 +49,38 @@ describe('handleLayoutCorrection', () => {
       createElementWithOptions: vi.fn(),
     } as Mocked<DomService>;
 
-    // Resetar stores para o estado padrão ANTES de cada teste no describe
+    // Resetar stores para um estado padrão conhecido
     globalExtensionEnabledStore.set(true);
-    moduleStatesStore.set({ layoutCorrection: true }); // Assegurar que o módulo específico está no estado esperado
+    // Definir um estado padrão para todos os módulos relevantes.
+    // Se outros módulos forem verificados por handleLayoutCorrection ou suas dependências, adicione-os.
+    moduleStatesStore.set({ layoutCorrection: true /*, otherModuleDefaultState: true */ });
   });
 
   afterEach(() => {
-    // Restaurar o seletor original, importante se CONFIG for modificado diretamente
-    // Idealmente, CONFIG não deve ser mutável. Se for, esta restauração é crucial.
-    if (originalTabsSelector !== undefined) { // Verifica se originalTabsSelector tem um valor antes de atribuir
-      CONFIG.selectors.tabsList = originalTabsSelector;
-    } else {
-      // Se originalTabsSelector for undefined, talvez seja melhor remover a propriedade
-      // ou definir como undefined, dependendo da intenção original.
-      // Por segurança, se for undefined, pode ser que não devesse ser restaurado ou o teste precisa de ajuste.
-      delete CONFIG.selectors.tabsList; // Ou CONFIG.selectors.tabsList = undefined;
+    vi.restoreAllMocks(); // Limpa spies e mocks.
+    vi.useRealTimers();   // <<< Ponto crucial: Restaura timers reais
+    
+    // Restaura o valor original do seletor se ele foi salvo
+    // Isso garante que CONFIG não permaneça alterado para outros describe blocks.
+    if (originalTabsListSelectorValue !== undefined) {
+        CONFIG.selectors.tabsList = originalTabsListSelectorValue;
     }
-    vi.restoreAllMocks(); // Limpa todos os mocks após cada teste
   });
 
-  it('applies styles when global and module enabled and selector defined', async () => {
+  it('applies styles when global and module enabled and selector defined and element IS found', async () => {
     const moduleEnabled = get(moduleStatesStore)?.layoutCorrection ?? false;
     const globalEnabled = get(globalExtensionEnabledStore) ?? true;
+    const currentTabsSelector = CONFIG.selectors.tabsList;
 
-    // Configurar o mock para retornar um elemento quando '#tabs' for consultado
-    const mockTabsElement = document.createElement('div'); // Pode ser qualquer HTMLElement mockado
-    mockDomService.query.mockImplementation((selector: string) => {
-      if (selector === originalTabsSelector) {
-        return mockTabsElement;
-      }
-      return null;
-    });
+    expect(currentTabsSelector).toBeDefined(); // Guarda para a intenção do teste
+
+    const mockTabsElement = document.createElement('div');
+    mockDomService.query.mockReturnValue(mockTabsElement); // Elemento encontrado de primeira
 
     await handleLayoutCorrection(mockDomService, CONFIG, moduleEnabled, globalEnabled);
+    // Não é necessário vi.runAllTimersAsync() porque o elemento é encontrado na primeira tentativa (sem retries com setTimeout)
 
-    // Verificar se query foi chamado (a função de retry vai chamá-lo)
-    expect(mockDomService.query).toHaveBeenCalledWith(originalTabsSelector);
-
-    // Verificar se applyStyles foi chamado com o elemento mockado e os estilos corretos
+    expect(mockDomService.query).toHaveBeenCalledWith(currentTabsSelector);
     expect(mockDomService.applyStyles).toHaveBeenCalledWith(mockTabsElement, {
       float: 'right',
       maxHeight: '72vh',
@@ -81,65 +88,162 @@ describe('handleLayoutCorrection', () => {
     });
   });
 
-  it('does NOT apply styles when global disabled', async () => {
-    globalExtensionEnabledStore.set(false); // Desabilita globalmente para este teste
+  it('resets styles when global disabled and element IS found', async () => {
+    globalExtensionEnabledStore.set(false); // Global desabilitado
 
-    const moduleEnabled = get(moduleStatesStore)?.layoutCorrection ?? true; // Módulo ainda pode estar "true"
-    const globalIsEnabled = get(globalExtensionEnabledStore); // Deve ser false
+    const moduleEnabled = true; // Módulo pode ainda estar "habilitado" nas stores
+    const globalIsEnabled = get(globalExtensionEnabledStore); // false
+    const currentTabsSelector = CONFIG.selectors.tabsList;
+    expect(currentTabsSelector).toBeDefined();
+
+    const mockTabsElement = document.createElement('div');
+    mockDomService.query.mockReturnValue(mockTabsElement); // Elemento encontrado
 
     await handleLayoutCorrection(mockDomService, CONFIG, moduleEnabled, globalIsEnabled);
-    expect(mockDomService.applyStyles).not.toHaveBeenCalled();
+
+    expect(mockDomService.query).toHaveBeenCalledWith(currentTabsSelector);
+    expect(mockDomService.applyStyles).toHaveBeenCalledWith(mockTabsElement, { // Espera-se que aplique estilos "vazios"
+      float: '',
+      maxHeight: '',
+      overflowY: '',
+    });
   });
 
-  it('does NOT apply styles when module disabled', async () => {
-    moduleStatesStore.set({ layoutCorrection: false }); // Desabilita o módulo específico
+  it('does NOT call applyStyles when global disabled and element is NOT found (after retries)', async () => {
+    globalExtensionEnabledStore.set(false);
 
-    const moduleIsEnabled = get(moduleStatesStore)?.layoutCorrection ?? true; // Deve ser false
-    const globalEnabled = get(globalExtensionEnabledStore) ?? true;
+    const moduleEnabled = true;
+    const globalIsEnabled = get(globalExtensionEnabledStore); // false
+    const currentTabsSelector = CONFIG.selectors.tabsList;
+    expect(currentTabsSelector).toBeDefined();
+
+    mockDomService.query.mockReturnValue(null); // Elemento NUNCA é encontrado
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const promise = handleLayoutCorrection(mockDomService, CONFIG, moduleEnabled, globalIsEnabled);
+    await vi.runAllTimersAsync(); // Processa TODOS os setTimeouts das retentativas
+    await promise;
+
+    expect(mockDomService.query).toHaveBeenCalledWith(currentTabsSelector);
+    // A função query será chamada (MAX_LAYOUT_RETRIES (15) + 1) vezes
+    expect(mockDomService.query).toHaveBeenCalledTimes(MAX_EXPECTED_QUERY_CALLS_ON_FAILURE);
+    expect(mockDomService.applyStyles).not.toHaveBeenCalled();
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining(`Element "${currentTabsSelector}" not found after ${15} retries.`)
+    );
+    consoleErrorSpy.mockRestore();
+  });
+
+
+  it('resets styles when module disabled and element IS found', async () => {
+    moduleStatesStore.set({ layoutCorrection: false }); // Módulo desabilitado
+
+    const moduleIsEnabled = get(moduleStatesStore)?.layoutCorrection ?? true; // false
+    const globalEnabled = get(globalExtensionEnabledStore) ?? true; // true
+    const currentTabsSelector = CONFIG.selectors.tabsList;
+    expect(currentTabsSelector).toBeDefined();
+
+    const mockTabsElement = document.createElement('div');
+    mockDomService.query.mockReturnValue(mockTabsElement); // Elemento encontrado
 
     await handleLayoutCorrection(mockDomService, CONFIG, moduleIsEnabled, globalEnabled);
+
+    expect(mockDomService.query).toHaveBeenCalledWith(currentTabsSelector);
+    expect(mockDomService.applyStyles).toHaveBeenCalledWith(mockTabsElement, {
+      float: '',
+      maxHeight: '',
+      overflowY: '',
+    });
+  });
+  
+  it('does NOT call applyStyles when module disabled and element is NOT found (after retries)', async () => {
+    moduleStatesStore.set({ layoutCorrection: false }); // Módulo desabilitado
+
+    const moduleIsEnabled = get(moduleStatesStore)?.layoutCorrection ?? true; // false
+    const globalEnabled = get(globalExtensionEnabledStore) ?? true; // true
+    const currentTabsSelector = CONFIG.selectors.tabsList;
+    expect(currentTabsSelector).toBeDefined();
+
+    mockDomService.query.mockReturnValue(null); // Elemento NUNCA é encontrado
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const promise = handleLayoutCorrection(mockDomService, CONFIG, moduleIsEnabled, globalEnabled);
+    await vi.runAllTimersAsync(); // Processa TODOS os setTimeouts das retentativas
+    await promise;
+
+    expect(mockDomService.query).toHaveBeenCalledWith(currentTabsSelector);
+    expect(mockDomService.query).toHaveBeenCalledTimes(MAX_EXPECTED_QUERY_CALLS_ON_FAILURE);
     expect(mockDomService.applyStyles).not.toHaveBeenCalled();
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining(`Element "${currentTabsSelector}" not found after ${15} retries.`)
+    );
+    consoleErrorSpy.mockRestore();
   });
 
-  it('does NOT apply styles when selector undefined', async () => {
-    CONFIG.selectors.tabsList = undefined;
+
+  it('does NOT call query or applyStyles and warns when selector undefined', async () => {
+    CONFIG.selectors.tabsList = undefined; // Força o seletor a ser undefined
 
     const moduleEnabled = get(moduleStatesStore)?.layoutCorrection ?? true;
     const globalEnabled = get(globalExtensionEnabledStore) ?? true;
+    const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     await handleLayoutCorrection(mockDomService, CONFIG, moduleEnabled, globalEnabled);
+
+    expect(consoleWarnSpy).toHaveBeenCalledWith("Omni Max [ContentIndex]: tabsList selector is not defined in config. Cannot handle layout correction.");
+    expect(mockDomService.query).not.toHaveBeenCalled();
     expect(mockDomService.applyStyles).not.toHaveBeenCalled();
+    consoleWarnSpy.mockRestore();
   });
 });
 
 describe('initializeOmniMaxContentScript', () => {
   let attachShortSpy: ReturnType<typeof vi.spyOn>;
   let attachTempSpy: ReturnType<typeof vi.spyOn>;
-  // A flag OMNI_MAX_CONTENT_LOADED_FLAG é importada diretamente de './index'
+  // OMNI_MAX_CONTENT_LOADED_FLAG é importada diretamente
 
   beforeEach(() => {
-    // Spy on attachListeners of both services
-    attachShortSpy = vi.spyOn(ShortcutService.prototype, 'attachListeners').mockImplementation(() => { });
-    attachTempSpy = vi.spyOn(TemplateHandlingService.prototype, 'attachListeners').mockImplementation(() => { });
+    attachShortSpy = vi.spyOn(ShortcutService.prototype, 'attachListeners').mockImplementation(() => {});
+    attachTempSpy = vi.spyOn(TemplateHandlingService.prototype, 'attachListeners').mockImplementation(() => {});
+    
+    // Limpa a flag na window antes de cada teste neste describe
     delete (window as any)[OMNI_MAX_CONTENT_LOADED_FLAG];
+    
+    // Adicionar mock para querySelector para evitar o warning do MutationObserver se ul#tabs não existir
+    // Isso é mais relevante se initializeOmniMaxContentScript for complexo e interagir muito com o DOM.
+    // Para os testes atuais, pode não ser estritamente necessário, mas é uma boa prática preventiva.
+    vi.spyOn(document, 'querySelector').mockImplementation((selector: string) => {
+      if (selector === 'ul#tabs') {
+        return document.createElement('ul'); // Retorna um mock de ul#tabs
+      }
+      // Para outros seletores, você pode querer retornar null ou outros elementos mockados.
+      return null;
+    });
+    vi.spyOn(document, 'querySelectorAll').mockReturnValue([] as any); // Mock querySelectorAll
+
+     // Mockar stores se initializeOmniMaxContentScript depender delas diretamente na inicialização
+     // Por exemplo, para handleLayoutCorrection e refreshSummaryButtonLogic que são chamadas.
+    globalExtensionEnabledStore.set(true);
+    moduleStatesStore.set({ layoutCorrection: true, aiChatSummary: true }); // Configuração default
+    // aiFeaturesEnabledStore.set(true); // Se relevante
   });
 
   afterEach(() => {
     attachShortSpy.mockRestore();
     attachTempSpy.mockRestore();
+    vi.restoreAllMocks(); // Isso restaurará o document.querySelector também.
   });
 
-  it('initializes once and calls attachListeners', () => {
-    initializeOmniMaxContentScript();
+  it('initializes once and calls attachListeners', async () => { // Tornar async se houver promessas internas
+    await initializeOmniMaxContentScript(); // Se houver async ops, aguarde-as
     expect((window as any)[OMNI_MAX_CONTENT_LOADED_FLAG]).toBe(true);
     expect(attachShortSpy).toHaveBeenCalled();
     expect(attachTempSpy).toHaveBeenCalled();
   });
 
-  it('does NOT re-initialize if flag is set', () => {
-    // @ts-expect-error Acessando a window global para o teste
-    window[OMNI_MAX_CONTENT_LOADED_FLAG] = true;
-    initializeOmniMaxContentScript();
+  it('does NOT re-initialize if flag is set', async () => { // Tornar async
+    (window as any)[OMNI_MAX_CONTENT_LOADED_FLAG] = true;
+    await initializeOmniMaxContentScript();
     expect(attachShortSpy).not.toHaveBeenCalled();
     expect(attachTempSpy).not.toHaveBeenCalled();
   });
