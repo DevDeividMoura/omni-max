@@ -32,10 +32,6 @@ const MOCK_CONFIG: Config = {
     protocolLabel: 'Número de protocolo:',
   },
 };
-// Não é estritamente necessário mockar '../config' se você sempre passa MOCK_CONFIG diretamente.
-// Se TemplateHandlingService importasse CONFIG diretamente, aí o mock seria necessário.
-// vi.mock('../config', () => ({ CONFIG: MOCK_CONFIG }));
-
 
 // Mock Selection API
 const mockRange = {
@@ -54,45 +50,41 @@ const mockSelection = {
 // --- Test Suite ---
 describe('TemplateHandlingService', () => {
   let service: TemplateHandlingService;
-  let container: HTMLElement; // Este será o nosso 'editableDiv' mock
+  let container: HTMLElement;
 
   const createKeyboardEvent = (key: string, target: HTMLElement) => {
     const ev = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
     Object.defineProperty(ev, 'target', { value: target, writable: false });
-    vi.spyOn(ev, 'preventDefault');
-    vi.spyOn(ev, 'stopPropagation');
+    // Não vamos mais espionar preventDefault/stopPropagation aqui, pois não são esperados
+    // vi.spyOn(ev, 'preventDefault');
+    // vi.spyOn(ev, 'stopPropagation');
     return ev;
   };
 
   beforeEach(() => {
     vi.resetAllMocks();
 
-    // Configurar o mock para DomService ANTES de instanciar o TemplateHandlingService
     mockDomServiceInstance = {
-      getTextSafely: vi.fn().mockReturnValue(''), // << RETORNO PADRÃO IMPORTANTE
+      getTextSafely: vi.fn().mockReturnValue(''),
       waitNextFrame: vi.fn().mockResolvedValue(undefined),
       getTextNodeAndOffsetAtCharIndex: vi.fn(),
       moveCursorToEnd: vi.fn(),
-      query: vi.fn(), // Adicione todos os métodos usados se necessário
+      query: vi.fn(),
       queryAll: vi.fn(),
       applyStyles: vi.fn(),
       createElementWithOptions: vi.fn(),
     } as Mocked<DomService>;
 
-    // Resetar stores
     globalExtensionEnabledStore.set(true);
     moduleStatesStore.set({ templateProcessor: true });
 
-    // Mockar APIs de seleção do DOM
     vi.spyOn(window, 'getSelection').mockReturnValue(mockSelection);
     vi.spyOn(document, 'createRange').mockReturnValue(mockRange);
 
-    // Instanciar o serviço com o MOCK_CONFIG e o mockDomServiceInstance
     service = new TemplateHandlingService(MOCK_CONFIG, mockDomServiceInstance);
 
-    // Preparar um div editável falso
     container = document.createElement('div');
-    container.className = MOCK_CONFIG.selectors.editableChatbox.slice(1); // Remove o '.' inicial
+    container.className = MOCK_CONFIG.selectors.editableChatbox.slice(1);
     container.setAttribute('contenteditable', 'true');
     document.body.appendChild(container);
 
@@ -108,22 +100,26 @@ describe('TemplateHandlingService', () => {
   });
 
   describe('Listeners', () => {
+    // Estes testes permanecem os mesmos
     it('attachListeners should add keydown listener', () => {
       service.attachListeners();
       expect(document.addEventListener).toHaveBeenCalledWith('keydown', expect.any(Function), true);
     });
 
     it('detachListeners should remove keydown listener', () => {
-      service.attachListeners(); // Adiciona primeiro
+      service.attachListeners();
       service.detachListeners();
       expect(document.removeEventListener).toHaveBeenCalledWith('keydown', expect.any(Function), true);
     });
   });
 
   describe('onKeyDown()', () => {
+    // Estes testes permanecem os mesmos em sua verificação de 'not.toHaveBeenCalled()'
+    // para preventDefault, pois nesses cenários a lógica principal não é acionada.
     it('does nothing if global disabled', async () => {
       globalExtensionEnabledStore.set(false);
       const ev = createKeyboardEvent('Tab', container);
+      vi.spyOn(ev, 'preventDefault'); // Espionar aqui para este teste específico
       await (service as any).onKeyDown(ev);
       expect(ev.preventDefault).not.toHaveBeenCalled();
     });
@@ -131,48 +127,49 @@ describe('TemplateHandlingService', () => {
     it('does nothing if module disabled', async () => {
       moduleStatesStore.set({ templateProcessor: false });
       const ev = createKeyboardEvent('Tab', container);
+      vi.spyOn(ev, 'preventDefault'); // Espionar aqui
       await (service as any).onKeyDown(ev);
       expect(ev.preventDefault).not.toHaveBeenCalled();
     });
 
     it('does nothing if key is not Tab', async () => {
       const ev = createKeyboardEvent('Enter', container);
+      vi.spyOn(ev, 'preventDefault'); // Espionar aqui
       await (service as any).onKeyDown(ev);
       expect(ev.preventDefault).not.toHaveBeenCalled();
     });
 
     it('does nothing if target does not match selector', async () => {
-      const otherDiv = document.createElement('div'); // Um elemento que não corresponde ao seletor
+      const otherDiv = document.createElement('div');
       const ev = createKeyboardEvent('Tab', otherDiv);
+      vi.spyOn(ev, 'preventDefault'); // Espionar aqui
       await (service as any).onKeyDown(ev);
       expect(ev.preventDefault).not.toHaveBeenCalled();
     });
 
-    it('prevents default and calls handleTabPressLogic on valid Tab', async () => {
-      // Definir um textContent para o container para este teste
+    // TESTE AJUSTADO AQUI
+    it('calls handleTabPressLogic on valid Tab but does NOT prevent default', async () => {
       container.textContent = 'Hello [VARIABLE]';
-      // Garantir que getTextSafely retorne o conteúdo do container para este teste
       mockDomServiceInstance.getTextSafely.mockReturnValue(container.textContent);
 
-      const spyLogic = vi.spyOn(service as any, 'handleTabPressLogic').mockResolvedValue(undefined); // Mockar como async
+      const spyLogic = vi.spyOn(service as any, 'handleTabPressLogic').mockResolvedValue(undefined);
       const ev = createKeyboardEvent('Tab', container);
+      const preventDefaultSpy = vi.spyOn(ev, 'preventDefault');
+      const stopPropagationSpy = vi.spyOn(ev, 'stopPropagation');
+
       await (service as any).onKeyDown(ev);
 
-      expect(ev.preventDefault).toHaveBeenCalled(); // Deve ser chamado agora
-      expect(ev.stopPropagation).toHaveBeenCalled(); // Deve ser chamado agora
-      expect(spyLogic).toHaveBeenCalledWith(container);
+      // Agora esperamos que preventDefault e stopPropagation NÃO sejam chamados
+      expect(preventDefaultSpy).not.toHaveBeenCalled();
+      expect(stopPropagationSpy).not.toHaveBeenCalled();
+      expect(spyLogic).toHaveBeenCalledWith(container); // A lógica principal ainda deve ser chamada
     });
   });
 
   describe('handleTabPressLogic()', () => {
-    // Helper para configurar o container e mocks para testes de handleTabPressLogic
     const setupContainerForLogicTest = (initialText: string) => {
       container.textContent = initialText;
-      // O mock padrão no beforeEach já faz mockReturnValue('')
-      // Para testes específicos, sobrescrevemos se necessário:
       mockDomServiceInstance.getTextSafely.mockReturnValue(container.textContent || '');
-
-      // Limpar e recriar o nó de texto filho se já existir, para que os offsets sejam corretos
       while (container.firstChild) {
         container.removeChild(container.firstChild);
       }
@@ -188,13 +185,10 @@ describe('TemplateHandlingService', () => {
             if (charIndex === startIdx) return { node: textNode, offset: startOff };
             if (charIndex === endIdx) return { node: textNode, offset: endOff };
           }
-          // Fallback para outros casos ou se o nó de texto não for o esperado
-          // Isso pode precisar de ajuste se a estrutura interna do container for mais complexa
-          if (charIndex >= 0 && charIndex <= textNode.length) return { node: textNode, offset: charIndex };
+          if (charIndex >= 0 && charIndex <= (textNode.nodeValue?.length ?? 0)) return { node: textNode, offset: charIndex };
           return null;
         });
     };
-
 
     it('transforms {FULL NAME} and moves cursor end if no variables', async () => {
       setupContainerForLogicTest('Hello {ANA MARIA SOUZA}!');
@@ -207,38 +201,26 @@ describe('TemplateHandlingService', () => {
     it('selects first [VAR] placeholder', async () => {
       const txt = 'Check [ABC123] now';
       const textNode = setupContainerForLogicTest(txt);
-      // [ABC123] -> '[' é o índice 6. ']' é o índice 13. endIndex + 1 = 14
-      setupNodeOffsetMocks(textNode, 6, 6, 14, 14); // Seleciona '[ABC123]'
+      setupNodeOffsetMocks(textNode, 6, 6, 14, 14);
 
       await (service as any).handleTabPressLogic(container);
 
       expect(mockRange.setStart).toHaveBeenCalledWith(textNode, 6);
-      expect(mockRange.setEnd).toHaveBeenCalledWith(textNode, 14); // +1 para incluir o ']'
+      expect(mockRange.setEnd).toHaveBeenCalledWith(textNode, 14);
       expect(mockSelection.removeAllRanges).toHaveBeenCalled();
       expect(mockSelection.addRange).toHaveBeenCalledWith(mockRange);
     });
 
     it('transforms then selects variable', async () => {
       const raw = 'Hi {CARLOS} [X1]';
-      setupContainerForLogicTest(raw); // getTextSafely retornará 'Hi {CARLOS} [X1]' inicialmente
+      setupContainerForLogicTest(raw);
 
-      // Após a transformação, o textContent se tornará 'Hi Carlos [X1]'
-      // e um novo nó de texto será efetivamente criado/atualizado.
-      // O `findSelectableVariables` operará em "Hi Carlos [X1]".
-      // [X1] -> '[' no índice 10. ']' no índice 13. endIndex + 1 = 14
-      // (H=0, i=1,  =2, C=3, a=4, r=5, l=6, o=7, s=8,  =9, [=10, X=11, 1=12, ]=13) -> Erro meu no cálculo anterior, o correto é:
-      // H i   C a r l o s   [ X  1  ]
-      // 0 1 2 3 4 5 6 7 8 9 10 11 12 13
-      // Então, startIndex é 10, endIndex é 13. endIndex + 1 é 14.
-
-      // Mock para getTextNodeAndOffsetAtCharIndex precisa considerar o texto transformado
       mockDomServiceInstance.getTextNodeAndOffsetAtCharIndex.mockImplementation((rootNode, charIndex) => {
         if (rootNode === container && container.firstChild && container.firstChild.nodeType === Node.TEXT_NODE) {
           const currentTextNode = container.firstChild as Text;
-          // Esperamos que o nó de texto seja o transformado
           if (currentTextNode.nodeValue === 'Hi Carlos [X1]') {
-            if (charIndex === 10) return { node: currentTextNode, offset: 10 }; // '['
-            if (charIndex === 14) return { node: currentTextNode, offset: 14 }; // após ']'
+            if (charIndex === 10) return { node: currentTextNode, offset: 10 };
+            if (charIndex === 14) return { node: currentTextNode, offset: 14 };
           }
         }
         return null;
@@ -250,8 +232,10 @@ describe('TemplateHandlingService', () => {
       expect(mockDomServiceInstance.waitNextFrame).toHaveBeenCalled();
       const textNodeAfterTransform = container.firstChild as Text;
       expect(textNodeAfterTransform).toBeTruthy();
-      expect(mockRange.setStart).toHaveBeenCalledWith(textNodeAfterTransform, 10);
-      expect(mockRange.setEnd).toHaveBeenCalledWith(textNodeAfterTransform, 14);
+      if (textNodeAfterTransform) { // Type guard
+        expect(mockRange.setStart).toHaveBeenCalledWith(textNodeAfterTransform, 10);
+        expect(mockRange.setEnd).toHaveBeenCalledWith(textNodeAfterTransform, 14);
+      }
       expect(mockSelection.addRange).toHaveBeenCalledWith(mockRange);
     });
 
@@ -265,8 +249,8 @@ describe('TemplateHandlingService', () => {
       const txt = '[X]';
       const textNode = setupContainerForLogicTest(txt);
       mockDomServiceInstance.getTextNodeAndOffsetAtCharIndex
-        .mockReturnValueOnce(null) // Simula falha ao encontrar o nó inicial
-        .mockReturnValueOnce({ node: textNode, offset: 2 }); // Nó final encontrado
+        .mockReturnValueOnce(null)
+        .mockReturnValueOnce({ node: textNode, offset: 2 });
 
       const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => { });
       await (service as any).handleTabPressLogic(container);
@@ -281,7 +265,6 @@ describe('TemplateHandlingService', () => {
     it('catches range errors and moves cursor end', async () => {
       const txt = '[Y]';
       const textNode = setupContainerForLogicTest(txt);
-      // '[' no índice 0, ']' no índice 2. endIndex + 1 = 3
       setupNodeOffsetMocks(textNode, 0, 0, 3, 3);
 
       const error = new Error('fail');
@@ -300,10 +283,9 @@ describe('TemplateHandlingService', () => {
     it('should select only the first variable if multiple [VARIABLES] exist', async () => {
       const textWithMultipleVars = "First [VAR_A] then [VAR_B].";
       const textNode = setupContainerForLogicTest(textWithMultipleVars);
-      // [VAR_A] -> '[' no índice 6. ']' no índice 12. endIndex + 1 = 13
       setupNodeOffsetMocks(textNode, 6, 6, 13, 13);
 
-      await (service as any).handleTabPressLogic(container); // Acessando o método privado para teste
+      await (service as any).handleTabPressLogic(container);
 
       expect(mockRange.setStart).toHaveBeenCalledWith(textNode, 6);
       expect(mockRange.setEnd).toHaveBeenCalledWith(textNode, 13);
@@ -313,7 +295,7 @@ describe('TemplateHandlingService', () => {
     describe('transformTemplateText (multiline support)', () => {
       it('preserves blank lines when replacing the name placeholder', () => {
         const raw = `{NOME DO CLIENTE} entrou no sistema.\n\nPor favor, verifique o status.`;
-        const result = (service as any).transformTemplateText(raw); // Acessando o método privado
+        const result = (service as any).transformTemplateText(raw);
         expect(result).toBe(`Nome entrou no sistema.\n\nPor favor, verifique o status.`);
       });
     });
@@ -322,10 +304,9 @@ describe('TemplateHandlingService', () => {
       const tpl = `{NOME DO CLIENTE} testando.\n\nLinha seguinte após duas quebras.`;
       setupContainerForLogicTest(tpl);
 
-      await (service as any).handleTabPressLogic(container); // Acessando o método privado
+      await (service as any).handleTabPressLogic(container);
 
       expect(container.textContent).toBe(`Nome testando.\n\nLinha seguinte após duas quebras.`);
-      // Como não há [VARIAVEIS], deve mover o cursor para o fim
       expect(mockDomServiceInstance.moveCursorToEnd).toHaveBeenCalledWith(container);
     });
   });

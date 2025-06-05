@@ -110,10 +110,6 @@ export class TemplateHandlingService {
       return;
     }
 
-    // MOVIDO PARA ANTES DO AWAIT E DESCOMENTADO
-    event.preventDefault();
-    event.stopPropagation();
-
     await new Promise<void>((resolve) => {
       requestAnimationFrame(() => {
         setTimeout(resolve, 30); // Pequeno delay para garantir que o DOM esteja pronto, se necessário
