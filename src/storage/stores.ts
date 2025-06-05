@@ -1,21 +1,60 @@
-// src/storage/stores.ts
+/**
+ * @file src/storage/stores.ts
+ * @description Defines Svelte stores for managing extension state with persistence.
+ * It includes default values, type interfaces, and instances of persistent stores
+ * for various application settings.
+ */
 import { persistentStore } from './persistentStore';
 import { getInitialModuleStates } from '../modules';
 import { PROVIDER_METADATA_LIST } from '../ai/providerMetadata';
 
-// --- Defaults ---
+// --- Default Values ---
+
+/**
+ * @const {boolean} GlobalExtensionEnabledDefault
+ * @description Default state for whether the entire extension is globally enabled.
+ */
 export const GlobalExtensionEnabledDefault = true;
+
+/**
+ * @const {Record<string, boolean>} ModuleStatesDefault
+ * @description Default states for individual feature modules, derived from `getInitialModuleStates`.
+ */
 export const ModuleStatesDefault = getInitialModuleStates();
+
+/**
+ * @const {boolean} ShortcutsOverallEnabledDefault
+ * @description Default state for whether keyboard shortcuts are globally enabled.
+ */
 export const ShortcutsOverallEnabledDefault = true;
+
+/**
+ * @const {boolean} AiFeaturesEnabledDefault
+ * @description Default state for whether AI-powered features are globally enabled.
+ */
 export const AiFeaturesEnabledDefault = false;
 
+/**
+ * @interface AiCredentials
+ * @description Defines the structure for storing API keys for various AI providers.
+ */
 export interface AiCredentials {
+  /** @property {string} [groqApiKey] - API key for Groq. */
   groqApiKey?: string;
+  /** @property {string} [openaiApiKey] - API key for OpenAI. */
   openaiApiKey?: string;
+  /** @property {string} [geminiApiKey] - API key for Google Gemini. */
   geminiApiKey?: string;
+  /** @property {string} [anthropicApiKey] - API key for Anthropic Claude. */
   anthropicApiKey?: string;
+  /** @property {string} [ollamaBaseUrl] - Base URL for a local Ollama instance. */
   ollamaBaseUrl?: string;
 }
+/**
+ * @const {AiCredentials} AiCredentialsDefaults
+ * @description Default values for AI provider credentials.
+ * API keys are typically empty by default, and Ollama URL points to a common local default.
+ */
 export const AiCredentialsDefaults: AiCredentials = {
   groqApiKey: '',
   openaiApiKey: '',
@@ -24,31 +63,67 @@ export const AiCredentialsDefaults: AiCredentials = {
   ollamaBaseUrl: 'http://localhost:11434',
 };
 
+/**
+ * @interface AiProviderConfig
+ * @description Defines the structure for the selected AI provider and model.
+ */
 export interface AiProviderConfig {
+  /** @property {string} provider - The ID of the selected AI provider. */
   provider: string;
+  /** @property {string} model - The specific model selected for the chosen provider. */
   model: string;
 }
+/**
+ * @const {AiProviderConfig} AiProviderConfigDefaults
+ * @description Default AI provider and model configuration.
+ * It attempts to use the first provider and its default model from `PROVIDER_METADATA_LIST`,
+ * falling back to predefined values if the list is empty.
+ */
 export const AiProviderConfigDefaults: AiProviderConfig = {
-  // Usa o ID do primeiro provedor na lista de metadados como default, ou um fallback.
+  // Uses the ID of the first provider in the metadata list as default, or a fallback.
   provider: PROVIDER_METADATA_LIST.length > 0 ? PROVIDER_METADATA_LIST[0].id : 'openai',
   model: PROVIDER_METADATA_LIST.length > 0 ? (PROVIDER_METADATA_LIST[0].defaultModel || '') : '',
 };
 
+/**
+ * @interface PromptsConfig
+ * @description Defines the structure for configurable AI prompts.
+ * Note: Default prompt texts are in Portuguese as they are user-facing.
+ */
 export interface PromptsConfig {
+  /** @property {string} summaryPrompt - The template prompt used for generating conversation summaries. */
   summaryPrompt: string;
+  /** @property {string} improvementPrompt - The template prompt used for suggesting improvements to text. */
   improvementPrompt: string;
 }
+/**
+ * @const {PromptsConfig} PromptsConfigDefaults
+ * @description Default values for AI prompts.
+ * These user-facing default prompts are provided in Portuguese.
+ */
 export const PromptsConfigDefaults: PromptsConfig = {
-  summaryPrompt: 'Resuma esta conversa de atendimento ao cliente de forma concisa, destacando o problema principal a principal causa e a resolução.',
-  improvementPrompt: 'Revise a seguinte resposta para um cliente, tornando-a mais clara, empática e profissional, mantendo o significado original:',
+  summaryPrompt: 'Resuma esta conversa de atendimento ao cliente de forma concisa, destacando o problema principal a principal causa e a resolução.', // UI-facing: PT-BR
+  improvementPrompt: 'Revise a seguinte resposta para um cliente, tornando-a mais clara, empática e profissional, mantendo o significado original:', // UI-facing: PT-BR
 };
 
+/**
+ * @interface CollapsibleSectionsState
+ * @description Defines the structure for the open/closed state of collapsible sections in the UI.
+ */
 export interface CollapsibleSectionsState {
+  /** @property {boolean} modules - State for the feature modules section. True if open, false if closed. */
   modules: boolean;
+  /** @property {boolean} shortcuts - State for the keyboard shortcuts section. True if open, false if closed. */
   shortcuts: boolean;
+  /** @property {boolean} ai - State for the AI configuration section. True if open, false if closed. */
   ai: boolean;
+  /** @property {boolean} prompts - State for the AI prompts configuration section. True if open, false if closed. */
   prompts: boolean;
 }
+/**
+ * @const {CollapsibleSectionsState} CollapsibleSectionsStateDefaults
+ * @description Default states for collapsible UI sections, all initially closed.
+ */
 export const CollapsibleSectionsStateDefaults: CollapsibleSectionsState = {
   modules: false,
   shortcuts: false,
@@ -56,37 +131,84 @@ export const CollapsibleSectionsStateDefaults: CollapsibleSectionsState = {
   prompts: false,
 };
 
+/**
+ * @interface ShortcutKeysConfig
+ * @description Defines the structure for mapping module IDs to their assigned shortcut keys.
+ * The value is typically the character of the key (e.g., "Z", "X").
+ */
 export interface ShortcutKeysConfig { [moduleId: string]: string }
+/**
+ * @const {ShortcutKeysConfig} ShortcutKeysConfigDefaults
+ * @description Default keyboard shortcut key assignments for specific features.
+ */
 export const ShortcutKeysConfigDefaults: ShortcutKeysConfig = {
   shortcutCopyName: 'Z',
   shortcutCopyDocumentNumber: 'X',
   shortcutServiceOrderTemplate: 'S',
 };
 
-// --- Stores ---
+// --- Svelte Stores ---
+
+/**
+ * @const {Writable<boolean>} globalExtensionEnabledStore
+ * @description Persistent Svelte store for the global enabled/disabled state of the extension.
+ */
 export const globalExtensionEnabledStore =
   persistentStore<boolean>('omniMaxGlobalEnabled', GlobalExtensionEnabledDefault);
 
+/**
+ * @const {Writable<Record<string, boolean>>} moduleStatesStore
+ * @description Persistent Svelte store for the enabled/disabled states of individual feature modules.
+ */
 export const moduleStatesStore =
   persistentStore<Record<string, boolean>>('omniMaxModuleStates', ModuleStatesDefault);
 
+/**
+ * @const {Writable<boolean>} shortcutsOverallEnabledStore
+ * @description Persistent Svelte store for the global enabled/disabled state of keyboard shortcuts.
+ */
 export const shortcutsOverallEnabledStore =
   persistentStore<boolean>('omniMaxShortcutsOverallEnabled', ShortcutsOverallEnabledDefault);
 
+/**
+ * @const {Writable<boolean>} aiFeaturesEnabledStore
+ * @description Persistent Svelte store for the global enabled/disabled state of AI features.
+ */
 export const aiFeaturesEnabledStore =
   persistentStore<boolean>('omniMaxAiFeaturesEnabled', AiFeaturesEnabledDefault);
 
+/**
+ * @const {Writable<AiCredentials>} aiCredentialsStore
+ * @description Persistent Svelte store for AI provider API keys and configurations.
+ */
 export const aiCredentialsStore =
   persistentStore<AiCredentials>('omniMaxAiCredentials', AiCredentialsDefaults);
 
+/**
+ * @const {Writable<AiProviderConfig>} aiProviderConfigStore
+ * @description Persistent Svelte store for the selected AI provider and model.
+ */
 export const aiProviderConfigStore =
   persistentStore<AiProviderConfig>('omniMaxAiProviderConfig', AiProviderConfigDefaults);
 
+/**
+ * @const {Writable<PromptsConfig>} promptsStore
+ * @description Persistent Svelte store for configurable AI prompts.
+ * Default prompt texts are in Portuguese.
+ */
 export const promptsStore =
   persistentStore<PromptsConfig>('omniMaxPrompts', PromptsConfigDefaults);
 
+/**
+ * @const {Writable<CollapsibleSectionsState>} collapsibleSectionsStateStore
+ * @description Persistent Svelte store for the open/closed state of UI collapsible sections.
+ */
 export const collapsibleSectionsStateStore =
   persistentStore<CollapsibleSectionsState>('omniMaxCollapsibleSectionsState', CollapsibleSectionsStateDefaults);
 
+/**
+ * @const {Writable<ShortcutKeysConfig>} shortcutKeysStore
+ * @description Persistent Svelte store for keyboard shortcut key configurations.
+ */
 export const shortcutKeysStore =
   persistentStore<ShortcutKeysConfig>('omniMaxShortcutKeys', ShortcutKeysConfigDefaults);
