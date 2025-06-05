@@ -11,31 +11,36 @@ import {
 } from './modules';
 
 /**
- * Test suite for the `availableModules` constant.
+ * @describe availableModules
+ * @description Test suite for the `availableModules` constant.
  * It verifies the structure, content, and integrity of the defined modules.
  */
 describe('availableModules', () => {
   /**
-   * Verifies that `availableModules` is an array.
+   * @it should be an array
+   * @description Verifies that `availableModules` is indeed an array.
    */
   it('should be an array', () => {
     expect(Array.isArray(availableModules)).toBe(true);
   });
 
   /**
-   * Ensures that the `availableModules` array is not empty,
-   * implying that there are modules defined.
+   * @it should not be empty
+   * @description Ensures that the `availableModules` array is not empty,
+   * implying that there are modules defined for the extension.
    */
   it('should not be empty', () => {
     expect(availableModules.length).toBeGreaterThan(0);
   });
 
   /**
-   * Checks each module in `availableModules` to ensure it conforms to the `Module` interface,
-   * possessing all required properties (`id`, `name`, `description`, `defaultEnabled`)
-   * with the correct data types and non-empty string values.
+   * @it each module should have the required properties, correct types, and non-empty string values for identifiers
+   * @description Checks each module in `availableModules` to ensure it conforms to the `Module` interface.
+   * This includes verifying the presence and correct data types of `id`, `name`, `description`,
+   * and `defaultEnabled`. It also checks that string identifiers (`id`, `name`, `description`) are not empty.
+   * Note: `name` and `description` content remains in Portuguese as they are UI-facing strings.
    */
-  it('each module should have the required properties, correct types, and non-empty string values', () => {
+  it('each module should have the required properties, correct types, and non-empty string values for identifiers', () => {
     availableModules.forEach((module: Module) => {
       expect(module).toHaveProperty('id');
       expect(typeof module.id).toBe('string');
@@ -43,19 +48,34 @@ describe('availableModules', () => {
 
       expect(module).toHaveProperty('name');
       expect(typeof module.name).toBe('string');
-      expect(module.name).not.toBe('');
+      expect(module.name).not.toBe(''); // Name for UI, should not be empty
 
       expect(module).toHaveProperty('description');
       expect(typeof module.description).toBe('string');
-      expect(module.description).not.toBe('');
+      expect(module.description).not.toBe(''); // Description for UI, should not be empty
 
       expect(module).toHaveProperty('defaultEnabled');
       expect(typeof module.defaultEnabled).toBe('boolean');
+
+      if (module.promptSettings) {
+        expect(module.promptSettings).toHaveProperty('label');
+        expect(typeof module.promptSettings.label).toBe('string');
+        expect(module.promptSettings.label).not.toBe('');
+
+        expect(module.promptSettings).toHaveProperty('configKey');
+        expect(typeof module.promptSettings.configKey).toBe('string');
+        expect(module.promptSettings.configKey).not.toBe('');
+
+        expect(module.promptSettings).toHaveProperty('placeholder');
+        expect(typeof module.promptSettings.placeholder).toBe('string');
+        // Placeholder can potentially be an empty string, so no not.toBe('') check here.
+      }
     });
   });
 
   /**
-   * Validates that all module IDs within `availableModules` are unique.
+   * @it all module IDs should be unique
+   * @description Validates that all module IDs within `availableModules` are unique.
    * Duplicate IDs could lead to conflicts in module management and state.
    */
   it('all module IDs should be unique', () => {
@@ -65,25 +85,27 @@ describe('availableModules', () => {
   });
 
   /**
-   * Snapshot test for `availableModules`.
-   * This ensures that the structure and content of the modules remain consistent
-   * across changes, helping to catch unintended modifications.
+   * @it should match the snapshot of available modules
+   * @description This snapshot test ensures that the structure and content of the modules
+   * remain consistent across changes, helping to catch unintended modifications.
+   * If `availableModules` structure or data (including Portuguese UI strings) changes,
+   * this test will fail, requiring an update to the snapshot.
    */
-  
   it('should match the snapshot of available modules', () => {
     expect(availableModules).toMatchSnapshot();
   });
-  
 });
 
 /**
- * Test suite for the `getInitialModuleStates` function.
+ * @describe getInitialModuleStates
+ * @description Test suite for the `getInitialModuleStates` function.
  * It verifies that the function correctly generates an initial state object
  * based on the `availableModules`.
  */
 describe('getInitialModuleStates', () => {
   /**
-   * Ensures that `getInitialModuleStates` returns a non-null object.
+   * @it should return a non-null object
+   * @description Ensures that `getInitialModuleStates` returns a non-null object.
    */
   it('should return a non-null object', () => {
     const initialStates = getInitialModuleStates();
@@ -92,8 +114,10 @@ describe('getInitialModuleStates', () => {
   });
 
   /**
-   * Verifies that the returned object from `getInitialModuleStates` contains a key
-   * for every module ID defined in `availableModules`, and no more or fewer keys.
+   * @it should return an object with keys corresponding to all module IDs
+   * @description Verifies that the returned object from `getInitialModuleStates` contains a key
+   * for every module ID defined in `availableModules`, and that the number of keys matches
+   * the number of available modules.
    */
   it('should return an object with keys corresponding to all module IDs', () => {
     const initialStates = getInitialModuleStates();
@@ -106,7 +130,8 @@ describe('getInitialModuleStates', () => {
   });
 
   /**
-   * Checks if the value for each module ID in the returned state object
+   * @it should set the correct defaultEnabled status for each module ID
+   * @description Checks if the value for each module ID in the returned state object
    * correctly reflects the `defaultEnabled` status of the corresponding module.
    */
   it('should set the correct defaultEnabled status for each module ID', () => {
@@ -117,35 +142,25 @@ describe('getInitialModuleStates', () => {
   });
 
   /**
-   * Verifies the behavior of `getInitialModuleStates` if `availableModules` were empty.
-   * Given `availableModules` is a constant, this test primarily confirms the function's
-   * robustness to an empty input array, which would result in an empty state object.
+   * @it should return an empty object if availableModules were conceptually empty
+   * @description Tests the inherent behavior of `getInitialModuleStates` if `availableModules`
+   * were an empty array. The function should robustly return an empty object.
+   * Note: `availableModules` is a non-empty constant in the actual application.
    */
-  it('should return an empty object if availableModules is empty (conceptual)', () => {
-    // This test case is conceptual for an empty `availableModules` array.
-    // Since `availableModules` is a non-empty constant in the actual module,
-    // we can't easily mock it to be empty in this specific test without complex module mocking.
-    // However, the logic of `getInitialModuleStates` (a simple loop) inherently means
-    // if `availableModules` were `[]`, the result would be `{}`.
-    // The other tests already cover its behavior with the actual `availableModules`.
-    // If `availableModules` could truly be empty at runtime from an external source,
-    // more direct mocking would be warranted.
-
-    // For documentation: if `availableModules` was `[]`, then:
-    // const hypotheticalEmptyModules: Module[] = [];
-    // const result = {}; // What getInitialModuleStates would compute
-    // actualAvailableModules.forEach(m => result[m.id] = m.defaultEnabled ) based on hypotheticalEmptyModules
-    // expect(result).toEqual({});
-    // This confirms the function's inherent behavior.
-
-    // Test with actual `availableModules` to ensure no regression:
+  it('should return an empty object if availableModules were conceptually empty', () => {
+    // To test this behavior directly without complex mocking of the imported constant,
+    // we can define a local, empty array of modules and pass it to a hypothetically
+    // adaptable version of getInitialModuleStates or simply assert the logical outcome.
+    // Since getInitialModuleStates directly uses the imported availableModules,
+    // we acknowledge its current logic: if availableModules was [], it would return {}.
+    // This test verifies the default case when availableModules IS NOT empty,
+    // confirming no regressions for the primary use case.
     if (availableModules.length === 0) {
-      // This branch will likely not be hit given `availableModules` definition.
+      // This branch is unlikely to be hit with the current non-empty `availableModules`
       expect(getInitialModuleStates()).toEqual({});
     } else {
-      // This is effectively tested by 'should return an object with keys corresponding to all module IDs'
-      // and 'should set the correct defaultEnabled status for each module ID'.
-      // We assert that it's not empty as a basic sanity check here for the "else" branch.
+      // This confirms that for the actual, non-empty `availableModules`,
+      // the function does not produce an empty object, which is expected.
       expect(Object.keys(getInitialModuleStates()).length).toBeGreaterThan(0);
     }
   });
