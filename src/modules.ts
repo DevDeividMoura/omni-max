@@ -1,45 +1,66 @@
-// src/modules.ts
 /**
- * src/modules.ts
- * Defines the available modules in the Omni Max extension, their properties,
- * and helper functions to get their initial states.
+ * @file src/modules.ts
+ * @description Defines the available modules in the Omni Max extension, their properties,
+ * and helper functions to retrieve their initial states.
  */
 
-// Importante: As chaves aqui devem corresponder às chaves em PromptsConfig
+// Important: The keys here should correspond to the keys in PromptsConfig
 import type { PromptsConfig } from './storage/stores';
 
 /**
- * Interface describing the structure of a configurable module within the extension.
+ * @interface Module
+ * @description Describes the structure of a configurable module within the extension.
  */
 export interface Module {
-  /** Unique identifier for the module. */
-  id: string;
-  /** User-friendly name of the module, displayed in the UI. */
-  name: string;
-  /** Detailed description of what the module does, displayed in the UI. */
-  description: string;
-  /** Default enabled state of the module upon first installation. */
-  defaultEnabled: boolean;
   /**
-   * Indicates if the feature is released and should be visible/usable.
+   * @property {string} id - Unique identifier for the module.
+   */
+  id: string;
+
+  /**
+   * @property {string} name - User-friendly name of the module, displayed in the UI.
+   */
+  name: string;
+
+  /**
+   * @property {string} description - Detailed description of what the module does, displayed in the UI.
+   */
+  description: string;
+
+  /**
+   * @property {boolean} defaultEnabled - Default enabled state of the module upon first installation.
+   */
+  defaultEnabled: boolean;
+
+  /**
+   * @property {boolean} [released] - Indicates if the feature is released and should be visible/usable.
    * Defaults to true if undefined.
    */
   released?: boolean;
+
   /**
-   * Configuration for prompts associated with AI modules.
+   * @property {object} [promptSettings] - Configuration for prompts associated with AI modules.
    */
   promptSettings?: {
-    /** Label for the prompt input field in the UI. */
+    /**
+     * @property {string} label - Label for the prompt input field in the UI.
+     */
     label: string;
-    /** Key in the PromptsConfig store where this prompt's value is stored. */
+    /**
+     * @property {keyof PromptsConfig} configKey - Key in the PromptsConfig store where this prompt's value is stored.
+     * It's crucial that this key matches a property in the `PromptsConfig` type.
+     */
     configKey: keyof PromptsConfig;
-    /** Placeholder text for the textarea. */
+    /**
+     * @property {string} placeholder - Placeholder text for the textarea.
+     */
     placeholder: string;
   };
 }
 
 /**
- * List of all available modules in the Omni Max extension.
+ * @const {Module[]} availableModules
+ * @description List of all available modules in the Omni Max extension.
  * This array serves as the single source of truth for module definitions.
  */
 export const availableModules: Module[] = [
@@ -82,8 +103,8 @@ export const availableModules: Module[] = [
     id: 'aiChatSummary',
     name: 'IA: Resumir Atendimento',
     description: 'Gera um resumo do histórico da conversa (protocolo) atual utilizando Inteligência Artificial.',
-    defaultEnabled: false, // Começa desabilitado por padrão
-    released: true,      // Funcionalidade está liberada
+    defaultEnabled: false,
+    released: true,
     promptSettings: {
       label: 'Prompt de Resumo do Atendimento',
       configKey: 'summaryPrompt',
@@ -94,14 +115,14 @@ export const availableModules: Module[] = [
     id: 'aiResponseReview',
     name: 'IA: Revisar e Melhorar Resposta',
     description: 'Utiliza IA para analisar e sugerir melhorias no texto da sua resposta antes do envio.',
-    defaultEnabled: false, // Começa desabilitado por padrão
-    released: false,     // <<< FUNCIONALIDADE NÃO LIBERADA NESTA VERSÃO
+    defaultEnabled: false,
+    released: false,     // <<< FEATURE NOT RELEASED IN THIS VERSION
     promptSettings: {
       label: 'Prompt de Melhoria de Resposta',
       configKey: 'improvementPrompt',
       placeholder: 'Ex: Revise a seguinte resposta para um cliente, tornando-a mais clara, empática e profissional, mantendo o significado original e o tom amigável.'
     }
-  }
+  },
 ];
 
 /**
