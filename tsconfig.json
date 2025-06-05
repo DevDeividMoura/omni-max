@@ -15,6 +15,7 @@
             "@sveltejs/kit",
             "vitest/globals",
             "vite/client"
-        ]
+        ],
+        "target": "ES2020",
     }
 }

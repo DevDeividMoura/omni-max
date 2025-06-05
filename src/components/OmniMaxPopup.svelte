@@ -9,6 +9,7 @@
    * @component
    */
   import { onMount } from "svelte";
+  import { get } from "svelte/store";
   import CollapsibleSection from "./CollapsibleSection.svelte";
   import ToggleSwitch from "./ToggleSwitch.svelte";
   import {
@@ -19,6 +20,14 @@
     XCircle,
     Info,
   } from "lucide-svelte";
+
+  import {
+    PROVIDER_METADATA_LIST,
+    PROVIDER_METADATA_MAP,
+    type ProviderMetadata,
+  } from "../ai/providerMetadata";
+
+  import { AIServiceManager } from "../ai/AIServiceManager";
 
   import {
     globalExtensionEnabledStore,
@@ -37,42 +46,46 @@
     type ShortcutKeysConfig,
   } from "../storage";
 
-  import { availableModules, type Module } from "../modules"; // Import Module type
+  import {
+    defaultStorageAdapter,
+    type IStorageAdapter,
+  } from "../storage/IStorageAdapter";
+
+  import { availableModules, type Module } from "../modules";
   import GithubMarkIcon from "./icons/GithubMarkIcon.svelte";
 
   // --- UI Control States ---
-  /** Indicates if the component is currently loading initial settings. */
   let isLoading: boolean = true;
-  /** Tracks if there are any unsaved changes made by the user. */
   let hasPendingChanges: boolean = false;
-  /** Controls the visibility of the AI credentials management modal. */
   let showCredentialsModal: boolean = false;
 
   // --- Local Copies of Stored Settings ---
-  // These are bound to UI elements and synced with stores on "Apply Changes".
-  let localGlobalEnabled: boolean;
-  let localModuleStates: Record<string, boolean> = {};
-  let localShortcutsOverallEnabled: boolean;
-  let localAiFeaturesEnabled: boolean;
-  let localAiCredentials: AiCredentials = { openaiApiKey: "" }; // Initialize structure
-  let localAiProviderConfig: AiProviderConfig = {
-    provider: "openai",
-    model: "gpt-4o-mini",
-  };
-  let localPrompts: PromptsConfig = {
-    summaryPrompt: "",
-    improvementPrompt: "",
-  };
-  let localOpenSections: CollapsibleSectionsState = {
-    modules: false,
-    shortcuts: false,
-    ai: false,
-    prompts: false,
-  };
-  let localShortcutKeys: ShortcutKeysConfig = {};
+  let localGlobalEnabled: boolean = get(globalExtensionEnabledStore);
+  let localModuleStates: Record<string, boolean> = JSON.parse(
+    JSON.stringify(get(moduleStatesStore)),
+  );
+  let localShortcutsOverallEnabled: boolean = get(shortcutsOverallEnabledStore);
+  let localAiFeaturesEnabled: boolean = get(aiFeaturesEnabledStore);
+  let localAiCredentials: AiCredentials = JSON.parse(
+    JSON.stringify(get(aiCredentialsStore)),
+  );
+  let localAiProviderConfig: AiProviderConfig = JSON.parse(
+    JSON.stringify(get(aiProviderConfigStore)),
+  );
+  let localPrompts: PromptsConfig = JSON.parse(
+    JSON.stringify(get(promptsStore)),
+  );
+  let localOpenSections: CollapsibleSectionsState = JSON.parse(
+    JSON.stringify(get(collapsibleSectionsStateStore)),
+  );
+  let localShortcutKeys: ShortcutKeysConfig = JSON.parse(
+    JSON.stringify(get(shortcutKeysStore)),
+  );
 
-  // --- Initial States for Change Detection ---
-  // Snapshots of settings when the component loads, used to detect `hasPendingChanges`.
+  let modelList: string[] = [];
+  let loadingModels = false;
+  let modelError: string | null = null;
+
   let initialGlobalEnabled: boolean;
   let initialModuleStates: Record<string, boolean>;
   let initialShortcutsOverallEnabled: boolean;
@@ -83,321 +96,390 @@
   let initialOpenSections: CollapsibleSectionsState;
   let initialShortcutKeys: ShortcutKeysConfig;
 
-  // --- Derived Data for UI ---
-  /** Modules categorized as 'general' for UI grouping. */
   const generalModules: Module[] = availableModules.filter(
-    (m) => ["layoutCorrection", "templateProcessor"].includes(m.id), // "messageTemplates" was in your filter but not in availableModules, removed for now.
+    (m) =>
+      ["layoutCorrection", "templateProcessor"].includes(m.id) &&
+      m.released !== false,
   );
-  /** Modules categorized as 'shortcuts' for UI grouping. */
-  const shortcutModules: Module[] = availableModules.filter((m) =>
-    [
-      "shortcutCopyName",
-      "shortcutCopyDocumentNumber",
-      "shortcutServiceOrderTemplate",
-    ].includes(m.id),
+  const shortcutModules: Module[] = availableModules.filter(
+    (m) =>
+      [
+        "shortcutCopyName",
+        "shortcutCopyDocumentNumber",
+        "shortcutServiceOrderTemplate",
+      ].includes(m.id) && m.released !== false,
   );
-  /** Modules categorized as 'AI features' for UI grouping. */
-  const aiModules: Module[] = availableModules.filter((m) =>
-    ["aiChatSummary", "aiResponseReview"].includes(m.id),
+  const aiModules: Module[] = availableModules.filter(
+    (m) =>
+      ["aiChatSummary", "aiResponseReview"].includes(m.id) &&
+      m.released !== false,
+  );
+  let promotableAiModules: Module[];
+  $: promotableAiModules = aiModules.filter(
+    (m) => m.promptSettings && m.released !== false,
   );
 
-  /** Available AI models grouped by provider. */
-  const modelOptions: Record<string, string[]> = {
-    openai: ["gpt-4", "gpt-4o-mini", "gpt-4-turbo", "gpt-4o", "gpt-3.5-turbo"],
-    gemini: ["gemini-1.0-pro", "gemini-1.5-pro", "gemini-1.5-flash"], // Placeholder, ensure these are valid for your use case
-    anthropic: [
-      "claude-3-opus-20240229",
-      "claude-3-sonnet-20240229",
-      "claude-3-haiku-20240307",
-    ],
-  };
+  const aiManager = new AIServiceManager();
 
-  // --- Component Lifecycle & Initialization ---
   /**
-   * Subscribes to all relevant Svelte stores upon component mounting.
-   * Initializes local state variables with values from storage and
-   * sets up initial state snapshots for change detection.
-   * Ensures default values are applied for any new modules or settings.
-   * @private
+   * Fetches the list of available AI models from the selected provider.
+   * Updates modelList, loadingModels, and modelError states.
+   * This function relies on AIServiceManager to throw an error if essential
+   * credentials for the selected provider are missing.
    */
+  async function refreshModelList() {
+    // Ensure AIServiceManager uses the most current UI selections by temporarily updating stores.
+
+    modelError = null;
+    let newModelList: string[] = [];
+    loadingModels = true;
+
+    const previouslySelectedModel = localAiProviderConfig.model;
+
+    try {
+      await aiProviderConfigStore.set(localAiProviderConfig);
+      await aiCredentialsStore.set(localAiCredentials);
+
+      console.log(
+        "refreshModelList: Fetching models with creds:",
+        JSON.stringify(localAiCredentials),
+        "and provider config:",
+        JSON.stringify(localAiProviderConfig),
+      );
+      newModelList = await aiManager.listModels();
+      // Successfully fetched models (or an empty list if provider has none)
+      modelList = newModelList; // Update the main model list with the new list
+
+      if (modelList.length === 0) {
+        // No error thrown, but list is empty (e.g. Ollama has no models installed)
+        modelError =
+          "Nenhum modelo encontrado para este provedor. Verifique a URL (Ollama) ou se há modelos disponíveis.";
+        if (previouslySelectedModel) {
+          localAiProviderConfig.model = ""; // Clear model if list is genuinely empty
+          markChanged();
+          console.log(
+            "refreshModelList: Successfully fetched an empty model list. Cleared selected model.",
+          );
+        }
+      } else {
+        // Models were successfully fetched and list is not empty
+        if (
+          previouslySelectedModel &&
+          !modelList.includes(previouslySelectedModel)
+        ) {
+          localAiProviderConfig.model = ""; // Old model not in new list, clear it
+          markChanged();
+          console.log(
+            "refreshModelList: Previously selected model not in new list. Cleared selected model.",
+          );
+        }
+        // If previouslySelectedModel IS in modelList, it remains selected, no action needed.
+        // If no model was previously selected, user will pick one, no action needed here.
+      }
+    } catch (err: any) {
+      modelError =
+        err.message ||
+        "Falha ao carregar modelos. Verifique as credenciais e o acesso ao provedor.";
+      modelList = []; // Ensure list is empty on any error from aiManager
+      console.error(
+        "refreshModelList: Error caught from aiManager:",
+        modelError,
+      );
+      // DO NOT CLEAR localAiProviderConfig.model here if the error might be transient (e.g. "Missing credentials" due to timing).
+      // The UI will show the error, the select will be empty/disabled.
+      // If the selected model was valid before this transient error, it should remain selected in the config.
+      // When the error is resolved (e.g. on next interaction), a successful refreshModelList will validate it.
+    } finally {
+      loadingModels = false;
+    }
+  }
+
   onMount(() => {
     const unsubs: (() => void)[] = [];
-    let isFirstSubscriptionCall = true; // Flag to set initial values only once if multiple subscriptions fire rapidly
 
-    const setupInitialValue = <T,>(
-      value: T,
-      initialSetter: (val: T) => void,
-      localSetter: (val: T) => void,
-    ) => {
-      localSetter(JSON.parse(JSON.stringify(value))); // Deep copy for objects/arrays
-      if (isFirstSubscriptionCall) {
-        initialSetter(JSON.parse(JSON.stringify(value)));
+    // Subscreve para atualizar as variáveis locais `local*`
+    // E marca `hasPendingChanges` APÓS o carregamento inicial
+    // O valor inicial síncrono já foi pego acima. As subscrições irão pegar
+    // os valores atualizados do storage quando o persistentStore os carregar.
+    unsubs.push(
+      globalExtensionEnabledStore.subscribe((v) => {
+        localGlobalEnabled = v;
+        if (!isLoading) markChanged();
+      }),
+    );
+    unsubs.push(
+      moduleStatesStore.subscribe((v) => {
+        localModuleStates = JSON.parse(JSON.stringify(v));
+        if (!isLoading) markChanged();
+      }),
+    );
+    unsubs.push(
+      shortcutsOverallEnabledStore.subscribe((v) => {
+        localShortcutsOverallEnabled = v;
+        if (!isLoading) markChanged();
+      }),
+    );
+    unsubs.push(
+      aiFeaturesEnabledStore.subscribe((v) => {
+        const prevAiFeaturesEnabled = localAiFeaturesEnabled;
+        localAiFeaturesEnabled = v;
+        if (!isLoading) {
+          markChanged();
+          if (prevAiFeaturesEnabled !== localAiFeaturesEnabled) {
+            if (localAiFeaturesEnabled && localGlobalEnabled) {
+              refreshModelList();
+            } else {
+              modelList = [];
+              modelError = localGlobalEnabled
+                ? "Recursos de IA desabilitados."
+                : "Extensão desabilitada.";
+              if (localAiProviderConfig.model) localAiProviderConfig.model = "";
+            }
+          }
+        }
+      }),
+    );
+    unsubs.push(
+      aiCredentialsStore.subscribe((v) => {
+        localAiCredentials = JSON.parse(JSON.stringify(v));
+        if (!isLoading) markChanged();
+      }),
+    );
+    unsubs.push(
+      aiProviderConfigStore.subscribe((v) => {
+        localAiProviderConfig = JSON.parse(JSON.stringify(v));
+        if (!isLoading) markChanged();
+      }),
+    );
+    unsubs.push(
+      promptsStore.subscribe((v) => {
+        localPrompts = JSON.parse(JSON.stringify(v));
+        if (!isLoading) markChanged();
+      }),
+    );
+    unsubs.push(
+      collapsibleSectionsStateStore.subscribe((v) => {
+        localOpenSections = JSON.parse(JSON.stringify(v));
+        if (!isLoading) markChanged();
+      }),
+    );
+    unsubs.push(
+      shortcutKeysStore.subscribe((v) => {
+        localShortcutKeys = JSON.parse(JSON.stringify(v));
+        if (!isLoading) markChanged();
+      }),
+    );
+
+    // Espera um tempo para as stores carregarem do chrome.storage
+    setTimeout(() => {
+      // Captura os valores locais (que foram atualizados pelas stores com os dados do storage, ou mantiveram os defaults)
+      // como os valores iniciais para o "Descartar".
+      initialGlobalEnabled = localGlobalEnabled;
+      initialModuleStates = JSON.parse(JSON.stringify(localModuleStates));
+      initialShortcutsOverallEnabled = localShortcutsOverallEnabled;
+      initialAiFeaturesEnabled = localAiFeaturesEnabled;
+      initialAiCredentials = JSON.parse(JSON.stringify(localAiCredentials));
+      initialAiProviderConfig = JSON.parse(
+        JSON.stringify(localAiProviderConfig),
+      );
+      initialPrompts = JSON.parse(JSON.stringify(localPrompts));
+      initialOpenSections = JSON.parse(JSON.stringify(localOpenSections));
+      initialShortcutKeys = JSON.parse(JSON.stringify(localShortcutKeys));
+
+      isLoading = false;
+      hasPendingChanges = false;
+
+      console.log("OmniMaxPopup: Initial states captured.", {
+        initialAiCredentials: { ...initialAiCredentials },
+      });
+
+      if (localGlobalEnabled && localAiFeaturesEnabled) {
+        refreshModelList();
+      } else if (!localGlobalEnabled || !localAiFeaturesEnabled) {
+        modelList = [];
+        modelError = localGlobalEnabled
+          ? "Recursos de IA desabilitados."
+          : "Extensão desabilitada.";
       }
-    };
-
-    unsubs.push(
-      globalExtensionEnabledStore.subscribe((val) =>
-        setupInitialValue(
-          val,
-          (v) => (initialGlobalEnabled = v),
-          (v) => (localGlobalEnabled = v),
-        ),
-      ),
-    );
-    unsubs.push(
-      shortcutsOverallEnabledStore.subscribe((val) =>
-        setupInitialValue(
-          val,
-          (v) => (initialShortcutsOverallEnabled = v),
-          (v) => (localShortcutsOverallEnabled = v),
-        ),
-      ),
-    );
-    unsubs.push(
-      aiFeaturesEnabledStore.subscribe((val) =>
-        setupInitialValue(
-          val,
-          (v) => (initialAiFeaturesEnabled = v),
-          (v) => (localAiFeaturesEnabled = v),
-        ),
-      ),
-    );
-    unsubs.push(
-      aiCredentialsStore.subscribe((val) =>
-        setupInitialValue(
-          val || { openaiApiKey: "" },
-          (v) => (initialAiCredentials = v),
-          (v) => (localAiCredentials = v),
-        ),
-      ),
-    );
-    unsubs.push(
-      aiProviderConfigStore.subscribe((val) =>
-        setupInitialValue(
-          val || { provider: "openai", model: "gpt-4o-mini" },
-          (v) => (initialAiProviderConfig = v),
-          (v) => (localAiProviderConfig = v),
-        ),
-      ),
-    );
-    unsubs.push(
-      promptsStore.subscribe((val) =>
-        setupInitialValue(
-          val || { summaryPrompt: "", improvementPrompt: "" },
-          (v) => (initialPrompts = v),
-          (v) => (localPrompts = v),
-        ),
-      ),
-    );
-    unsubs.push(
-      collapsibleSectionsStateStore.subscribe((val) =>
-        setupInitialValue(
-          val || {
-            modules: false,
-            shortcuts: false,
-            ai: false,
-            prompts: false,
-          },
-          (v) => (initialOpenSections = v),
-          (v) => (localOpenSections = v),
-        ),
-      ),
-    );
-
-    unsubs.push(
-      moduleStatesStore.subscribe((storedStates) => {
-        const currentLocal: Record<string, boolean> = {};
-        const currentInitial: Record<string, boolean> = {};
-        for (const module of availableModules) {
-          currentLocal[module.id] =
-            storedStates[module.id] ?? module.defaultEnabled;
-          if (isFirstSubscriptionCall) {
-            currentInitial[module.id] =
-              storedStates[module.id] ?? module.defaultEnabled;
-          }
-        }
-        localModuleStates = currentLocal;
-        if (isFirstSubscriptionCall) {
-          initialModuleStates = currentInitial;
-        }
-      }),
-    );
-
-    unsubs.push(
-      shortcutKeysStore.subscribe((storedKeys) => {
-        const currentLocal: ShortcutKeysConfig = {};
-        const currentInitial: ShortcutKeysConfig = {};
-        const defaultShortcutValues =
-          (shortcutKeysStore as any).initialValue || {}; // Accessing private initialValue; better to get defaults from module definition if possible
-
-        for (const module of shortcutModules) {
-          // Determine default key more robustly if possible, or hardcode as fallback
-          let defaultKey = defaultShortcutValues[module.id];
-          if (!defaultKey) {
-            // Fallback if not in store's initial value
-            defaultKey =
-              (shortcutKeysStore as any).initialValue?.[module.id] || // Tenta pegar do default do store
-              (module.id === "shortcutCopyName"
-                ? "Z"
-                : module.id === "shortcutCopyDocumentNumber"
-                  ? "X"
-                  : module.id === "shortcutServiceOrderTemplate"
-                    ? "S"
-                    : "?");
-          }
-          currentLocal[module.id] = storedKeys[module.id] ?? defaultKey;
-          if (isFirstSubscriptionCall) {
-            currentInitial[module.id] = storedKeys[module.id] ?? defaultKey;
-          }
-        }
-        localShortcutKeys = currentLocal;
-        if (isFirstSubscriptionCall) {
-          initialShortcutKeys = currentInitial;
-        }
-      }),
-    );
-
-    isLoading = false;
-    isFirstSubscriptionCall = false; // After all initial subscriptions might have run
+    }, 350);
 
     return () => {
       unsubs.forEach((unsub) => unsub());
     };
   });
 
-  // --- Event Handlers & UI Logic ---
-  /**
-   * Marks that changes have been made to the settings, enabling the "Apply Changes" button.
-   * @private
-   */
   function markChanged(): void {
-    hasPendingChanges = true;
+    if (!isLoading) {
+      hasPendingChanges = true;
+    }
   }
 
-  /**
-   * Toggles the open/closed state of a collapsible UI section.
-   * Implements an "accordion" behavior where only one main section can be open at a time.
-   * @param {keyof CollapsibleSectionsState} sectionKeyToToggle The key of the section to toggle.
-   * @private
-   */
   function toggleSectionCollapse(
     sectionKeyToToggle: keyof CollapsibleSectionsState,
   ): void {
     if (localOpenSections) {
       const isCurrentlyOpen = localOpenSections[sectionKeyToToggle];
-      // Create a new state with all sections closed (for accordion behavior)
       const newOpenState: CollapsibleSectionsState = {
         modules: false,
         shortcuts: false,
         ai: false,
         prompts: false,
       };
-
       if (!isCurrentlyOpen) {
-        newOpenState[sectionKeyToToggle] = true; // Open the clicked section
+        newOpenState[sectionKeyToToggle] = true;
       }
-      // If it was open, it remains closed in newOpenState.
       localOpenSections = newOpenState;
-      markChanged(); // Persist accordion state changes
+      markChanged();
     }
   }
 
-  /**
-   * Handles changes to a shortcut key input field.
-   * Validates the input to allow only single uppercase letters or numbers.
-   * @param {string} moduleId The ID of the shortcut module being configured.
-   * @param {Event} event The input event from the HTMLInputElement.
-   * @private
-   */
   function handleShortcutKeyChange(moduleId: string, event: Event): void {
     const inputElement = event.target as HTMLInputElement;
     let value = inputElement.value.toUpperCase();
-
-    if (value.length > 1) {
-      value = value.charAt(value.length - 1); // Take only the last character entered
-    }
-
+    if (value.length > 1) value = value.charAt(value.length - 1);
     if (value === "" || /^[A-Z0-9]$/.test(value)) {
-      // Allow empty (to clear) or single alphanumeric
       localShortcutKeys = { ...localShortcutKeys, [moduleId]: value };
       markChanged();
     } else {
-      // Revert to the previous valid value if input is invalid
       inputElement.value = localShortcutKeys[moduleId] || "";
     }
   }
 
-  /**
-   * Saves all current local settings to their respective Svelte stores,
-   * which triggers persistence to `chrome.storage.sync`.
-   * Resets the `initial...` state variables to reflect the newly saved values
-   * and disables the "Apply Changes" button.
-   * @private
-   */
-  function applyChanges(): void {
+  async function applyChanges(): Promise<void> {
     if (isLoading) return;
 
-    globalExtensionEnabledStore.set(localGlobalEnabled);
-    moduleStatesStore.set({ ...localModuleStates });
-    shortcutsOverallEnabledStore.set(localShortcutsOverallEnabled);
-    shortcutKeysStore.set({ ...localShortcutKeys });
-    aiFeaturesEnabledStore.set(localAiFeaturesEnabled);
-    aiCredentialsStore.set({ ...localAiCredentials });
-    aiProviderConfigStore.set({ ...localAiProviderConfig });
-    promptsStore.set({ ...localPrompts });
-    collapsibleSectionsStateStore.set({ ...localOpenSections });
+    // Validação da configuração da IA
+    if (localAiFeaturesEnabled && localGlobalEnabled) {
+      const isStateMessage =
+        modelError === "Recursos de IA desabilitados." ||
+        modelError === "Extensão desabilitada.";
 
-    // Update initial states to reflect saved changes
+      // Verifica se modelError é uma string (não nulo) e não é uma mensagem de estado informativa.
+      if (typeof modelError === "string" && !isStateMessage) {
+        // Agora modelError é definitivamente uma string de erro de configuração
+        if (modelList.length === 0) {
+          // E impediu o carregamento de modelos
+          alert(
+            `Erro na configuração de IA: ${modelError}. Por favor, corrija antes de salvar.`,
+          );
+          // Checagem segura de toLowerCase após confirmar que modelError é uma string
+          if (
+            modelError.toLowerCase().includes("credenciais") ||
+            modelError.toLowerCase().includes("chave")
+          ) {
+            showCredentialsModal = true;
+          }
+          return; // Impede o salvamento
+        }
+      }
+
+      // Se não há erro impeditivo (ou o erro é apenas de estado),
+      // mas nenhum modelo foi selecionado
+      if (!localAiProviderConfig.model) {
+        alert(
+          "Configuração de IA incompleta: Por favor, selecione um modelo de IA.",
+        );
+        const modelSelect = document.getElementById(
+          "aiModel",
+        ) as HTMLSelectElement | null;
+        if (modelSelect) modelSelect.focus();
+        return; // Impede o salvamento
+      }
+    }
+
+    const adapter: IStorageAdapter = defaultStorageAdapter;
+    await Promise.all([
+      adapter.set("omniMaxGlobalEnabled", localGlobalEnabled),
+      adapter.set("omniMaxModuleStates", { ...localModuleStates }),
+      adapter.set(
+        "omniMaxShortcutsOverallEnabled",
+        localShortcutsOverallEnabled,
+      ),
+      adapter.set("omniMaxShortcutKeys", { ...localShortcutKeys }),
+      adapter.set("omniMaxAiFeaturesEnabled", localAiFeaturesEnabled),
+      adapter.set("omniMaxAiCredentials", { ...localAiCredentials }),
+      adapter.set("omniMaxAiProviderConfig", { ...localAiProviderConfig }), // Save the potentially updated model
+      adapter.set("omniMaxPrompts", { ...localPrompts }),
+      adapter.set("omniMaxCollapsibleSectionsState", { ...localOpenSections }),
+    ]);
+
     initialGlobalEnabled = localGlobalEnabled;
-    initialModuleStates = { ...localModuleStates };
+    initialModuleStates = JSON.parse(JSON.stringify(localModuleStates));
     initialShortcutsOverallEnabled = localShortcutsOverallEnabled;
-    initialShortcutKeys = { ...localShortcutKeys };
     initialAiFeaturesEnabled = localAiFeaturesEnabled;
-    initialAiCredentials = { ...localAiCredentials };
-    initialAiProviderConfig = { ...localAiProviderConfig };
-    initialPrompts = { ...localPrompts };
-    initialOpenSections = { ...localOpenSections };
+    initialAiCredentials = JSON.parse(JSON.stringify(localAiCredentials));
+    initialAiProviderConfig = JSON.parse(JSON.stringify(localAiProviderConfig));
+    initialPrompts = JSON.parse(JSON.stringify(localPrompts));
+    initialOpenSections = JSON.parse(JSON.stringify(localOpenSections));
+    initialShortcutKeys = JSON.parse(JSON.stringify(localShortcutKeys));
 
     hasPendingChanges = false;
-    alert(
-      "Alterações aplicadas! A aba da plataforma Matrix Go será recarregada para aplicar todas as mudanças.",
-    );
+    alert("Configurações aplicadas com sucesso!");
 
-    // Reload active Matrix Go tabs
-    chrome.tabs.query(
-      { url: "https://vipmax.matrixdobrasil.ai/Painel/*" },
-      (tabs) => {
-        for (const tab of tabs) {
-          if (tab.id) {
-            chrome.tabs.reload(tab.id);
-          }
-        }
-      },
-    );
-    // Consider closing the popup after applying changes
     window.close();
   }
 
-  /**
-   * Resets all local settings to their last saved (initial) values,
-   * discarding any pending changes.
-   * @private
-   */
   function discardChanges(): void {
     if (isLoading) return;
-
     localGlobalEnabled = initialGlobalEnabled;
-    localModuleStates = { ...initialModuleStates };
+    localModuleStates = JSON.parse(JSON.stringify(initialModuleStates));
     localShortcutsOverallEnabled = initialShortcutsOverallEnabled;
-    localShortcutKeys = { ...initialShortcutKeys };
     localAiFeaturesEnabled = initialAiFeaturesEnabled;
-    localAiCredentials = { ...initialAiCredentials };
-    localAiProviderConfig = { ...initialAiProviderConfig };
-    localPrompts = { ...initialPrompts };
-    localOpenSections = { ...initialOpenSections };
+    localAiCredentials = JSON.parse(JSON.stringify(initialAiCredentials));
+    localAiProviderConfig = JSON.parse(JSON.stringify(initialAiProviderConfig));
+    localPrompts = JSON.parse(JSON.stringify(initialPrompts));
+    localOpenSections = JSON.parse(JSON.stringify(initialOpenSections));
+    localShortcutKeys = JSON.parse(JSON.stringify(initialShortcutKeys));
+
+    console.log("OmniMaxPopup: Changes discarded. Restored AI creds:", {
+      ...localAiCredentials,
+    });
 
     hasPendingChanges = false;
-    // alert("Alterações pendentes descartadas."); // Optional user feedback
+    // After discarding, refresh model list to match the reverted settings
+    if (localAiFeaturesEnabled && localGlobalEnabled) {
+      refreshModelList();
+    } else {
+      modelList = [];
+      modelError = null;
+    }
+  }
+
+  // Variável reativa para os metadados do provedor selecionado
+  let selectedProviderMetadata: ProviderMetadata | undefined;
+  $: selectedProviderMetadata = PROVIDER_METADATA_MAP.get(
+    localAiProviderConfig.provider,
+  );
+
+  // Ajuste no on:change do select de provedor para usar o defaultModel do metadado, se houver
+  function handleProviderChange() {
+    markChanged();
+    const currentMeta = PROVIDER_METADATA_MAP.get(
+      localAiProviderConfig.provider,
+    );
+    localAiProviderConfig.model = currentMeta?.defaultModel || ""; // Usa defaultModel do metadado ou vazio
+    refreshModelList();
+  }
+
+  // No botão "Cancelar" do modal de credenciais:
+  function handleCancelCredentialsModal() {
+    if (selectedProviderMetadata && initialAiCredentials) {
+      // Reverte apenas as credenciais relevantes para o provedor atual
+      if (selectedProviderMetadata.apiKeySettings?.credentialKey) {
+        const key = selectedProviderMetadata.apiKeySettings.credentialKey;
+        (localAiCredentials as any)[key] = initialAiCredentials[key];
+      }
+      if (selectedProviderMetadata.baseUrlSettings?.credentialKey) {
+        const key = selectedProviderMetadata.baseUrlSettings.credentialKey;
+        (localAiCredentials as any)[key] = initialAiCredentials[key];
+      }
+      // Força a reatividade do objeto se necessário, ou se estiver usando $state,
+      // Svelte 5 deve lidar com isso. Para Svelte < 5:
+      localAiCredentials = { ...localAiCredentials };
+    }
+    showCredentialsModal = false;
+    // A lógica para verificar hasPendingChanges ao cancelar pode ser complexa,
+    // é mais simples deixar o usuário clicar em "Descartar" principal se quiser reverter tudo.
   }
 </script>
 
@@ -415,6 +497,12 @@
           onChange={(val) => {
             localGlobalEnabled = val;
             markChanged();
+            if (val && localAiFeaturesEnabled)
+              refreshModelList(); // Refresh if enabling
+            else if (!val) {
+              modelList = [];
+              modelError = "Extension is disabled.";
+            }
           }}
           ariaLabel="Habilitar ou desabilitar toda a extensão Omni Max"
         />
@@ -558,6 +646,14 @@
             onChange={(val) => {
               localAiFeaturesEnabled = val;
               markChanged();
+              // Refresh model list or clear it based on the new state
+              if (val && localGlobalEnabled) {
+                refreshModelList();
+              } else {
+                modelList = [];
+                modelError = "AI features are disabled.";
+                localAiProviderConfig.model = ""; // Clear selected model
+              }
             }}
             disabled={!localGlobalEnabled}
             ariaLabel="Ativar ou desativar globalmente todas as funcionalidades de Inteligência Artificial"
@@ -569,37 +665,73 @@
                 id="aiProvider"
                 class="select-field"
                 bind:value={localAiProviderConfig.provider}
-                on:change={() => {
-                  markChanged();
-                  localAiProviderConfig.model =
-                    modelOptions[localAiProviderConfig.provider]?.[0] || ""; // Reset model
-                }}
+                on:change={handleProviderChange}
               >
-                <option value="openai">OpenAI</option>
-                <option value="gemini">Google Gemini</option>
-                <option value="anthropic">Anthropic</option>
+                {#each PROVIDER_METADATA_LIST as providerMeta (providerMeta.id)}
+                  <option value={providerMeta.id}
+                    >{providerMeta.displayName}</option
+                  >
+                {/each}
               </select>
             </div>
+
             <div class="input-group">
               <label for="aiModel">Modelo</label>
               <select
                 id="aiModel"
                 class="select-field"
                 bind:value={localAiProviderConfig.model}
-                on:change={markChanged}
-                disabled={!modelOptions[localAiProviderConfig.provider]?.length}
+                on:change={() => markChanged()}
+                disabled={loadingModels ||
+                  (modelList.length === 0 && !modelError && !loadingModels) ||
+                  !!modelError}
               >
-                {#if localAiProviderConfig.provider && modelOptions[localAiProviderConfig.provider]}
-                  {#each modelOptions[localAiProviderConfig.provider] as modelName (modelName)}
-                    <option value={modelName}>{modelName}</option>
-                  {/each}
-                {:else}
-                  <option value="" disabled selected
-                    >Selecione um provedor primeiro</option
+                {#if loadingModels}
+                  <option value="" disabled selected>Carregando modelos…</option
                   >
+                {:else if modelError}
+                  <option value="" disabled selected
+                    >{modelError.length > 40
+                      ? modelError.substring(0, 37) + "..."
+                      : modelError}</option
+                  >
+                {:else if modelList.length === 0}
+                  <option value="" disabled selected
+                    >Nenhum modelo (verifique credenciais)</option
+                  >
+                {:else}
+                  <option
+                    value=""
+                    selected={!localAiProviderConfig.model ||
+                      !modelList.includes(localAiProviderConfig.model)}
+                    disabled>Selecione um modelo</option
+                  >
+                  {#each modelList as m (m)}
+                    <option
+                      value={m}
+                      selected={m === localAiProviderConfig.model}>{m}</option
+                    >
+                  {/each}
                 {/if}
               </select>
+              {#if modelError && !loadingModels}
+                <p
+                  class="popup-error-text"
+                  style="font-size: 0.8em; color: var(--color-error, red); margin-top: 4px;"
+                >
+                  {modelError}
+                </p>
+              {:else if !loadingModels && modelList.length === 0 && !modelError}
+                <p
+                  class="popup-info-text"
+                  style="font-size: 0.8em; color: var(--color-text-secondary, #555); margin-top: 4px;"
+                >
+                  Para listar modelos, adicione as credenciais no modal abaixo e
+                  salve.
+                </p>
+              {/if}
             </div>
+
             <button
               class="button-primary full-width"
               on:click={() => (showCredentialsModal = true)}
@@ -664,31 +796,28 @@
               <Info size={16} class="placeholder-icon" /> Prompts disponíveis quando
               a extensão e as funções de IA estiverem habilitadas.
             </p>
+          {:else if promotableAiModules.length > 0}
+            {#each promotableAiModules as module (module.id)}
+              {@const promptKey = module.promptSettings!.configKey}
+              {@const promptLabel = module.promptSettings!.label}
+              {@const promptPlaceholder = module.promptSettings!.placeholder}
+              <div class="input-group">
+                <label for={promptKey}>{promptLabel}</label>
+                <textarea
+                  id={promptKey}
+                  class="textarea-field"
+                  rows="3"
+                  placeholder={promptPlaceholder}
+                  bind:value={localPrompts[promptKey]}
+                  on:input={markChanged}
+                ></textarea>
+              </div>
+            {/each}
           {:else}
-            <div class="input-group">
-              <label for="summaryPrompt">Prompt de Resumo</label>
-              <textarea
-                id="summaryPrompt"
-                class="textarea-field"
-                rows="3"
-                placeholder="Ex: Resuma esta conversa de forma concisa, destacando o problema principal e a resolução."
-                bind:value={localPrompts.summaryPrompt}
-                on:input={markChanged}
-              ></textarea>
-            </div>
-            <div class="input-group">
-              <label for="improvementPrompt"
-                >Prompt de Melhoria de Resposta</label
-              >
-              <textarea
-                id="improvementPrompt"
-                class="textarea-field"
-                rows="3"
-                placeholder="Ex: Revise a seguinte resposta, tornando-a mais clara, empática e profissional..."
-                bind:value={localPrompts.improvementPrompt}
-                on:input={markChanged}
-              ></textarea>
-            </div>
+            <p class="placeholder-text">
+              <Info size={16} class="placeholder-icon" /> Nenhuma configuração de
+              prompt disponível para as funcionalidades de IA ativas.
+            </p>
           {/if}
         </div>
       </CollapsibleSection>
@@ -726,123 +855,77 @@
   </div>
 
   {#if showCredentialsModal}
-    <div
-      class="modal-overlay"
-      role="presentation"
-      on:click|self={() => (showCredentialsModal = false)}
-      on:keydown={(event) => {
-        // Listen for Escape on the overlay itself
-        if (event.key === "Escape") {
-          showCredentialsModal = false;
-        }
-      }}
-    >
-      <!-- svelte-ignore a11y_click_events_have_key_events -->
-      <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-      <div
-        class="modal-content"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="credentials-modal-title"
-        on:click|stopPropagation
-      >
-        <div class="modal-header">
-          <h3 id="credentials-modal-title">
-            Credenciais: {localAiProviderConfig.provider
-              ? localAiProviderConfig.provider.charAt(0).toUpperCase() +
-                localAiProviderConfig.provider.slice(1)
-              : "IA"}
-          </h3>
-          <button
-            class="close-button"
-            on:click={() => (showCredentialsModal = false)}
-            aria-label="Fechar modal de credenciais"
-            title="Fechar"><XCircle size={20} /></button
-          >
+  <div class="modal-overlay" >
+    <div class="modal-content" >
+      <div class="modal-header">
+        <h3 id="credentials-modal-title">
+          Credenciais: {selectedProviderMetadata?.displayName || localAiProviderConfig.provider}
+        </h3>
         </div>
-        <div class="modal-body">
-          {#if localAiProviderConfig.provider === "openai"}
+      <div class="modal-body">
+        {#if selectedProviderMetadata}
+          {#if selectedProviderMetadata.apiKeySettings}
+            {@const settings = selectedProviderMetadata.apiKeySettings}
             <div class="input-group">
-              <label for="openaiApiKey">OpenAI API Key</label>
+              <label for={settings.credentialKey}>{settings.label}</label>
               <input
-                type="password"
-                id="openaiApiKey"
+                type={settings.inputType || 'password'}
+                id={settings.credentialKey}
                 class="input-field"
-                bind:value={localAiCredentials.openaiApiKey}
-                on:input={markChanged}
-                placeholder="sk-..."
+                bind:value={localAiCredentials[settings.credentialKey]}
+                on:input={() => markChanged()}
+                placeholder={settings.placeholder || ''}
+                autocomplete="new-password"
+              />
+            </div>
+          {/if}
+          {#if selectedProviderMetadata.baseUrlSettings}
+            {@const settings = selectedProviderMetadata.baseUrlSettings}
+            <div class="input-group">
+              <label for={settings.credentialKey}>{settings.label}</label>
+              <input
+                type={settings.inputType || 'text'}
+                id={settings.credentialKey}
+                class="input-field"
+                bind:value={localAiCredentials[settings.credentialKey]}
+                on:input={() => markChanged()}
+                placeholder={settings.placeholder || ''}
                 autocomplete="off"
               />
             </div>
-          {:else if localAiProviderConfig.provider === "gemini"}
-            <div class="input-group">
-              <label for="geminiApiKey">Google Gemini API Key</label>
-              <input
-                type="password"
-                id="geminiApiKey"
-                class="input-field"
-                bind:value={localAiCredentials.geminiApiKey}
-                on:input={markChanged}
-                placeholder="Seu Gemini API Key..."
-                autocomplete="off"
-              />
-            </div>
-          {:else if localAiProviderConfig.provider === "anthropic"}
-            <div class="input-group">
-              <label for="anthropicApiKey">Anthropic API Key</label>
-              <input
-                type="password"
-                id="anthropicApiKey"
-                class="input-field"
-                bind:value={localAiCredentials.anthropicApiKey}
-                on:input={markChanged}
-                placeholder="Seu Anthropic API Key..."
-                autocomplete="off"
-              />
-            </div>
-          {:else}
-            <p class="placeholder-text">
-              <Info size={16} class="placeholder-icon" /> Provedor de IA não selecionado
-              ou configuração de credenciais indisponível.
+          {/if}
+          {#if selectedProviderMetadata.documentationLink}
+            <p style="font-size:0.8em; margin-top: 12px; text-align: center;">
+              <a href={selectedProviderMetadata.documentationLink} target="_blank" rel="noopener noreferrer" style="color: var(--color-primary, #a9276f);">
+                Como obter {selectedProviderMetadata.apiKeySettings?.label || selectedProviderMetadata.baseUrlSettings?.label}?
+              </a>
             </p>
           {/if}
-        </div>
-        <div class="modal-footer">
-          <button
-            class="button-secondary"
-            on:click={() => {
-              // Revert credentials for the current provider if user cancels
-              if (localAiProviderConfig.provider === "openai")
-                localAiCredentials.openaiApiKey =
-                  initialAiCredentials.openaiApiKey;
-              else if (localAiProviderConfig.provider === "gemini")
-                localAiCredentials.geminiApiKey =
-                  initialAiCredentials.geminiApiKey;
-              else if (localAiProviderConfig.provider === "anthropic")
-                localAiCredentials.anthropicApiKey =
-                  initialAiCredentials.anthropicApiKey;
-              showCredentialsModal = false;
-              // Check if this revert actually removed the 'pending' status for credentials
-              // This is a simplification; a more robust check would compare all credentials.
-              if (
-                JSON.stringify(localAiCredentials) ===
-                JSON.stringify(initialAiCredentials)
-              ) {
-                // If no other changes, reset hasPendingChanges
-                // This logic needs to be more comprehensive to be accurate
-              }
-            }}>Cancelar</button
-          >
-          <button
-            class="button-primary"
-            on:click={() => {
-              showCredentialsModal = false; // markChanged() already called by input fields
-            }}>OK</button
-          >
-        </div>
+          {#if selectedProviderMetadata.credentialType === 'none'}
+             <p class="placeholder-text">Este provedor não requer credenciais adicionais.</p>
+          {/if}
+        {:else}
+          <p class="placeholder-text">
+            <Info size={16} class="placeholder-icon" /> Selecione um provedor de IA válido.
+          </p>
+        {/if}
+      </div>
+      <div class="modal-footer">
+        <button class="button-secondary" on:click={handleCancelCredentialsModal}>
+          Cancelar
+        </button>
+        <button
+          class="button-primary"
+          on:click={() => {
+            showCredentialsModal = false;
+            markChanged(); 
+            refreshModelList(); 
+          }}>OK</button
+        >
       </div>
     </div>
-  {/if}
+  </div>
+{/if}
 </div>
 
 <!-- svelte-ignore css-unused-selector -->
@@ -852,7 +935,8 @@
     display: flex;
     flex-direction: column;
     width: 380px;
-    max-height: 580px;
+    max-height: 580px; /* Or your preferred max height */
+    min-height: 400px; /* Ensure it doesn't collapse too much */
     overflow: hidden;
     background-color: #f4f6f8; /* Light gray background */
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
@@ -878,10 +962,9 @@
     padding: 12px 16px;
   }
   .header-controls {
-    /* Novo wrapper */
     display: flex;
     align-items: center;
-    gap: 12px; /* Espaço entre o toggle de status e o ícone do GitHub */
+    gap: 12px;
   }
   .header-title-group h1 {
     font-size: 1.1rem;
@@ -915,8 +998,8 @@
     color: #f0f0f0;
   }
   .github-link-header {
-    color: white; /* Cor do ícone do GitHub */
-    display: inline-flex; /* Para alinhar o ícone corretamente */
+    color: white;
+    display: inline-flex;
     align-items: center;
     opacity: 0.8;
     transition: opacity 0.2s ease;
@@ -924,9 +1007,9 @@
   .github-link-header:hover {
     opacity: 1;
   }
+
   .github-link-header svg {
-    /* Ajuste fino se necessário */
-    stroke-width: 2px; /* Pode ajustar a espessura do traço do ícone */
+    stroke-width: 2px;
   }
 
   .popup-scrollable-content {
@@ -966,22 +1049,22 @@
 
   .actions-footer-fixed {
     display: flex;
-    justify-content: flex-end; /* Align buttons to the right */
-    gap: 8px; /* Space between buttons */
+    justify-content: flex-end;
+    gap: 8px;
     flex-shrink: 0;
-    background-color: #f9fafb; /* Slightly off-white background */
+    background-color: #f9fafb;
     padding: 12px 16px;
-    border-top: 1px solid #e5e7eb; /* border-gray-200 */
+    border-top: 1px solid #e5e7eb;
   }
   .apply-button,
   .discard-button {
-    padding: 8px 16px; /* Adjusted padding */
+    padding: 8px 16px;
     color: white;
     border: none;
-    border-radius: 0.375rem; /* rounded-md */
+    border-radius: 0.375rem;
     font-weight: 500;
     cursor: pointer;
-    font-size: 0.875rem; /* text-sm */
+    font-size: 0.875rem;
     transition:
       filter 0.2s ease,
       opacity 0.2s ease;
@@ -1008,7 +1091,7 @@
   }
 
   .section-item-space > *:not(:last-child) {
-    margin-bottom: 16px; /* Consistent spacing */
+    margin-bottom: 16px;
   }
   .module-item-container {
     display: flex;
@@ -1021,12 +1104,12 @@
     margin-right: 8px;
     font-size: 0.9em;
     font-weight: 500;
-    cursor: help; /* Indicate tooltip presence */
+    cursor: help;
   }
 
   .shortcut-definition-item {
-    padding-bottom: 12px; /* Slightly less padding */
-    border-bottom: 1px dashed #e5e7eb; /* gray-200 */
+    padding-bottom: 12px;
+    border-bottom: 1px dashed #e5e7eb;
   }
   .shortcut-definition-item:last-child {
     border-bottom: none;
@@ -1037,7 +1120,7 @@
     font-weight: 500;
     font-size: 0.9em;
     margin-bottom: 8px;
-    color: #374151; /* gray-700 */
+    color: #374151;
     cursor: help;
   }
   .shortcut-controls-improved {
@@ -1049,7 +1132,7 @@
     font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier,
       monospace;
     font-size: 0.85em;
-    color: #4b5563; /* gray-600 */
+    color: #4b5563;
     white-space: nowrap;
   }
   .shortcut-key-input-editable {
@@ -1060,19 +1143,19 @@
       monospace;
     font-size: 0.9em;
     font-weight: bold;
-    border: 1px solid #d1d5db; /* gray-300 */
-    border-radius: 0.25rem; /* rounded-sm */
+    border: 1px solid #d1d5db;
+    border-radius: 0.25rem;
     padding: 4px;
     box-sizing: border-box;
   }
   .shortcut-key-input-editable:focus {
-    border-color: #a9276f; /* Primary color focus */
+    border-color: #a9276f;
     box-shadow: 0 0 0 2px rgba(169, 39, 111, 0.2);
     outline: none;
   }
   .shortcut-key-input-editable:disabled {
-    background-color: #f3f4f6; /* gray-100 */
-    color: #9ca3af; /* gray-400 */
+    background-color: #f3f4f6;
+    color: #9ca3af;
   }
 
   .input-group {
@@ -1082,7 +1165,7 @@
     display: block;
     font-size: 0.875rem;
     font-weight: 500;
-    color: #374151; /* gray-700 */
+    color: #374151;
     margin-bottom: 4px;
   }
   .input-field,
@@ -1090,26 +1173,31 @@
   .textarea-field {
     width: 100%;
     padding: 8px 12px;
-    border: 1px solid #d1d5db; /* gray-300 */
-    border-radius: 0.375rem; /* rounded-md */
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
     font-size: 0.875rem;
     box-sizing: border-box;
     background-color: white;
-    color: #1f2937; /* gray-800 */
+    color: #1f2937;
   }
   .input-field:focus,
   .select-field:focus,
   .textarea-field:focus {
     outline: none;
-    border-color: #a9276f; /* Primary color focus */
-    box-shadow: 0 0 0 2px rgba(169, 39, 111, 0.2); /* Primary color shadow */
+    border-color: #a9276f;
+    box-shadow: 0 0 0 2px rgba(169, 39, 111, 0.2);
   }
   .textarea-field {
     min-height: 70px;
     resize: vertical;
   }
   .select-field[disabled] {
-    background-color: #f3f4f6;
+    /* More specific selector for disabled select */
+    background-color: #f3f4f6 !important; /* Ensure override */
+    color: #9ca3af !important;
+    cursor: not-allowed;
+  }
+  .select-field option[disabled] {
     color: #9ca3af;
   }
 
@@ -1131,18 +1219,18 @@
     font-size: 0.875rem;
   }
   .button-primary {
-    background-color: #a9276f; /* Primary color */
+    background-color: #a9276f;
     color: white;
   }
   .button-primary:hover:not(:disabled) {
     filter: brightness(110%);
   }
   .button-secondary {
-    background-color: #e5e7eb; /* gray-200 */
-    color: #374151; /* gray-700 */
+    background-color: #e5e7eb;
+    color: #374151;
   }
   .button-secondary:hover:not(:disabled) {
-    background-color: #d1d5db; /* gray-300 */
+    background-color: #d1d5db;
   }
   .full-width {
     width: 100%;
@@ -1155,14 +1243,14 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1000; /* Ensure it's above other popup content */
+    z-index: 1000;
   }
   .modal-content {
     background-color: white;
     padding: 20px;
-    border-radius: 0.5rem; /* rounded-lg */
+    border-radius: 0.5rem;
     width: 90%;
-    max-width: 340px; /* Consistent with other popup width considerations */
+    max-width: 340px;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
   }
   .modal-header {
@@ -1171,24 +1259,24 @@
     align-items: center;
     margin-bottom: 16px;
     padding-bottom: 10px;
-    border-bottom: 1px solid #e5e7eb; /* gray-200 */
+    border-bottom: 1px solid #e5e7eb;
   }
   .modal-header h3 {
     font-size: 1.1rem;
     font-weight: 600;
-    color: #1f2937; /* gray-800 */
+    color: #1f2937;
     margin: 0;
   }
   .close-button {
     background: none;
     border: none;
-    color: #9ca3af; /* gray-400 */
+    color: #9ca3af;
     cursor: pointer;
-    padding: 0; /* Remove default padding */
-    line-height: 1; /* Ensure icon is centered */
+    padding: 0;
+    line-height: 1;
   }
   .close-button:hover {
-    color: #4b5563; /* gray-600 */
+    color: #4b5563;
   }
   .modal-body > .input-group:not(:last-child) {
     margin-bottom: 16px;
@@ -1198,43 +1286,51 @@
     gap: 8px;
     padding-top: 16px;
     margin-top: 16px;
-    border-top: 1px solid #e5e7eb; /* gray-200 */
+    border-top: 1px solid #e5e7eb;
     justify-content: flex-end;
   }
   .modal-footer button {
-    min-width: 80px; /* Give buttons a decent minimum width */
+    min-width: 80px;
   }
 
   .sub-separator {
     border: none;
-    border-top: 1px dashed #e5e7eb; /* gray-200 */
-    margin: 20px 0; /* More vertical space */
+    border-top: 1px dashed #e5e7eb;
+    margin: 20px 0;
   }
   .section-subtitle {
-    font-size: 0.95em; /* Slightly larger */
+    font-size: 0.95em;
     font-weight: 500;
-    color: #374151; /* gray-700 */
+    color: #374151;
     margin-top: 16px;
-    margin-bottom: 12px; /* More space below */
+    margin-bottom: 12px;
   }
   .app-credits-footer {
-    padding: 8px 16px; /* Menor que o actions-footer */
+    padding: 8px 16px;
     text-align: center;
-    font-size: 0.75em; /* Pequeno */
-    color: #7f8c8d; /* Cinza sutil */
-    background-color: #f4f6f8; /* Mesma cor de fundo do popup principal */
-    border-top: 1px solid #e0e0e0; /* Uma linha sutil de separação se o actions-footer-fixed não tiver borda inferior */
-    flex-shrink: 0; /* Para não encolher */
-    /* Se actions-footer-fixed já tiver border-top, talvez não precise aqui,
-     ou ajuste o padding-top do actions-footer-fixed para 0 e coloque a borda aqui.
-     Se actions-footer-fixed for sticky, este footer ficará abaixo dele. */
+    font-size: 0.75em;
+    color: #7f8c8d;
+    background-color: #f4f6f8;
+    border-top: 1px solid #e0e0e0;
+    flex-shrink: 0;
   }
   .app-credits-footer a {
-    color: #a9276f; /* Usando uma das cores do seu tema */
+    color: #a9276f;
     text-decoration: none;
     font-weight: 500;
   }
   .app-credits-footer a:hover {
     text-decoration: underline;
+  }
+
+  .popup-error-text {
+    font-size: 0.8em;
+    color: red; /* Ensure high visibility for errors */
+    margin-top: 4px;
+  }
+  .popup-info-text {
+    font-size: 0.8em;
+    color: #555; /* A neutral, informative color */
+    margin-top: 4px;
   }
 </style>

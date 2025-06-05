@@ -173,10 +173,7 @@ export class DomService {
         }
     }
 
-    // Reutiliza o método applyStyles existente se houver estilos
     if (options?.styles && Object.keys(options.styles).length > 0) {
-      // applyStyles espera um Element, e createElement retorna um tipo mais específico
-      // que é um subtipo de Element, então está ok.
       this.applyStyles(element, options.styles);
     }
 
