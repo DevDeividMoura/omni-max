@@ -1,137 +1,253 @@
 /**
  * @file utils/index.test.ts
  * @description Unit tests for utility functions defined in `src/utils/index.ts`.
- * Currently focuses on testing the `capitalizeFirstLetterOfWords` function.
  */
-import { describe, it, expect } from 'vitest';
-import { capitalizeFirstLetterOfWords } from './index';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { capitalizeFirstLetterOfWords, decodeHtmlEntities, maskSensitiveDocumentNumbers } from './index';
 
 /**
- * Test suite for the `capitalizeFirstLetterOfWords` utility function.
- * It verifies the function's ability to correctly capitalize the first letter
- * of each word in various string inputs, including edge cases and different
- * character types.
+ * @describe capitalizeFirstLetterOfWords
+ * @description Test suite for the `capitalizeFirstLetterOfWords` utility function.
  */
 describe('capitalizeFirstLetterOfWords', () => {
-  /**
-   * Tests capitalization of a single lowercase word.
-   */
   it('should capitalize the first letter of a single lowercase word', () => {
     expect(capitalizeFirstLetterOfWords('word')).toBe('Word');
   });
 
-  /**
-   * Tests capitalization of each word in a multi-word lowercase string.
-   */
   it('should capitalize the first letter of each word in a lowercase string', () => {
     expect(capitalizeFirstLetterOfWords('hello world')).toBe('Hello World');
   });
 
-  /**
-   * Ensures that an empty string input results in an empty string output.
-   */
   it('should return an empty string if an empty string is provided', () => {
     expect(capitalizeFirstLetterOfWords('')).toBe('');
   });
 
-  /**
-   * Verifies that words already correctly capitalized are not altered.
-   */
   it('should not change already capitalized words', () => {
     expect(capitalizeFirstLetterOfWords('Already Capitalized Words')).toBe('Already Capitalized Words');
   });
 
-  /**
-   * Tests how the function handles mixed-case words.
-   * The expectation is that it capitalizes the first letter of what it considers a "word",
-   * which might depend on word boundary detection (e.g., using `\b` in regex).
-   * For "mIxEd cAsE", if 'm' and 'c' are word starts, it becomes "MIxEd CAsE".
-   */
   it('should handle mixed case words, capitalizing the first letter at word boundaries', () => {
     expect(capitalizeFirstLetterOfWords('mIxEd cAsE')).toBe('MIxEd CAsE');
   });
 
-  /**
-   * Checks handling of strings with leading and/or trailing spaces.
-   * Spaces themselves should be preserved, and words adjacent to them capitalized.
-   */
   it('should handle strings with leading and trailing spaces, preserving spaces', () => {
-    expect(capitalizeFirstLetterOfWords('  leading space')).toBe('  Leading Space');
-    expect(capitalizeFirstLetterOfWords('trailing space  ')).toBe('Trailing Space  ');
-    expect(capitalizeFirstLetterOfWords('  both sides  ')).toBe('  Both Sides  ');
+    expect(capitalizeFirstLetterOfWords('   leading space')).toBe('   Leading Space');
+    expect(capitalizeFirstLetterOfWords('trailing space   ')).toBe('Trailing Space   ');
+    expect(capitalizeFirstLetterOfWords('   both sides   ')).toBe('   Both Sides   ');
   });
 
-  /**
-   * Ensures multiple spaces between words are preserved, and adjacent words are capitalized.
-   */
   it('should handle multiple spaces between words, preserving spaces', () => {
-    expect(capitalizeFirstLetterOfWords('multiple   spaces')).toBe('Multiple   Spaces');
+    expect(capitalizeFirstLetterOfWords('multiple    spaces')).toBe('Multiple    Spaces');
   });
 
-  /**
-   * Tests capitalization when words contain numbers or start with numbers.
-   * Assumes numbers do not prevent a sequence from being treated as a word start.
-   */
   it('should handle words containing or starting with numbers', () => {
     expect(capitalizeFirstLetterOfWords('word1 test2')).toBe('Word1 Test2');
     expect(capitalizeFirstLetterOfWords('1st place')).toBe('1st Place');
   });
 
-  /**
-   * Verifies behavior with hyphenated strings.
-   * Assumes hyphens are treated as word separators, leading to capitalization after each hyphen.
-   */
   it('should treat hyphens as word boundaries, capitalizing subsequent letters', () => {
     expect(capitalizeFirstLetterOfWords('state-of-the-art')).toBe('State-Of-The-Art');
   });
 
-  /**
-   * Tests behavior with underscores. The outcome depends on whether the underlying
-   * capitalization logic (likely regex with `\b`) treats `_` as a word character (`\w`)
-   * or a word boundary.
-   * - If `_` is `\w`, then `\b` occurs before "under" in "under_score_test", leading to "Under_score_test".
-   * - For "_another_test", if `_` is `\w`, `\b` might not occur before the initial `_` if it's the first character,
-   * so it might remain `_another_test`.
-   */
   it('should handle underscores based on word boundary definitions', () => {
-    // Assuming '_' is treated as part of a word character by \w,
-    // a word boundary \b might not occur before an initial underscore.
-    expect(capitalizeFirstLetterOfWords('under_score_test')).toBe('Under_score_test'); // "under" is capitalized
-    expect(capitalizeFirstLetterOfWords('_leading_underscore')).toBe('_leading_underscore'); // Initial '_' might not trigger capitalization if part of \w
-    expect(capitalizeFirstLetterOfWords('another__test')).toBe('Another__test'); // "another" is capitalized
+    expect(capitalizeFirstLetterOfWords('under_score_test')).toBe('Under_score_test');
+    expect(capitalizeFirstLetterOfWords('_leading_underscore')).toBe('_leading_underscore');
+    expect(capitalizeFirstLetterOfWords('another__test')).toBe('Another__test');
   });
 
-  /**
-   * Checks correct capitalization of words with Unicode accented characters.
-   */
   it('should correctly capitalize words with accented Unicode characters', () => {
     expect(capitalizeFirstLetterOfWords('olá mundo')).toBe('Olá Mundo');
     expect(capitalizeFirstLetterOfWords('éric çäñtæ')).toBe('Éric Çäñtæ');
   });
 
-  /**
-   * Tests the function with a complex sentence involving various casings and structures
-   * to ensure overall robustness.
-   */
   it('should handle a sentence with various cases and punctuation correctly', () => {
     const sentence = 'this is a teST of the capitalize FUNCTION. it should wORk!';
     const expected = 'This Is A TeST Of The Capitalize FUNCTION. It Should WORk!';
     expect(capitalizeFirstLetterOfWords(sentence)).toBe(expected);
   });
 
-  /**
-   * Tests that null input returns an empty string or handles as defined (e.g., throws error or specific return).
-   * Assuming it should return an empty string for consistency with `''`.
-   */
   it('should return an empty string if null is provided', () => {
     expect(capitalizeFirstLetterOfWords(null)).toBe('');
   });
 
-  /**
-   * Tests that undefined input returns an empty string or handles as defined.
-   * Assuming it should return an empty string for consistency with `''`.
-   */
   it('should return an empty string if undefined is provided', () => {
     expect(capitalizeFirstLetterOfWords(undefined)).toBe('');
+  });
+});
+
+/**
+ * @describe decodeHtmlEntities
+ * @description Test suite for the `decodeHtmlEntities` utility function.
+ * It includes tests for scenarios with DOMParser, a textarea fallback, and no available decoding mechanisms.
+ */
+describe('decodeHtmlEntities', () => {
+  const originalDOMParser = global.DOMParser;
+  const originalDocument = global.document;
+  let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => { });
+  });
+
+  afterEach(() => {
+    vi.stubGlobal('DOMParser', originalDOMParser);
+    vi.stubGlobal('document', originalDocument);
+    consoleWarnSpy.mockRestore();
+  });
+
+  it('should decode common HTML entities using DOMParser when available', () => {
+    const decodedText = 'Text with < > " \' & \u00A0.';
+    const mockParseFromString = vi.fn().mockReturnValue({
+      body: { textContent: decodedText }
+    });
+    vi.stubGlobal('DOMParser', vi.fn(() => ({ parseFromString: mockParseFromString })));
+    vi.stubGlobal('document', undefined); // Ensure DOMParser is preferred
+
+    const encoded = 'Text with &lt; &gt; &quot; &apos; &amp; &nbsp;.';
+    expect(decodeHtmlEntities(encoded)).toBe(decodedText);
+    expect(mockParseFromString).toHaveBeenCalledWith(`<!doctype html><body>${encoded}`, 'text/html');
+  });
+
+  it('should return an empty string if DOMParser.parseFromString.body.textContent is null', () => {
+    const mockParseFromString = vi.fn().mockReturnValue({
+      body: { textContent: null }
+    });
+    vi.stubGlobal('DOMParser', vi.fn(() => ({ parseFromString: mockParseFromString })));
+    vi.stubGlobal('document', undefined);
+
+    expect(decodeHtmlEntities('some text')).toBe('');
+  });
+
+  it('should decode entities using textarea fallback if DOMParser is undefined and document is available', () => {
+    vi.stubGlobal('DOMParser', undefined);
+    const mockTextarea = {
+      _internalValue: '', // Using a different property to avoid potential setter/getter conflicts in some test environments
+      set innerHTML(html: string) {
+        // More complete simulation for the previously failing test case, ensuring correct entity handling.
+        let temp = html;
+        temp = temp.replace(/&amp;/g, '&');
+        temp = temp.replace(/&lt;/g, '<');
+        temp = temp.replace(/&gt;/g, '>');
+        temp = temp.replace(/&quot;/g, '"');
+        temp = temp.replace(/&apos;/g, "'");
+        temp = temp.replace(/&nbsp;/g, '\u00A0');
+        this._internalValue = temp;
+      },
+      get value() { return this._internalValue; }
+    };
+    vi.stubGlobal('document', {
+      createElement: vi.fn((tagName: string) => {
+        if (tagName === 'textarea') {
+          mockTextarea._internalValue = ''; // Reset for each creation in case of multiple calls
+          return mockTextarea;
+        }
+        return null; // Should not happen in this test
+      })
+    });
+
+    expect(decodeHtmlEntities('Hello &amp; &lt;World&gt;')).toBe('Hello & <World>');
+    expect(document.createElement).toHaveBeenCalledWith('textarea');
+  });
+
+  it('should return original text and warn if DOMParser and document are undefined', () => {
+    vi.stubGlobal('DOMParser', undefined);
+    vi.stubGlobal('document', undefined);
+    const text = 'Text with &amp; entities';
+    expect(decodeHtmlEntities(text)).toBe(text);
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      "Omni Max [Utils]: decodeHtmlEntities - DOMParser and document not available. HTML entities might not be fully decoded."
+    );
+  });
+
+  it('should return an empty string for an empty input string when DOMParser is available', () => {
+    // Mock DOMParser to ensure it's the path taken
+    vi.stubGlobal('DOMParser', vi.fn(() => ({ parseFromString: vi.fn(() => ({ body: { textContent: '' } })) })));
+    vi.stubGlobal('document', undefined);
+    expect(decodeHtmlEntities('')).toBe('');
+  });
+
+  it('should return the same string if no entities are present when DOMParser is available', () => {
+    const text = 'Just a plain text.';
+    // Mock DOMParser to ensure it's the path taken
+    vi.stubGlobal('DOMParser', vi.fn(() => ({ parseFromString: vi.fn(() => ({ body: { textContent: text } })) })));
+    vi.stubGlobal('document', undefined);
+    expect(decodeHtmlEntities(text)).toBe(text);
+  });
+});
+
+/**
+ * @describe maskSensitiveDocumentNumbers
+ * @description Test suite for the `maskSensitiveDocumentNumbers` utility function.
+ */
+describe('maskSensitiveDocumentNumbers', () => {
+  const DEFAULT_PLACEHOLDER = "[DOCUMENTO_CLIENTE]";
+
+  it('should return an empty string for null, undefined, or non-string input', () => {
+    expect(maskSensitiveDocumentNumbers(null as any)).toBe("");
+    expect(maskSensitiveDocumentNumbers(undefined as any)).toBe("");
+    expect(maskSensitiveDocumentNumbers(123 as any)).toBe("");
+  });
+
+  it('should return an empty string for an empty input string', () => {
+    expect(maskSensitiveDocumentNumbers("")).toBe("");
+  });
+
+  it('should return the original text if no sensitive document numbers are found', () => {
+    const text = "This text has no sensitive document numbers.";
+    expect(maskSensitiveDocumentNumbers(text)).toBe(text);
+  });
+
+  const cpfTestData = [
+    { input: "CPF: 123.456.789-00", expected: `CPF: ${DEFAULT_PLACEHOLDER}` },
+    { input: "My CPF is 11122233344.", expected: `My CPF is ${DEFAULT_PLACEHOLDER}.` },
+    { input: "Doc: 123 456 789 00!", expected: `Doc: ${DEFAULT_PLACEHOLDER}!` },
+    { input: "12345678900", expected: DEFAULT_PLACEHOLDER },
+    { input: "Leading text 123.456.789-00 trailing text", expected: `Leading text ${DEFAULT_PLACEHOLDER} trailing text` },
+    { input: "No space12345678900here", expected: "No space12345678900here" }, // \b prevents matching
+    { input: "Number 123456789001 is too long", expected: "Number 123456789001 is too long" }, // \b prevents matching
+    { input: "Number 1234567890 is too short", expected: "Number 1234567890 is too short" }, // \b prevents matching
+  ];
+  cpfTestData.forEach(data => {
+    it(`should correctly handle CPF in "${data.input}" (expected: "${data.expected}")`, () => {
+      expect(maskSensitiveDocumentNumbers(data.input)).toBe(data.expected);
+    });
+  });
+
+  const cnpjTestData = [
+    { input: "CNPJ: 12.345.678/0001-99", expected: `CNPJ: ${DEFAULT_PLACEHOLDER}` },
+    { input: "Company CNPJ 11222333000144.", expected: `Company CNPJ ${DEFAULT_PLACEHOLDER}.` },
+    { input: "ID: 12 345 678 0001 99!", expected: `ID: ${DEFAULT_PLACEHOLDER}!` },
+    { input: "12345678000199", expected: DEFAULT_PLACEHOLDER },
+    { input: "CNPJ: 12.345.678/0001 99", expected: `CNPJ: ${DEFAULT_PLACEHOLDER}` },
+    { input: "Text 12.345.678/0001-99 and more", expected: `Text ${DEFAULT_PLACEHOLDER} and more` },
+    { input: "No space12345678000199here", expected: "No space12345678000199here" }, // \b prevents matching
+    { input: "Number 123456780001991 is too long", expected: "Number 123456780001991 is too long" }, // \b prevents matching
+    { input: "Number 1234567800019 is too short", expected: "Number 1234567800019 is too short" }, // \b prevents matching
+  ];
+  cnpjTestData.forEach(data => {
+    it(`should correctly handle CNPJ in "${data.input}" (expected: "${data.expected}")`, () => {
+      expect(maskSensitiveDocumentNumbers(data.input)).toBe(data.expected);
+    });
+  });
+
+  it('should mask multiple CPFs and CNPJs in the same text string', () => {
+    const text = "User 1: CPF 111.222.333-44 and CNPJ 12.345.678/0001-99. User 2: CPF 99988877766.";
+    const expected = `User 1: CPF ${DEFAULT_PLACEHOLDER} and CNPJ ${DEFAULT_PLACEHOLDER}. User 2: CPF ${DEFAULT_PLACEHOLDER}.`;
+    expect(maskSensitiveDocumentNumbers(text)).toBe(expected);
+  });
+
+  it('should use a custom placeholder when one is provided', () => {
+    const text = "My document is 123.456.789-00.";
+    const customPlaceholder = "[HIDDEN_DOC]";
+    const expected = `My document is ${customPlaceholder}.`;
+    expect(maskSensitiveDocumentNumbers(text, customPlaceholder)).toBe(expected);
+  });
+
+  it('should correctly prioritize CNPJ masking over potential partial CPF match', () => {
+    // This test ensures that the CNPJ (longer pattern) is masked first,
+    // which is the current implementation strategy.
+    const textWithCnpj = "Document 12345678000199 is a CNPJ.";
+    const expected = `Document ${DEFAULT_PLACEHOLDER} is a CNPJ.`;
+    expect(maskSensitiveDocumentNumbers(textWithCnpj)).toBe(expected);
   });
 });
