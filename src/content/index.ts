@@ -21,7 +21,7 @@ import { SummaryUiService, SUMMARY_BUTTON_CLASS } from './services/SummaryUiServ
 import { defaultStorageAdapter } from '../storage/IStorageAdapter';
 import type { ActiveChatContext } from './types';
 
-import { globalExtensionEnabledStore, moduleStatesStore, aiFeaturesEnabledStore } from '../storage/stores';
+import { globalExtensionEnabledStore, moduleStatesStore, aiFeaturesEnabledStore, selectedLocaleStore } from '../storage/stores';
 import { get } from 'svelte/store';
 
 import packageJson from '../../package.json';
@@ -31,6 +31,37 @@ export const OMNI_MAX_CONTENT_LOADED_FLAG = `omniMaxContentLoaded_v${extensionVe
 
 const MAX_LAYOUT_RETRIES = 15; // Aumentado para mais chances em páginas lentas
 const LAYOUT_RETRY_DELAY = 300; // ms entre tentativas
+
+/**
+ * @function getLocaleFromAgent
+ * @description Detects language from `window.langAgent` if available.
+ * @returns {string | null} The detected locale code or null.
+ */
+function getLocaleFromAgent(): string {
+    const defaultLocale = 'pt-BR'; // Fallback default locale
+    const raw = typeof window !== 'undefined' ? (window as any).langAgent : defaultLocale;
+    if (typeof raw !== 'string') return defaultLocale;
+
+    const lang = raw.toLowerCase();
+
+    const mappings: [string, string][] = [
+        ['pt-br', 'pt-BR'],
+        ['pt-pt', 'pt-PT'],
+        ['es', 'es'],
+        ['en', 'en'],
+    ];
+
+    const detectedMapping = mappings.find(([prefix]) => lang.startsWith(prefix));
+
+    return detectedMapping ? detectedMapping[1] : defaultLocale;
+}
+
+function detectAndStorePageLanguage(): void { // Note que o tipo de retorno agora é 'void'
+    const detectedLocale = getLocaleFromAgent(); // Chama a função que só tem uma responsabilidade
+
+    console.log(`Omni Max [ContentScript]: Page language detected as "${detectedLocale}". Storing setting.`);
+    selectedLocaleStore.set(detectedLocale);
+}
 
 /**
  * Applies styles to a selector with retries if the element is not immediately found.
@@ -100,8 +131,8 @@ function getActiveTabChatContext(domService: DomService): ActiveChatContext | nu
     if (activeTabLinkElement) {
         const protocolNumber = activeTabLinkElement.dataset.protocolo;
         const attendanceId = activeTabLinkElement.dataset.atendimento;
-        const contactId = activeTabLinkElement.dataset.contato;    
-        
+        const contactId = activeTabLinkElement.dataset.contato;
+
         const panelElement = attendanceId ? domService.query<HTMLElement>(`#aba_${attendanceId}`) : null;
 
         if (protocolNumber && attendanceId && contactId) {
@@ -109,7 +140,7 @@ function getActiveTabChatContext(domService: DomService): ActiveChatContext | nu
                 protocolNumber,
                 attendanceId,
                 contactId,
-                panelElement: panelElement || undefined 
+                panelElement: panelElement || undefined
             };
         }
     }
@@ -123,6 +154,9 @@ export async function initializeOmniMaxContentScript(): Promise<void> {
     }
     (window as any)[OMNI_MAX_CONTENT_LOADED_FLAG] = true;
 
+    // Detect and store the page language
+    detectAndStorePageLanguage();
+
     console.log(`Omni Max: Content Script v${extensionVersion} (layoutFix) - Initializing...`);
 
     const domService = new DomService();
@@ -131,7 +165,7 @@ export async function initializeOmniMaxContentScript(): Promise<void> {
     const extractionService = new ExtractionService(CONFIG, domService);
     const shortcutService = new ShortcutService(extractionService, clipboardService, notificationService);
     const templateHandlingService = new TemplateHandlingService(CONFIG, domService);
-    
+
     const aiManager = new AIServiceManager();
     const matrixApiService = new MatrixApiService();
     const summaryCacheService = new SummaryCacheService(defaultStorageAdapter);
@@ -160,7 +194,7 @@ export async function initializeOmniMaxContentScript(): Promise<void> {
             existingButtons.forEach(btn => btn.remove());
             return;
         }
-        
+
         const activeChatCtx = getActiveTabChatContext(domService);
         if (!activeChatCtx || !activeChatCtx.protocolNumber || !activeChatCtx.contactId || !activeChatCtx.attendanceId) {
             return;
@@ -170,7 +204,7 @@ export async function initializeOmniMaxContentScript(): Promise<void> {
         if (activeChatCtx.panelElement) {
             hsmButtonsContainer = domService.query<HTMLDivElement>('div.hsm_buttons', activeChatCtx.panelElement);
         }
-        
+
         if (!hsmButtonsContainer) {
             const allHsmButtonDivs = domService.queryAll<HTMLDivElement>('div.hsm_buttons');
             for (const div of allHsmButtonDivs) {
@@ -184,7 +218,7 @@ export async function initializeOmniMaxContentScript(): Promise<void> {
                 }
             }
         }
-        
+
         if (!hsmButtonsContainer) {
             const genericActivePanel = domService.query<HTMLElement>('div.tab-pane.active');
             if (genericActivePanel) {
@@ -202,7 +236,7 @@ export async function initializeOmniMaxContentScript(): Promise<void> {
             // console.warn(`Omni Max [ContentIndex]: Could not find 'div.hsm_buttons' for active panel (protocol: ${activeChatCtx.protocolNumber}). Summary button not injected.`);
         }
     };
-    
+
     const tabsUlElement = domService.query('ul#tabs');
     if (tabsUlElement) {
         const tabObserver = new MutationObserver(async (mutationsList) => {
@@ -230,7 +264,7 @@ export async function initializeOmniMaxContentScript(): Promise<void> {
                                     if (!currentActiveProtocolNumbers.includes(protocolNumberToRemove)) {
                                         await summaryCacheService.removeSummary(protocolNumberToRemove);
                                     }
-                                }, 7000); 
+                                }, 7000);
                             }
                         }
                     });
@@ -249,9 +283,9 @@ export async function initializeOmniMaxContentScript(): Promise<void> {
             }
         });
         tabObserver.observe(tabsUlElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
-        
-        setTimeout(setupSummaryButtonForActivePanel, 1500); 
-        
+
+        setTimeout(setupSummaryButtonForActivePanel, 1500);
+
         const initialActiveTabElements = domService.queryAll<HTMLAnchorElement>('ul#tabs li a');
         const initialActiveProtocolNumbers = initialActiveTabElements
             .map(tab => tab.dataset.protocolo)
@@ -262,7 +296,7 @@ export async function initializeOmniMaxContentScript(): Promise<void> {
         console.warn('Omni Max [ContentIndex]: Target ul#tabs for MutationObserver not found. Summary button might not be injected on tab changes.');
         setTimeout(setupSummaryButtonForActivePanel, 1500);
     }
-    
+
 
     // --- Subscrições às Stores para Reatividade do Botão de Resumo e Layout ---
     const updateUiBasedOnSettings = () => {
@@ -273,22 +307,22 @@ export async function initializeOmniMaxContentScript(): Promise<void> {
         handleLayoutCorrection(
             domService,
             CONFIG,
-            isLayoutModuleEnabled ?? false, 
-            isGloballyEnabledForLayout ?? true 
+            isLayoutModuleEnabled ?? false,
+            isGloballyEnabledForLayout ?? true
         ).catch(err => console.error(`Omni Max [ContentIndex]: Layout correction handling failed:`, err));
 
         // Summary Button (já chamado pelo setupSummaryButtonForActivePanel, que é chamado abaixo)
         refreshSummaryButtonLogic();
     };
-    
+
     // Inscrever-se nas mudanças das stores relevantes
     // Qualquer mudança nessas stores acionará uma reavaliação completa da UI.
     const unsubGlobal = globalExtensionEnabledStore.subscribe(updateUiBasedOnSettings);
     const unsubModules = moduleStatesStore.subscribe(updateUiBasedOnSettings);
-    const unsubAiFeatures = aiFeaturesEnabledStore.subscribe(updateUiBasedOnSettings); 
+    const unsubAiFeatures = aiFeaturesEnabledStore.subscribe(updateUiBasedOnSettings);
     // Adicionar unsubAiFeatures para garantir que o botão de resumo reaja se a feature de IA geral for (des)ativada
 
-    
+
     // console.log("Omni Max [ContentIndex]: Subscribed to store changes for layout updates.");
 
     // A primeira chamada a `updateLayout` já ocorre devido à subscrição.
@@ -296,7 +330,7 @@ export async function initializeOmniMaxContentScript(): Promise<void> {
 
     shortcutService.attachListeners();
     templateHandlingService.attachListeners();
-    
+
     console.log(`Omni Max: Content Script v${extensionVersion} (layoutFix) initialization sequence complete.`);
 }
 

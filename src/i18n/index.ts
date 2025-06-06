@@ -1,28 +1,5 @@
-import { register, init, getLocaleFromNavigator } from 'svelte-i18n';
+import { register, init } from 'svelte-i18n';
 import { defaultStorageAdapter } from '../storage/IStorageAdapter'; // Usaremos para persistir
-
-/**
- * @function getLocaleFromAgent
- * @description Detects language from `window.langAgent` if available.
- * @returns {string | null} The detected locale code or null.
- */
-function getLocaleFromAgent(): string | null {
-  const raw = typeof window !== 'undefined' ? (window as any).langAgent : null;
-  if (typeof raw !== 'string') return null;
-
-  const lang = raw.toLowerCase();
-
-  // Ordem importa: checamos PT-BR antes de PT
-  const mappings: [string, string][] = [
-    ['pt-br', 'pt-BR'],
-    ['pt-pt',    'pt-PT'],
-    ['es',    'es'],
-    ['en',    'en'],
-  ];
-
-  const match = mappings.find(([prefix]) => lang.startsWith(prefix));
-  return match ? match[1] : null;
-}
 
 /**
  * Registers all translation files for the application.
@@ -42,12 +19,10 @@ export function registerLocales() {
 export async function initializeI18n() {
   registerLocales();
 
-  const saved = await defaultStorageAdapter.get<string>('omniMaxSelectedLocale');
-  const agentLocale = getLocaleFromAgent();
-  const browserLocale = getLocaleFromNavigator();
+  const savedLocale = await defaultStorageAdapter.get<string>('omniMaxSelectedLocale');
 
   init({
-    fallbackLocale: 'pt-BR',
-    initialLocale: saved || agentLocale || browserLocale,
+    fallbackLocale: 'pt-BR', // Fallback caso nada seja encontrado
+    initialLocale: savedLocale || 'pt-BR', 
   });
 }
