@@ -1,0 +1,23 @@
+{
+  "popup": {
+    "header": {
+      "title": "Omni Max",
+      "subtitle": "Asistente para Matrix Go",
+      "active": "Activa",
+      "inactive": "Inactiva"
+    },
+    "footer": {
+      "made_with_love": "Hecho con ❤️ por"
+    },
+    "buttons": {
+      "apply": "Aplicar Cambios",
+      "discard": "Descartar"
+    },
+    "modules": {
+      "general_section_title": "Módulos Generales",
+      "shortcuts_section_title": "Atajos de Teclado",
+      "ai_config_section_title": "Configuración de IA",
+      "prompts_section_title": "Prompts Personalizables"
+    }
+  }
+}
