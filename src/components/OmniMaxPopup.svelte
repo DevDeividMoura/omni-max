@@ -8,6 +8,7 @@
    *
    * @component
    */
+  import { _ } from "svelte-i18n";
   import { onMount } from "svelte";
   import { get } from "svelte/store";
   import CollapsibleSection from "./CollapsibleSection.svelte";
@@ -486,8 +487,8 @@
 <div class="omni-max-popup-container-fixed-layout">
   <div class="popup-header-fixed">
     <div class="header-title-group">
-      <h1>Omni Max</h1>
-      <p>Assistente para Matrix Go</p>
+      <h1>{$_('popup.header.title')}</h1>
+      <p>{$_("popup.header.subtitle")}</p>
     </div>
     <div class="header-controls">
       <div class="header-global-toggle">
@@ -511,7 +512,7 @@
             ? 'active'
             : 'inactive'}"
         >
-          {localGlobalEnabled ? "Ativa" : "Desativada"}
+          {localGlobalEnabled ? $_('popup.header.active') : $_('popup.header.inactive')}
         </span>
       </div>
       <a
@@ -531,7 +532,7 @@
       <p class="loading-text">Carregando configurações...</p>
     {:else}
       <CollapsibleSection
-        title="Módulos Gerais"
+        title={$_('popup.modules.general_section_title')}
         icon={ListChecks}
         isOpen={localOpenSections?.modules}
         onToggle={() => toggleSectionCollapse("modules")}
@@ -844,7 +845,7 @@
   </div>
 
   <div class="app-credits-footer">
-    Feito com ❤️ por
+    {$_('popup.footer.made_with_love')}
     <a
       href="https://github.com/DevDeividMoura"
       target="_blank"
@@ -855,77 +856,90 @@
   </div>
 
   {#if showCredentialsModal}
-  <div class="modal-overlay" >
-    <div class="modal-content" >
-      <div class="modal-header">
-        <h3 id="credentials-modal-title">
-          Credenciais: {selectedProviderMetadata?.displayName || localAiProviderConfig.provider}
-        </h3>
+    <div class="modal-overlay">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="credentials-modal-title">
+            Credenciais: {selectedProviderMetadata?.displayName ||
+              localAiProviderConfig.provider}
+          </h3>
         </div>
-      <div class="modal-body">
-        {#if selectedProviderMetadata}
-          {#if selectedProviderMetadata.apiKeySettings}
-            {@const settings = selectedProviderMetadata.apiKeySettings}
-            <div class="input-group">
-              <label for={settings.credentialKey}>{settings.label}</label>
-              <input
-                type={settings.inputType || 'password'}
-                id={settings.credentialKey}
-                class="input-field"
-                bind:value={localAiCredentials[settings.credentialKey]}
-                on:input={() => markChanged()}
-                placeholder={settings.placeholder || ''}
-                autocomplete="new-password"
-              />
-            </div>
-          {/if}
-          {#if selectedProviderMetadata.baseUrlSettings}
-            {@const settings = selectedProviderMetadata.baseUrlSettings}
-            <div class="input-group">
-              <label for={settings.credentialKey}>{settings.label}</label>
-              <input
-                type={settings.inputType || 'text'}
-                id={settings.credentialKey}
-                class="input-field"
-                bind:value={localAiCredentials[settings.credentialKey]}
-                on:input={() => markChanged()}
-                placeholder={settings.placeholder || ''}
-                autocomplete="off"
-              />
-            </div>
-          {/if}
-          {#if selectedProviderMetadata.documentationLink}
-            <p style="font-size:0.8em; margin-top: 12px; text-align: center;">
-              <a href={selectedProviderMetadata.documentationLink} target="_blank" rel="noopener noreferrer" style="color: var(--color-primary, #a9276f);">
-                Como obter {selectedProviderMetadata.apiKeySettings?.label || selectedProviderMetadata.baseUrlSettings?.label}?
-              </a>
+        <div class="modal-body">
+          {#if selectedProviderMetadata}
+            {#if selectedProviderMetadata.apiKeySettings}
+              {@const settings = selectedProviderMetadata.apiKeySettings}
+              <div class="input-group">
+                <label for={settings.credentialKey}>{settings.label}</label>
+                <input
+                  type={settings.inputType || "password"}
+                  id={settings.credentialKey}
+                  class="input-field"
+                  bind:value={localAiCredentials[settings.credentialKey]}
+                  on:input={() => markChanged()}
+                  placeholder={settings.placeholder || ""}
+                  autocomplete="new-password"
+                />
+              </div>
+            {/if}
+            {#if selectedProviderMetadata.baseUrlSettings}
+              {@const settings = selectedProviderMetadata.baseUrlSettings}
+              <div class="input-group">
+                <label for={settings.credentialKey}>{settings.label}</label>
+                <input
+                  type={settings.inputType || "text"}
+                  id={settings.credentialKey}
+                  class="input-field"
+                  bind:value={localAiCredentials[settings.credentialKey]}
+                  on:input={() => markChanged()}
+                  placeholder={settings.placeholder || ""}
+                  autocomplete="off"
+                />
+              </div>
+            {/if}
+            {#if selectedProviderMetadata.documentationLink}
+              <p style="font-size:0.8em; margin-top: 12px; text-align: center;">
+                <a
+                  href={selectedProviderMetadata.documentationLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style="color: var(--color-primary, #a9276f);"
+                >
+                  Como obter {selectedProviderMetadata.apiKeySettings?.label ||
+                    selectedProviderMetadata.baseUrlSettings?.label}?
+                </a>
+              </p>
+            {/if}
+            {#if selectedProviderMetadata.credentialType === "none"}
+              <p class="placeholder-text">
+                Este provedor não requer credenciais adicionais.
+              </p>
+            {/if}
+          {:else}
+            <p class="placeholder-text">
+              <Info size={16} class="placeholder-icon" /> Selecione um provedor de
+              IA válido.
             </p>
           {/if}
-          {#if selectedProviderMetadata.credentialType === 'none'}
-             <p class="placeholder-text">Este provedor não requer credenciais adicionais.</p>
-          {/if}
-        {:else}
-          <p class="placeholder-text">
-            <Info size={16} class="placeholder-icon" /> Selecione um provedor de IA válido.
-          </p>
-        {/if}
-      </div>
-      <div class="modal-footer">
-        <button class="button-secondary" on:click={handleCancelCredentialsModal}>
-          Cancelar
-        </button>
-        <button
-          class="button-primary"
-          on:click={() => {
-            showCredentialsModal = false;
-            markChanged(); 
-            refreshModelList(); 
-          }}>OK</button
-        >
+        </div>
+        <div class="modal-footer">
+          <button
+            class="button-secondary"
+            on:click={handleCancelCredentialsModal}
+          >
+            Cancelar
+          </button>
+          <button
+            class="button-primary"
+            on:click={() => {
+              showCredentialsModal = false;
+              markChanged();
+              refreshModelList();
+            }}>OK</button
+          >
+        </div>
       </div>
     </div>
-  </div>
-{/if}
+  {/if}
 </div>
 
 <!-- svelte-ignore css-unused-selector -->

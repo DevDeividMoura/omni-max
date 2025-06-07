@@ -1,5 +1,5 @@
-import { register, init } from 'svelte-i18n';
-import { defaultStorageAdapter } from '../storage/IStorageAdapter'; // Usaremos para persistir
+import { register, init, locale } from 'svelte-i18n';
+
 
 /**
  * Registers all translation files for the application.
@@ -16,13 +16,13 @@ export function registerLocales() {
  * It determines the initial locale by checking storage, `window.langAgent`,
  * the browser's navigator, and finally falling back to a default.
  */
-export async function initializeI18n() {
+export function initializeI18n(initialLocale: string) {
   registerLocales();
 
-  const savedLocale = await defaultStorageAdapter.get<string>('omniMaxSelectedLocale');
+  console.log(`[i18n] Initializing with locale provided by content script: "${initialLocale}"`);
 
   init({
-    fallbackLocale: 'pt-BR', // Fallback caso nada seja encontrado
-    initialLocale: savedLocale || 'pt-BR', 
+    fallbackLocale: 'pt-BR',
+    initialLocale: initialLocale || 'pt-BR',
   });
 }

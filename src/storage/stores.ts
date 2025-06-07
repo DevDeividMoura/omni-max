@@ -219,4 +219,4 @@ export const shortcutKeysStore =
  * Defaults to 'pt-BR' (Brazilian Portuguese).
  */
 export const selectedLocaleStore = 
-  persistentStore<string>('omniMaxSelectedLocale', 'pt-BR');
+  persistentStore<string>('omniMaxSelectedLocale', '');

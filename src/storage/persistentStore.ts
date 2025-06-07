@@ -103,7 +103,7 @@ export function persistentStore<T>(
 
   // Listen for external changes to the storage key (e.g., from other extension parts or synced instances)
   chrome.storage.onChanged.addListener((changes, areaName) => {
-    if (areaName === 'sync' && Object.hasOwn(changes, key)) {
+    if ((areaName === 'local' || areaName === 'sync') && Object.hasOwn(changes, key)) {
       const { newValue } = changes[key];
       const currentValueInStore = get(store);
 

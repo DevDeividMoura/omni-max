@@ -56,13 +56,14 @@ export default defineManifest(async () => {
     },
     content_scripts: [
       {
-        matches: ["https://vipmax.matrixdobrasil.ai/Painel/*"],
+        matches: ["https://vipmax.matrixdobrasil.ai/Painel/"],
         js: ["src/content/index.ts"],
+        run_at: "document_start"
       },
     ],
     permissions: [
       "storage",
       "tabs",
-    ] as chrome.runtime.ManifestPermissions[], // Type assertion for chrome permissions
+    ] as chrome.runtime.ManifestPermissions[],
   };
 });

@@ -21,7 +21,7 @@ import { SummaryUiService, SUMMARY_BUTTON_CLASS } from './services/SummaryUiServ
 import { defaultStorageAdapter } from '../storage/IStorageAdapter';
 import type { ActiveChatContext } from './types';
 
-import { globalExtensionEnabledStore, moduleStatesStore, aiFeaturesEnabledStore, selectedLocaleStore } from '../storage/stores';
+import { globalExtensionEnabledStore, moduleStatesStore, aiFeaturesEnabledStore } from '../storage/stores';
 import { get } from 'svelte/store';
 
 import packageJson from '../../package.json';
@@ -32,36 +32,57 @@ export const OMNI_MAX_CONTENT_LOADED_FLAG = `omniMaxContentLoaded_v${extensionVe
 const MAX_LAYOUT_RETRIES = 15; // Aumentado para mais chances em páginas lentas
 const LAYOUT_RETRY_DELAY = 300; // ms entre tentativas
 
+
 /**
- * @function getLocaleFromAgent
- * @description Detects language from `window.langAgent` if available.
- * @returns {string | null} The detected locale code or null.
+ * Scans inline script tags on the page to find and extract the value of 'langAgent'.
+ * @returns {string | null} The value of langAgent if found, otherwise null.
  */
+function getLangFromScriptTag(): string | null {
+  const scripts = Array.from(document.querySelectorAll('script'));
+  const regex = /langAgente\s*=\s*['"](.*?)['"]/;
+  for (const script of scripts) {
+    if (script.textContent) {
+      const match = script.textContent.match(regex);
+      if (match && match[1]) {
+        return match[1];
+      }
+    }
+  }
+  return null;
+}
+
 function getLocaleFromAgent(): string {
-    const defaultLocale = 'pt-BR'; // Fallback default locale
-    const raw = typeof window !== 'undefined' ? (window as any).langAgent : defaultLocale;
-    if (typeof raw !== 'string') return defaultLocale;
+    const defaultLocale = 'pt-BR';
+    let langToProcess: string | null = getLangFromScriptTag();
 
-    const lang = raw.toLowerCase();
+    if (!langToProcess && navigator.language) {
+      langToProcess = navigator.language;
+    }
+    
+    if (!langToProcess) return defaultLocale;
 
+    const lang = langToProcess.toLowerCase();
     const mappings: [string, string][] = [
-        ['pt-br', 'pt-BR'],
-        ['pt-pt', 'pt-PT'],
-        ['es', 'es'],
-        ['en', 'en'],
+        ['pt-br', 'pt-BR'], ['pt-pt', 'pt-PT'],
+        ['es', 'es'], ['en', 'en'], ['pt', 'pt-PT'],
     ];
-
     const detectedMapping = mappings.find(([prefix]) => lang.startsWith(prefix));
-
     return detectedMapping ? detectedMapping[1] : defaultLocale;
 }
 
-function detectAndStorePageLanguage(): void { // Note que o tipo de retorno agora é 'void'
-    const detectedLocale = getLocaleFromAgent(); // Chama a função que só tem uma responsabilidade
+// --- FASE 1: Lógica Imediata (executada em `document_start`) ---
 
-    console.log(`Omni Max [ContentScript]: Page language detected as "${detectedLocale}". Storing setting.`);
-    selectedLocaleStore.set(detectedLocale);
+function setupMessageListener(): void {
+  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.type === 'GET_PAGE_LANGUAGE') {
+      const detectedLocale = getLocaleFromAgent();
+      sendResponse({ locale: detectedLocale });
+      return true;
+    }
+  });
+  console.log('[ContentScript] Phase 1: Message listener is active.');
 }
+
 
 /**
  * Applies styles to a selector with retries if the element is not immediately found.
@@ -154,10 +175,8 @@ export async function initializeOmniMaxContentScript(): Promise<void> {
     }
     (window as any)[OMNI_MAX_CONTENT_LOADED_FLAG] = true;
 
-    // Detect and store the page language
-    detectAndStorePageLanguage();
 
-    console.log(`Omni Max: Content Script v${extensionVersion} (layoutFix) - Initializing...`);
+    console.log(`Omni Max [Content Script]: Content Script v${extensionVersion} (layoutFix) - Initializing...`);
 
     const domService = new DomService();
     const clipboardService = new ClipboardService();
@@ -332,7 +351,11 @@ export async function initializeOmniMaxContentScript(): Promise<void> {
     templateHandlingService.attachListeners();
 
     console.log(`Omni Max: Content Script v${extensionVersion} (layoutFix) initialization sequence complete.`);
+
+    console.log(`Omni Max [ContentIndex]: Linguagem da janela do agente ${(window as any).langAgente}`);
 }
+
+setupMessageListener();
 
 // --- Script Auto-Execution ---
 if (document.readyState === 'loading') {
