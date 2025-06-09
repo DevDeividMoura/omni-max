@@ -487,7 +487,7 @@
 <div class="omni-max-popup-container-fixed-layout">
   <div class="popup-header-fixed">
     <div class="header-title-group">
-      <h1>{$_('popup.header.title')}</h1>
+      <h1>{$_("popup.header.title")}</h1>
       <p>{$_("popup.header.subtitle")}</p>
     </div>
     <div class="header-controls">
@@ -505,14 +505,16 @@
               modelError = "Extension is disabled.";
             }
           }}
-          ariaLabel="Habilitar ou desabilitar toda a extensão Omni Max"
+          ariaLabel={$_("popup.header.enable_tooltip")}
         />
         <span
           class="global-status-indicator {localGlobalEnabled
             ? 'active'
             : 'inactive'}"
         >
-          {localGlobalEnabled ? $_('popup.header.active') : $_('popup.header.inactive')}
+          {localGlobalEnabled
+            ? $_("popup.header.active")
+            : $_("popup.header.inactive")}
         </span>
       </div>
       <a
@@ -520,7 +522,7 @@
         target="_blank"
         rel="noopener noreferrer"
         class="github-link-header"
-        title="Ver repositório do Omni Max no GitHub"
+        title={$_("popup.header.repo_tooltip")}
       >
         <GithubMarkIcon size={20} className="github-svg-icon" />
       </a>
@@ -529,10 +531,10 @@
 
   <div class="popup-scrollable-content">
     {#if isLoading}
-      <p class="loading-text">Carregando configurações...</p>
+      <p class="loading-text">{$_("popup.placeholders.loading")}</p>
     {:else}
       <CollapsibleSection
-        title={$_('popup.modules.general_section_title')}
+        title={$_("popup.sections.general.title")}
         icon={ListChecks}
         isOpen={localOpenSections?.modules}
         onToggle={() => toggleSectionCollapse("modules")}
@@ -540,8 +542,11 @@
         <div class="section-item-space">
           {#each generalModules as module (module.id)}
             <div class="module-item-container">
-              <span class="module-name-with-tooltip" title={module.description}>
-                {module.name}
+              <span
+                class="module-name-with-tooltip"
+                title={$_(module.description)}
+              >
+                {$_(module.name)}
               </span>
               <ToggleSwitch
                 enabled={localModuleStates[module.id]}
@@ -553,39 +558,53 @@
                   markChanged();
                 }}
                 disabled={!localGlobalEnabled}
-                ariaLabel={`Ativar ou desativar ${module.name}`}
+                ariaLabel={$_("popup.labels.toggle_module", {
+                  values: { moduleName: $_(module.name) },
+                })}
               />
             </div>
           {:else}
             <p class="placeholder-text">
-              <Info size={16} class="placeholder-icon" /> Nenhum módulo geral configurado.
+              <Info size={16} class="placeholder-icon" />
+              {$_("popup.placeholders.no_general_modules")}
             </p>
           {/each}
         </div>
       </CollapsibleSection>
 
       <CollapsibleSection
-        title="Atalhos de Teclado"
+        title={$_("popup.sections.shortcuts.title")}
         icon={Keyboard}
         isOpen={localOpenSections?.shortcuts}
         onToggle={() => toggleSectionCollapse("shortcuts")}
       >
         <div class="section-item-space">
           <ToggleSwitch
-            label="Habilitar Todos os Atalhos"
+            label={$_("popup.labels.toggle_module", {
+              values: {
+                moduleName: $_("popup.sections.shortcuts.title"),
+              },
+            })}
             enabled={localShortcutsOverallEnabled}
             onChange={(val) => {
               localShortcutsOverallEnabled = val;
               markChanged();
             }}
             disabled={!localGlobalEnabled}
-            ariaLabel="Ativar ou desativar globalmente todos os atalhos de teclado"
+            ariaLabel={$_("popup.labels.toggle_module", {
+              values: {
+                moduleName: $_("popup.sections.shortcuts.title"),
+              },
+            })}
           />
           {#if localShortcutsOverallEnabled && localGlobalEnabled}
             {#each shortcutModules as module (module.id)}
               <div class="shortcut-definition-item">
-                <span class="shortcut-module-label" title={module.description}>
-                  {module.name}
+                <span
+                  class="shortcut-module-label"
+                  title={$_(module.description)}
+                >
+                  {$_(module.name)}
                 </span>
                 <div class="shortcut-controls-improved">
                   <ToggleSwitch
@@ -599,7 +618,9 @@
                     }}
                     disabled={!localGlobalEnabled ||
                       !localShortcutsOverallEnabled}
-                    ariaLabel={`Ativar ou desativar o atalho ${module.name}`}
+                    ariaLabel={$_("popup.labels.toggle_module", {
+                      values: { moduleName: $_(module.name) },
+                    })}
                   />
                   <span class="shortcut-prefix" aria-hidden="true"
                     >Ctrl + Shift +</span
@@ -611,8 +632,10 @@
                     on:input={(event) =>
                       handleShortcutKeyChange(module.id, event)}
                     maxlength="1"
-                    placeholder="Tecla"
-                    aria-label={`Tecla para ${module.name}`}
+                    placeholder={$_("popup.placeholders.shortcut_key")}
+                    aria-label={$_("popup.placeholders.shortcut_key_for", {
+                      values: { moduleName: $_(module.name) },
+                    })}
                     disabled={!localGlobalEnabled ||
                       !localShortcutsOverallEnabled ||
                       !localModuleStates[module.id]}
@@ -622,27 +645,28 @@
             {/each}
           {:else if !localGlobalEnabled}
             <p class="placeholder-text">
-              <Info size={16} class="placeholder-icon" /> Habilite a extensão para
-              configurar atalhos.
+              <Info size={16} class="placeholder-icon" />
+              {$_("popup.placeholders.enable_extension_for_shortcuts")}
             </p>
           {:else if !localShortcutsOverallEnabled}
             <p class="placeholder-text">
-              <Info size={16} class="placeholder-icon" /> Habilite "Todos os Atalhos"
-              para configurar individualmente.
+              <Info size={16} class="placeholder-icon" /> {$_("popup.placeholders.enable_all_shortcuts")}
             </p>
           {/if}
         </div>
       </CollapsibleSection>
 
       <CollapsibleSection
-        title="Configurações de IA"
+        title={$_("popup.sections.ai.title")}
         icon={Cpu}
         isOpen={localOpenSections?.ai}
         onToggle={() => toggleSectionCollapse("ai")}
       >
         <div class="section-item-space">
           <ToggleSwitch
-            label="Habilitar Todas as Funções de IA"
+            label={$_("popup.labels.toggle_module", {
+              values: { moduleName: $_("popup.labels.all_ai_features") },
+            })}
             enabled={localAiFeaturesEnabled}
             onChange={(val) => {
               localAiFeaturesEnabled = val;
@@ -657,11 +681,13 @@
               }
             }}
             disabled={!localGlobalEnabled}
-            ariaLabel="Ativar ou desativar globalmente todas as funcionalidades de Inteligência Artificial"
+            ariaLabel={$_("popup.labels.toggle_module", {
+              values: { moduleName: $_("popup.labels.all_ai_features") },
+            })}
           />
           {#if localAiFeaturesEnabled && localGlobalEnabled}
             <div class="input-group">
-              <label for="aiProvider">Provedor de IA</label>
+              <label for="aiProvider">{$_('popup.labels.ai_provider')}</label>
               <select
                 id="aiProvider"
                 class="select-field"
@@ -677,7 +703,7 @@
             </div>
 
             <div class="input-group">
-              <label for="aiModel">Modelo</label>
+              <label for="aiModel">{$_('popup.labels.model')}</label>
               <select
                 id="aiModel"
                 class="select-field"
@@ -688,7 +714,7 @@
                   !!modelError}
               >
                 {#if loadingModels}
-                  <option value="" disabled selected>Carregando modelos…</option
+                  <option value="" disabled selected>{$_('popup.placeholders.loading_models')}</option
                   >
                 {:else if modelError}
                   <option value="" disabled selected
@@ -698,14 +724,14 @@
                   >
                 {:else if modelList.length === 0}
                   <option value="" disabled selected
-                    >Nenhum modelo (verifique credenciais)</option
+                    >{$_('popup.placeholders.no_models_found')}</option
                   >
                 {:else}
                   <option
                     value=""
                     selected={!localAiProviderConfig.model ||
                       !modelList.includes(localAiProviderConfig.model)}
-                    disabled>Selecione um modelo</option
+                    disabled>{$_('popup.placeholders.select_model')}</option
                   >
                   {#each modelList as m (m)}
                     <option
@@ -727,8 +753,7 @@
                   class="popup-info-text"
                   style="font-size: 0.8em; color: var(--color-text-secondary, #555); margin-top: 4px;"
                 >
-                  Para listar modelos, adicione as credenciais no modal abaixo e
-                  salve.
+                  {$_('popup.placeholders.add_credential_to_list_models')}
                 </p>
               {/if}
             </div>
@@ -743,7 +768,7 @@
                 : "IA"})
             </button>
             <hr class="sub-separator" />
-            <p class="section-subtitle">Módulos de IA Individuais:</p>
+            <p class="section-subtitle">{$_('popup.labels.individual_ai_modules')}</p>
             {#each aiModules as module (module.id)}
               <div class="module-item-container">
                 <span
@@ -832,7 +857,7 @@
       disabled={!hasPendingChanges || isLoading}
       title="Descartar alterações não salvas"
     >
-      Descartar
+      Descarta
     </button>
     <button
       class="apply-button"
@@ -845,7 +870,7 @@
   </div>
 
   <div class="app-credits-footer">
-    {$_('popup.footer.made_with_love')}
+    {$_("popup.footer.made_with_love")}
     <a
       href="https://github.com/DevDeividMoura"
       target="_blank"
