@@ -19,7 +19,7 @@
       "enable_extension_for_ai": "Habilite a extensão para usar IA.",
       "enable_all_ai": "Habilite \"Todas as Funções de IA\" para configurar.",
       "no_ai_features": "Nenhuma funcionalidade de IA configurada.",
-      "prompts_disabled": "Prompts disponíveis quando a extensão e as funções de IA estiverem habilitadas.",
+      "enable_ai_for_prompts": "Prompts disponíveis quando a extensão e as funções de IA estiverem habilitadas.",
       "no_prompts_available": "Nenhuma configuração de prompt disponível para as funcionalidades de IA ativas.",
       "loading_models": "Carregando modelos...",
       "no_models_found": "Nenhum modelo encontrado. Verifique as credenciais/URL.",
@@ -37,28 +37,41 @@
     },
     "buttons": {
       "apply": "Aplicar Alterações",
+      "apply_tooltip": "Aplicar todas as alterações feitas",
       "discard": "Descartar",
+      "discard_tooltip": "Descartar alterações não salvas",
       "manage_credentials": "Gerenciar Credenciais",
+      "manage_credentials_for": "Gerenciar Credenciais ({providerName})",
       "cancel": "Cancelar",
       "ok": "OK"
     },
     "modal": {
-      "credentials_title": "Credenciais:",
-      "get_credentials_prompt": "Como obter {0}?",
+      "credentials_title": "Credenciais: {providerName}",
+      "get_credentials_prompt": "Como obter {credentialLabel}?",
       "no_credentials_needed": "Este provedor não requer credenciais adicionais.",
       "select_valid_provider": "Selecione um provedor de IA válido."
     },
     "alerts": {
-      "ai_config_error": "Erro na configuração de IA: {0}. Por favor, corrija antes de salvar.",
+      "ai_config_error": "Erro na configuração de IA: {error}. Por favor, corrija antes de salvar.",
       "ai_config_incomplete": "Configuração de IA incompleta: Por favor, selecione um modelo de IA.",
-      "changes_applied": "Configurações salvas com sucesso!"
+      "changes_applied": "Configurações aplicadas com sucesso!"
+    },
+    "errors": {
+      "ai": {
+        "load_failed_generic": "Falha ao carregar modelos. Verifique as credenciais e o acesso ao provedor.",
+        "load_failed_specific": "Falha ao carregar modelos: {message}",
+        "no_models_found_provider": "Nenhum modelo encontrado para este provedor. Verifique a URL (Ollama) ou se há modelos disponíveis.",
+        "extension_disabled": "Extensão desabilitada.",
+        "features_disabled": "Recursos de IA desabilitados."
+      }
     },
     "sections": {
       "general": {
         "title": "Módulos Gerais",
         "layout_correction": {
           "name": "Correção de Layout",
-          "description": "Move a lista de conversas para a direita e limita a altura para melhor usabilidade."        },
+          "description": "Move a lista de conversas para a direita e limita a altura para melhor usabilidade."
+        },
         "template_processor": {
           "name": "Processador de Templates",
           "description": "Ajusta o nome do cliente ({NOME} => Nome) e auto seleciona variáveis ([VAR]) com Tab."

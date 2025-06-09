@@ -8,7 +8,7 @@
    *
    * @component
    */
-  import { _ } from "svelte-i18n";
+  import { _, locale } from "svelte-i18n";
   import { onMount } from "svelte";
   import { get } from "svelte/store";
   import CollapsibleSection from "./CollapsibleSection.svelte";
@@ -153,8 +153,7 @@
 
       if (modelList.length === 0) {
         // No error thrown, but list is empty (e.g. Ollama has no models installed)
-        modelError =
-          "Nenhum modelo encontrado para este provedor. Verifique a URL (Ollama) ou se há modelos disponíveis.";
+        modelError = $_("popup.errors.ai.no_models_found_provider");
         if (previouslySelectedModel) {
           localAiProviderConfig.model = ""; // Clear model if list is genuinely empty
           markChanged();
@@ -178,14 +177,13 @@
         // If no model was previously selected, user will pick one, no action needed here.
       }
     } catch (err: any) {
-      modelError =
-        err.message ||
-        "Falha ao carregar modelos. Verifique as credenciais e o acesso ao provedor.";
+      modelError = err.message
+        ? $_("popup.errors.ai.load_failed_specific", {
+            values: { message: err.message },
+          })
+        : $_("popup.errors.ai.load_failed_generic");
       modelList = []; // Ensure list is empty on any error from aiManager
-      console.error(
-        "refreshModelList: Error caught from aiManager:",
-        modelError,
-      );
+      console.error("refreshModelList: Error caught from aiManager:", err);
       // DO NOT CLEAR localAiProviderConfig.model here if the error might be transient (e.g. "Missing credentials" due to timing).
       // The UI will show the error, the select will be empty/disabled.
       // If the selected model was valid before this transient error, it should remain selected in the config.
@@ -232,8 +230,8 @@
             } else {
               modelList = [];
               modelError = localGlobalEnabled
-                ? "Recursos de IA desabilitados."
-                : "Extensão desabilitada.";
+                ? $_("popup.errors.ai.features_disabled")
+                : $_("popup.errors.ai.extension_disabled");
               if (localAiProviderConfig.model) localAiProviderConfig.model = "";
             }
           }
@@ -299,8 +297,8 @@
       } else if (!localGlobalEnabled || !localAiFeaturesEnabled) {
         modelList = [];
         modelError = localGlobalEnabled
-          ? "Recursos de IA desabilitados."
-          : "Extensão desabilitada.";
+          ? $_("popup.errors.ai.features_disabled")
+          : $_("popup.errors.ai.extension_disabled");
       }
     }, 350);
 
@@ -351,9 +349,11 @@
 
     // Validação da configuração da IA
     if (localAiFeaturesEnabled && localGlobalEnabled) {
-      const isStateMessage =
-        modelError === "Recursos de IA desabilitados." ||
-        modelError === "Extensão desabilitada.";
+      const stateMessages = [
+        $_("popup.errors.ai.features_disabled"),
+        $_("popup.errors.ai.extension_disabled"),
+      ];
+      const isStateMessage = stateMessages.includes(modelError || "");
 
       // Verifica se modelError é uma string (não nulo) e não é uma mensagem de estado informativa.
       if (typeof modelError === "string" && !isStateMessage) {
@@ -361,7 +361,9 @@
         if (modelList.length === 0) {
           // E impediu o carregamento de modelos
           alert(
-            `Erro na configuração de IA: ${modelError}. Por favor, corrija antes de salvar.`,
+            $_("popup.alerts.ai_config_error", {
+              values: { error: modelError },
+            }),
           );
           // Checagem segura de toLowerCase após confirmar que modelError é uma string
           if (
@@ -377,9 +379,7 @@
       // Se não há erro impeditivo (ou o erro é apenas de estado),
       // mas nenhum modelo foi selecionado
       if (!localAiProviderConfig.model) {
-        alert(
-          "Configuração de IA incompleta: Por favor, selecione um modelo de IA.",
-        );
+        alert($_("popup.alerts.ai_config_incomplete"));
         const modelSelect = document.getElementById(
           "aiModel",
         ) as HTMLSelectElement | null;
@@ -410,12 +410,12 @@
     initialAiFeaturesEnabled = localAiFeaturesEnabled;
     initialAiCredentials = JSON.parse(JSON.stringify(localAiCredentials));
     initialAiProviderConfig = JSON.parse(JSON.stringify(localAiProviderConfig));
-    initialPrompts = JSON.parse(JSON.stringify(localPrompts));
+    initialPrompts = JSON.parse(JSON.stringify(initialPrompts));
     initialOpenSections = JSON.parse(JSON.stringify(localOpenSections));
     initialShortcutKeys = JSON.parse(JSON.stringify(localShortcutKeys));
 
     hasPendingChanges = false;
-    alert("Configurações aplicadas com sucesso!");
+    alert($_("popup.alerts.changes_applied"));
 
     window.close();
   }
@@ -502,7 +502,7 @@
               refreshModelList(); // Refresh if enabling
             else if (!val) {
               modelList = [];
-              modelError = "Extension is disabled.";
+              modelError = $_("popup.errors.ai.extension_disabled");
             }
           }}
           ariaLabel={$_("popup.header.enable_tooltip")}
@@ -650,7 +650,8 @@
             </p>
           {:else if !localShortcutsOverallEnabled}
             <p class="placeholder-text">
-              <Info size={16} class="placeholder-icon" /> {$_("popup.placeholders.enable_all_shortcuts")}
+              <Info size={16} class="placeholder-icon" />
+              {$_("popup.placeholders.enable_all_shortcuts")}
             </p>
           {/if}
         </div>
@@ -676,7 +677,7 @@
                 refreshModelList();
               } else {
                 modelList = [];
-                modelError = "AI features are disabled.";
+                modelError = $_("popup.errors.ai.features_disabled");
                 localAiProviderConfig.model = ""; // Clear selected model
               }
             }}
@@ -687,7 +688,7 @@
           />
           {#if localAiFeaturesEnabled && localGlobalEnabled}
             <div class="input-group">
-              <label for="aiProvider">{$_('popup.labels.ai_provider')}</label>
+              <label for="aiProvider">{$_("popup.labels.ai_provider")}</label>
               <select
                 id="aiProvider"
                 class="select-field"
@@ -703,7 +704,7 @@
             </div>
 
             <div class="input-group">
-              <label for="aiModel">{$_('popup.labels.model')}</label>
+              <label for="aiModel">{$_("popup.labels.model")}</label>
               <select
                 id="aiModel"
                 class="select-field"
@@ -714,7 +715,8 @@
                   !!modelError}
               >
                 {#if loadingModels}
-                  <option value="" disabled selected>{$_('popup.placeholders.loading_models')}</option
+                  <option value="" disabled selected
+                    >{$_("popup.placeholders.loading_models")}</option
                   >
                 {:else if modelError}
                   <option value="" disabled selected
@@ -724,14 +726,14 @@
                   >
                 {:else if modelList.length === 0}
                   <option value="" disabled selected
-                    >{$_('popup.placeholders.no_models_found')}</option
+                    >{$_("popup.placeholders.no_models_found")}</option
                   >
                 {:else}
                   <option
                     value=""
                     selected={!localAiProviderConfig.model ||
                       !modelList.includes(localAiProviderConfig.model)}
-                    disabled>{$_('popup.placeholders.select_model')}</option
+                    disabled>{$_("popup.placeholders.select_model")}</option
                   >
                   {#each modelList as m (m)}
                     <option
@@ -753,7 +755,7 @@
                   class="popup-info-text"
                   style="font-size: 0.8em; color: var(--color-text-secondary, #555); margin-top: 4px;"
                 >
-                  {$_('popup.placeholders.add_credential_to_list_models')}
+                  {$_("popup.placeholders.add_credentials_to_list_models")}
                 </p>
               {/if}
             </div>
@@ -762,20 +764,25 @@
               class="button-primary full-width"
               on:click={() => (showCredentialsModal = true)}
             >
-              Gerenciar Credenciais ({localAiProviderConfig.provider
-                ? localAiProviderConfig.provider.charAt(0).toUpperCase() +
-                  localAiProviderConfig.provider.slice(1)
-                : "IA"})
+              {$_("popup.buttons.manage_credentials_for", {
+                values: {
+                  providerName:
+                    selectedProviderMetadata?.displayName ||
+                    localAiProviderConfig.provider,
+                },
+              })}
             </button>
             <hr class="sub-separator" />
-            <p class="section-subtitle">{$_('popup.labels.individual_ai_modules')}</p>
+            <p class="section-subtitle">
+              {$_("popup.labels.individual_ai_modules")}
+            </p>
             {#each aiModules as module (module.id)}
               <div class="module-item-container">
                 <span
                   class="module-name-with-tooltip"
-                  title={module.description}
+                  title={$_(module.description)}
                 >
-                  {module.name}
+                  {$_(module.name)}
                 </span>
                 <ToggleSwitch
                   enabled={localModuleStates[module.id]}
@@ -787,31 +794,33 @@
                     markChanged();
                   }}
                   disabled={!localGlobalEnabled || !localAiFeaturesEnabled}
-                  ariaLabel={`Ativar ou desativar ${module.name}`}
+                  ariaLabel={$_("popup.labels.toggle_module", {
+                    values: { moduleName: $_(module.name) },
+                  })}
                 />
               </div>
             {:else}
               <p class="placeholder-text">
-                <Info size={16} class="placeholder-icon" /> Nenhuma funcionalidade
-                de IA configurada.
+                <Info size={16} class="placeholder-icon" />
+                {$_("popup.placeholders.no_ai_modules")}
               </p>
             {/each}
           {:else if !localGlobalEnabled}
             <p class="placeholder-text">
-              <Info size={16} class="placeholder-icon" /> Habilite a extensão para
-              usar IA.
+              <Info size={16} class="placeholder-icon" />
+              {$_("popup.placeholders.enable_extension_for_ai")}
             </p>
           {:else}
             <p class="placeholder-text">
-              <Info size={16} class="placeholder-icon" /> Habilite "Todas as Funções
-              de IA" para configurar.
+              <Info size={16} class="placeholder-icon" />
+              {$_("popup.placeholders.enable_all_ai")}
             </p>
           {/if}
         </div>
       </CollapsibleSection>
 
       <CollapsibleSection
-        title="Prompts Customizáveis"
+        title={$_("popup.sections.prompts.title")}
         icon={FileText}
         isOpen={localOpenSections?.prompts}
         onToggle={() => toggleSectionCollapse("prompts")}
@@ -819,8 +828,8 @@
         <div class="section-item-space">
           {#if !localGlobalEnabled || !localAiFeaturesEnabled}
             <p class="placeholder-text">
-              <Info size={16} class="placeholder-icon" /> Prompts disponíveis quando
-              a extensão e as funções de IA estiverem habilitadas.
+              <Info size={16} class="placeholder-icon" />
+              {$_("popup.placeholders.enable_ai_for_prompts")}
             </p>
           {:else if promotableAiModules.length > 0}
             {#each promotableAiModules as module (module.id)}
@@ -828,12 +837,12 @@
               {@const promptLabel = module.promptSettings!.label}
               {@const promptPlaceholder = module.promptSettings!.placeholder}
               <div class="input-group">
-                <label for={promptKey}>{promptLabel}</label>
+                <label for={promptKey}>{$_(promptLabel)}</label>
                 <textarea
                   id={promptKey}
                   class="textarea-field"
                   rows="3"
-                  placeholder={promptPlaceholder}
+                  placeholder={$_(promptPlaceholder)}
                   bind:value={localPrompts[promptKey]}
                   on:input={markChanged}
                 ></textarea>
@@ -841,8 +850,8 @@
             {/each}
           {:else}
             <p class="placeholder-text">
-              <Info size={16} class="placeholder-icon" /> Nenhuma configuração de
-              prompt disponível para as funcionalidades de IA ativas.
+              <Info size={16} class="placeholder-icon" />
+              {$_("popup.placeholders.no_prompts_available")}
             </p>
           {/if}
         </div>
@@ -855,17 +864,18 @@
       class="button-secondary discard-button"
       on:click={discardChanges}
       disabled={!hasPendingChanges || isLoading}
-      title="Descartar alterações não salvas"
+      title={$_("popup.buttons.discard_tooltip")}
+      aria-label={$_("popup.buttons.discard_tooltip")}
     >
-      Descarta
+      {$_("popup.buttons.discard")}
     </button>
     <button
       class="apply-button"
       on:click={applyChanges}
       disabled={!hasPendingChanges || isLoading}
-      title="Aplicar todas as alterações feitas"
+      title={$_("popup.buttons.apply_tooltip")}
     >
-      Aplicar Alterações
+      {$_("popup.buttons.apply")}
     </button>
   </div>
 
@@ -885,8 +895,13 @@
       <div class="modal-content">
         <div class="modal-header">
           <h3 id="credentials-modal-title">
-            Credenciais: {selectedProviderMetadata?.displayName ||
-              localAiProviderConfig.provider}
+            {$_("popup.modal.credentials_title", {
+              values: {
+                providerName:
+                  selectedProviderMetadata?.displayName ||
+                  localAiProviderConfig.provider,
+              },
+            })}
           </h3>
         </div>
         <div class="modal-body">
@@ -894,14 +909,14 @@
             {#if selectedProviderMetadata.apiKeySettings}
               {@const settings = selectedProviderMetadata.apiKeySettings}
               <div class="input-group">
-                <label for={settings.credentialKey}>{settings.label}</label>
+                <label for={settings.credentialKey}>{$_(settings.label)}</label>
                 <input
                   type={settings.inputType || "password"}
                   id={settings.credentialKey}
                   class="input-field"
                   bind:value={localAiCredentials[settings.credentialKey]}
                   on:input={() => markChanged()}
-                  placeholder={settings.placeholder || ""}
+                  placeholder={$_(settings.placeholder) || ""}
                   autocomplete="new-password"
                 />
               </div>
@@ -909,14 +924,14 @@
             {#if selectedProviderMetadata.baseUrlSettings}
               {@const settings = selectedProviderMetadata.baseUrlSettings}
               <div class="input-group">
-                <label for={settings.credentialKey}>{settings.label}</label>
+                <label for={settings.credentialKey}>{$_(settings.label)}</label>
                 <input
                   type={settings.inputType || "text"}
                   id={settings.credentialKey}
                   class="input-field"
                   bind:value={localAiCredentials[settings.credentialKey]}
                   on:input={() => markChanged()}
-                  placeholder={settings.placeholder || ""}
+                  placeholder={$_(settings.placeholder) || ""}
                   autocomplete="off"
                 />
               </div>
@@ -929,20 +944,27 @@
                   rel="noopener noreferrer"
                   style="color: var(--color-primary, #a9276f);"
                 >
-                  Como obter {selectedProviderMetadata.apiKeySettings?.label ||
-                    selectedProviderMetadata.baseUrlSettings?.label}?
+                  {$_("popup.modal.get_credentials_prompt", {
+                    values: {
+                      credentialLabel: $_(
+                        selectedProviderMetadata.apiKeySettings?.label ||
+                          selectedProviderMetadata.baseUrlSettings?.label ||
+                          "",
+                      ),
+                    },
+                  })}
                 </a>
               </p>
             {/if}
             {#if selectedProviderMetadata.credentialType === "none"}
               <p class="placeholder-text">
-                Este provedor não requer credenciais adicionais.
+                {$_("popup.modal.no_credentials_needed")}
               </p>
             {/if}
           {:else}
             <p class="placeholder-text">
-              <Info size={16} class="placeholder-icon" /> Selecione um provedor de
-              IA válido.
+              <Info size={16} class="placeholder-icon" />
+              {$_("popup.modal.select_valid_provider")}
             </p>
           {/if}
         </div>
@@ -951,7 +973,7 @@
             class="button-secondary"
             on:click={handleCancelCredentialsModal}
           >
-            Cancelar
+            {$_("popup.buttons.cancel")}
           </button>
           <button
             class="button-primary"
@@ -959,7 +981,7 @@
               showCredentialsModal = false;
               markChanged();
               refreshModelList();
-            }}>OK</button
+            }}>{$_("popup.buttons.ok")}</button
           >
         </div>
       </div>
