@@ -11,6 +11,8 @@ import type { ClipboardService } from './ClipboardService'
 import type { NotificationService } from './NotificationService'
 import type { ShortcutKeysConfig } from '../../storage/stores'
 
+import { translator } from '../../i18n/translator.content';
+
 
 export class ShortcutService {
   private extractionService: ExtractionService;
@@ -29,31 +31,52 @@ export class ShortcutService {
     /** The default key for this shortcut if not configured by the user. */
     defaultKey: string;
     /** Asynchronous function that performs the shortcut's action (e.g., extracts data). */
-    actionFunction: () => Promise<{ data: string | null; label: string }>;
+    actionFunction: () => Promise<{ data: string | null; labelKey: string; notFoundKey: string }>;
   }> = [
       {
         moduleId: 'shortcutCopyDocumentNumber',
-        defaultKey: 'X', // Default: Ctrl+Shift+X
-        actionFunction: async () => ({ data: await this.extractionService.extractDocumentNumber(), label: "Número do Documento" })
+        defaultKey: 'X',
+        actionFunction: async () => ({
+          data: await this.extractionService.extractDocumentNumber(),
+          labelKey: 'modules.shortcutCopyDocumentNumber.name', // Chave do nome do módulo
+          notFoundKey: 'alerts.document_not_found' // Chave para erro específico
+        })
       },
       {
         moduleId: 'shortcutCopyName',
-        defaultKey: 'Z', // Default: Ctrl+Shift+Z
-        actionFunction: async () => ({ data: await this.extractionService.extractCustomerName(), label: "Nome do Cliente" })
+        defaultKey: 'Z',
+        actionFunction: async () => ({
+          data: await this.extractionService.extractCustomerName(),
+          labelKey: 'modules.shortcutCopyName.name',
+          notFoundKey: 'alerts.customer_name_not_found'
+        })
       },
       {
         moduleId: 'shortcutServiceOrderTemplate',
-        defaultKey: 'S', // Tecla 'S' para Service Order, por exemplo
+        defaultKey: 'S',
         actionFunction: async () => {
           const phoneNumber = await this.extractionService.extractPhoneNumber();
           const protocolNumber = await this.extractionService.extractProtocolNumber();
 
-          const template = `Situação: [RELATO_DO_CLIENTE] |||
-Telefone: ${phoneNumber || '[TELEFONE]'} |||
-Protocolo: ${protocolNumber || '[PROTOCOLO]'} |||
-OBS: [OBSERVAÇÕES]`;
+          // Pega as traduções para as partes do template
+          const situationLabel = await translator.t('templates.service_order.situation');
+          const phoneLabel = await translator.t('templates.service_order.phone');
+          const protocolLabel = await translator.t('templates.service_order.protocol');
+          const notesLabel = await translator.t('templates.service_order.notes');
 
-          return { data: template, label: "Template de Ordem de Serviço" };
+          const phonePlaceholder = await translator.t('templates.service_order.phone_placeholder');
+          const protocolPlaceholder = await translator.t('templates.service_order.protocol_placeholder');
+
+          const template = `${situationLabel}: [RELATO_DO_CLIENTE] |||
+${phoneLabel}: ${phoneNumber || `[${phonePlaceholder}]`} |||
+${protocolLabel}: ${protocolNumber || `[${protocolPlaceholder}]`} |||
+${notesLabel}: [OBSERVAÇÕES]`;
+
+          return {
+            data: template,
+            labelKey: 'modules.shortcutServiceOrderTemplate.name',
+            notFoundKey: 'alerts.template_creation_failed' // Chave genérica para este caso
+          };
         }
       }
     ];
@@ -100,32 +123,43 @@ OBS: [OBSERVAÇÕES]`;
     const pressedKey = event.key.toUpperCase()
 
     for (const mappedAction of this.actionsMap) {
-      // A module is considered enabled if its state is true or undefined (defaulting to true).
-      const isModuleEnabled = moduleStates[mappedAction.moduleId] !== false
-      const configuredKey = (shortcutKeys[mappedAction.moduleId] || mappedAction.defaultKey).toUpperCase()
+      const isModuleEnabled = moduleStates[mappedAction.moduleId] !== false;
+      const configuredKey = (shortcutKeys[mappedAction.moduleId] || mappedAction.defaultKey).toUpperCase();
 
       if (isModuleEnabled && pressedKey === configuredKey) {
+        console.log(`[ShortcutService]: Shortcut '${mappedAction.moduleId}' triggered!`);
 
-        console.log(`Omni Max [ShortcutService]: Shortcut '${mappedAction.moduleId}' (key ${configuredKey}) triggered!`);
+        // 1. Executa a ação e pega os dados e as CHAVES de tradução
+        const { data, labelKey, notFoundKey } = await mappedAction.actionFunction();
 
-        const { data, label } = await mappedAction.actionFunction();
+        // 2. Traduz o nome do dado (o label) para usar nas notificações
+        const translatedLabel = await translator.t(labelKey);
 
+        // 3. Lida com o caso de "dado não encontrado"
         if (!data) {
-          this.notificationService.showToast(`${label} não encontrado na página.`, 'warning');
-          return; // No data to copy, exit early
-        }
-        // Attempt to copy the extracted data to the clipboard
-        if (! await this.clipboardService.copy(data, label)) {
-          this.notificationService.showToast(`Falha ao copiar ${label}.`, 'error');
-          return; // Exit if copying fails
+          const warningText = await translator.t(notFoundKey);
+          this.notificationService.showToast(warningText, 'warning');
+          return;
         }
 
-        this.notificationService.showToast(`${label} "${data}" copiado!`, 'success');
-        return; // Execute only the first matching shortcut
+        // 4. Tenta copiar e lida com o erro de cópia
+        if (!await this.clipboardService.copy(data, translatedLabel)) {
+          const errorText = await translator.t('alerts.copy_failed', {
+            values: { label: translatedLabel }
+          });
+          this.notificationService.showToast(errorText, 'error');
+          return;
+        }
+
+        // 5. Mostra a notificação de sucesso
+        const successText = await translator.t('alerts.copy_success', {
+          values: { label: translatedLabel }
+        });
+        this.notificationService.showToast(successText, 'success');
+        return;
       }
     }
   }
-
   /**
    * Attaches the keyboard event listener to the document to listen for shortcuts.
    * Ensures that the listener is not attached multiple times.

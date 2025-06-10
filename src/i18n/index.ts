@@ -1,4 +1,4 @@
-import { register, init, locale } from 'svelte-i18n';
+import { register, init } from 'svelte-i18n';
 
 
 /**

@@ -119,5 +119,45 @@
         "default": "Review the following response to a customer, making it clearer, more empathetic, and professional, while maintaining the original meaning:"
       }
     }
+  },
+  "content": {
+    "summary_popup": {
+      "title": "Conversation Summary",
+      "close_button_title": "Close",
+      "close_button_aria_label": "Close summary",
+      "loading_text": "Analyzing conversation...",
+      "no_summary_available": "No summary available.",
+      "error_generating": "Error generating summary: {message}",
+      "error_generating_unknown": "Error generating summary: Unknown error."
+    },
+    "summary_button": {
+      "label": "Summarize",
+      "context_error_alert": "Omni Max: Could not identify active conversation to summarize."
+    },
+    "ai_context": {
+      "preamble_start": "Start of protocol {protocolNumber} with {customerName}.",
+      "preamble_segments": "This protocol includes multiple merged service segments (IDs: {ids}).",
+      "role_customer": "Customer",
+      "role_agent": "Agent",
+      "role_system": "System/Chatbot",
+      "role_unknown": "Unknown"
+    }
+  },
+  "alerts": {
+    "copy_success": "\"{label}\" copied to clipboard!",
+    "copy_failed": "Failed to copy \"{label}\".",
+    "document_not_found": "Customer document not found on page.",
+    "customer_name_not_found": "Customer name not found on page.",
+    "template_creation_failed": "Could not generate template."
+  },
+  "templates": {
+    "service_order": {
+      "situation": "Situation",
+      "phone": "Phone",
+      "protocol": "Protocol",
+      "notes": "NOTES",
+      "phone_placeholder": "PHONE",
+      "protocol_placeholder": "PROTOCOL"
+    }
   }
 }

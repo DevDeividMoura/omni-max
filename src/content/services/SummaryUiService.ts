@@ -6,7 +6,9 @@ import type { MatrixApiService } from './MatrixApiService';
 import type { SummaryCacheService } from './SummaryCacheService';
 import type { ActiveChatContext, CustomerServiceSession } from '../types';
 import { maskSensitiveDocumentNumbers, decodeHtmlEntities } from '../../utils';
-import { getLocaleFromAgent } from '../index'; // Importar a função
+import { getLocaleFromAgent } from '../../utils/language';
+import { translator } from '../../i18n/translator.content';
+import type { P } from 'vitest/dist/chunks/environment.d.Dmw5ulng.js';
 
 /** SVG icon for the close button. */
 const CLOSE_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>`;
@@ -64,6 +66,8 @@ export class SummaryUiService {
 
   /** Tracks active summary generation requests to prevent duplicates for the same protocol. Key is protocolNumber. */
   private activeSummaryRequests: { [protocolNumber: string]: boolean } = {};
+
+  private t = translator.t.bind(translator);
 
   /**
    * Constructs an instance of SummaryUiService.
@@ -140,7 +144,7 @@ export class SummaryUiService {
    * Creates the basic HTML structure for the summary popup.
    * @private
    */
-  private createPopupBaseLayout(): void {
+  private async createPopupBaseLayout(): Promise<void> {
     if (this.domService.query(`#${SUMMARY_POPUP_HOST_ID}`)) return;
 
     this.summaryPopupHostElement = this.domService.createElementWithOptions('div', { id: SUMMARY_POPUP_HOST_ID });
@@ -168,16 +172,21 @@ export class SummaryUiService {
     });
     if (!this.popupMainElement) return;
 
-    const popupInner = this.domService.createElementWithOptions('div', { className: 'popup-inner', parent: this.popupMainElement });
-    if (!popupInner) return;
-
+    const popupInner = this.domService.createElementWithOptions('div', { className: 'popup-inner', parent: this.popupMainElement! });
     const header = this.domService.createElementWithOptions('div', { className: 'popup-header', parent: popupInner });
-    if (!header) return;
 
-    this.domService.createElementWithOptions('h3', { className: 'popup-title', textContent: 'Resumo da Conversa', parent: header });
+    this.domService.createElementWithOptions('h3', {
+      className: 'popup-title',
+      textContent: await this.t('content.summary_popup.title'), // Traduzido
+      parent: header
+    });
+
     const closeButton = this.domService.createElementWithOptions('button', {
       className: 'close-button',
-      attributes: { title: 'Fechar', 'aria-label': 'Fechar resumo' },
+      attributes: {
+        title: await this.t('content.summary_popup.close_button_title'), // Traduzido
+        'aria-label': await this.t('content.summary_popup.close_button_aria_label') // Traduzido
+      },
       parent: header,
     });
 
@@ -196,7 +205,7 @@ export class SummaryUiService {
    * Updates the content of the summary popup based on the current loading state and summary text.
    * @private
    */
-  private updatePopupContent(): void {
+  private async updatePopupContent(): Promise<void> {
     if (!this.popupContentAreaElement) return;
 
     if (this.isLoadingSummary) {
@@ -209,16 +218,17 @@ export class SummaryUiService {
           </div>
           <div class="loading-text-container">
             <div class="dot"></div><div class="dot"></div><div class="dot"></div>
-            <span class="loading-text-span">Analisando conversa...</span>
+            <span class="loading-text-span">${ await this.t('content.summary_popup.loading_text')}</span>
           </div>
         </div>`;
     } else {
       try {
-        const rawHtml = marked.parse(this.currentSummaryText || "Nenhum resumo disponível.");
+        const defaultText = await this.t('content.summary_popup.no_summary_available'); // Traduzido
+        const rawHtml = marked.parse(this.currentSummaryText || defaultText);
         this.popupContentAreaElement.innerHTML = `<div class="summary-content">${rawHtml}</div>`;
       } catch (error) {
-        console.error("Omni Max [SummaryUiService]: Error parsing Markdown for summary:", error);
-        this.popupContentAreaElement.innerHTML = `<div class="summary-content">Erro ao renderizar o resumo.</div>`;
+        const errorText = await this.t('content.summary_popup.error_generating', { values: { message: 'render error' } });
+        this.popupContentAreaElement.innerHTML = `<div class="summary-content">${errorText}</div>`;
       }
     }
   }
@@ -229,11 +239,11 @@ export class SummaryUiService {
    * @param {string} initialProtocolNumber The protocol number associated with the chat context.
    * @param {string} initialContactId The contact ID associated with the chat context.
    */
-  public injectSummaryButton(
+  public async injectSummaryButton(
     targetButtonContainerDiv: HTMLDivElement,
     initialProtocolNumber: string,
     initialContactId: string
-  ): void {
+  ): Promise<void> {
     if (targetButtonContainerDiv.querySelector(`.${SUMMARY_BUTTON_CLASS}`)) {
       return;
     }
@@ -256,7 +266,9 @@ export class SummaryUiService {
       return;
     }
 
-    summaryButtonElement.innerHTML = `${SPARKLES_SVG_WHITE} <span style="margin-left: 5px;">Resumir</span>`;
+    const buttonText = await this.t('content.summary_button.label'); // Traduzido
+    summaryButtonElement.innerHTML = `${SPARKLES_SVG_WHITE} <span style="margin-left: 5px;">${buttonText}</span>`;
+
     const svgElement = summaryButtonElement.querySelector('svg');
     if (svgElement) {
       this.domService.applyStyles(svgElement, {
@@ -286,7 +298,7 @@ export class SummaryUiService {
           await this.showAndGenerateSummary(buttonRect, currentProtocolNumber, currentContactId);
         } else {
           console.warn("Omni Max [SummaryUiService]: Protocol number or Contact ID could not be determined to generate summary.");
-          alert("Omni Max: Não foi possível identificar o atendimento ativo para resumir.");
+          alert(await this.t('content.summary_button.context_error_alert'));
         }
       }
     });
@@ -354,42 +366,49 @@ export class SummaryUiService {
         const currentSession = allContactSessions.find(session => session.protocolNumber === protocolNumber);
 
         if (currentSession && currentSession.messages.length > 0) {
-          const customerNameForContext = currentSession.contactName || "Cliente";
+          const customerNameForContext = currentSession.contactName || await this.t('content.ai_context.role_customer');
 
-          let conversationPreamble = `Início do atendimento do protocolo ${protocolNumber} com ${customerNameForContext}.\n`;
+          let conversationPreamble = await this.t('content.ai_context.preamble_start', { values: { protocolNumber, customerName: customerNameForContext } });
           if (currentSession.originalAttendanceIds.length > 1) {
-            conversationPreamble += `Este protocolo inclui múltiplos segmentos de atendimento fundidos (IDs: ${currentSession.originalAttendanceIds.join(', ')}).\n`;
+            conversationPreamble += await this.t('content.ai_context.preamble_segments', { values: { ids: currentSession.originalAttendanceIds.join(', ') } });
           }
-          conversationPreamble += "\n";
+          conversationPreamble += "\n\n";
 
-          const conversationTurns = currentSession.messages.map(msg => {
-            const decodedContent = decodeHtmlEntities(msg.content);
-            const maskedContent = maskSensitiveDocumentNumbers(decodedContent);
-            let senderDisplayName = msg.senderName;
-            let roleLabel = "Desconhecido";
-            if (msg.role === 'customer') roleLabel = "Cliente";
-            else if (msg.role === 'agent') roleLabel = "Atendente";
-            else if (msg.role === 'system') roleLabel = "Sistema/Chatbot";
-            return `${senderDisplayName} (${roleLabel}): ${maskedContent}`;
-          }).join('\n\n');
-
-          const fullConversationForAI = conversationPreamble + conversationTurns;
-
-          const currentLocale = getLocaleFromAgent();
-          console.log(`Omni Max [SummaryUiService]: Generating summary for protocol ${protocolNumber} in locale "${currentLocale}".`);
-          const newSummary = await this.aiManager.generateSummary(fullConversationForAI, currentLocale);
+          // Substituímos o .map() por um loop for...of para usar await
+          const conversationTurns: string[] = [];
+          for (const msg of currentSession.messages) {
+            const maskedContent = maskSensitiveDocumentNumbers(decodeHtmlEntities(msg.content));
+            let roleLabel: string;
+            
+            // Usamos await para cada tradução
+            switch (msg.role) {
+              case 'customer': roleLabel = await this.t('content.ai_context.role_customer'); break;
+              case 'agent': roleLabel = await this.t('content.ai_context.role_agent'); break;
+              case 'system': roleLabel = await this.t('content.ai_context.role_system'); break;
+              default: roleLabel = await this.t('content.ai_context.role_unknown');
+            }
+            conversationTurns.push(`${msg.senderName} (${roleLabel}): ${maskedContent}`);
+          }
           
+          // Junta as partes traduzidas
+          const fullConversationForAI = conversationPreamble + conversationTurns.join('\n\n');
+          
+          const currentLocale = getLocaleFromAgent(); 
+          
+          const newSummary = await this.aiManager.generateSummary(fullConversationForAI, currentLocale); 
+
           await this.summaryCacheService.saveSummary(protocolNumber, newSummary);
           this.currentSummaryText = newSummary;
         } else {
-          this.currentSummaryText = "Nenhuma mensagem encontrada para este atendimento ou protocolo.";
+          this.currentSummaryText = await this.t('content.summary_popup.no_summary_available');
         }
         this.isLoadingSummary = false;
       }
     } catch (error: any) {
       console.error(`Omni Max [SummaryUiService]: Error processing summary for protocol ${protocolNumber}:`, error);
       this.isLoadingSummary = false;
-      this.currentSummaryText = `Erro ao gerar resumo: ${error.message || 'Erro desconhecido.'}`;
+      const message = error.message || await this.t('content.summary_popup.error_generating_unknown');
+      this.currentSummaryText = await this.t('content.summary_popup.error_generating', { values: { message } });
     } finally {
       delete this.activeSummaryRequests[protocolNumber];
       if (this.isPopupVisible) {

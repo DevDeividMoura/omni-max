@@ -119,5 +119,45 @@
         "default": "Revisa la siguiente respuesta para un cliente, haciéndola más clara, empática y profesional, manteniendo el significado original:"
       }
     }
+  },
+  "content": {
+    "summary_popup": {
+      "title": "Resumen de la Conversación",
+      "close_button_title": "Cerrar",
+      "close_button_aria_label": "Cerrar resumen",
+      "loading_text": "Analizando conversación...",
+      "no_summary_available": "No hay resumen disponible.",
+      "error_generating": "Error al generar resumen: {message}",
+      "error_generating_unknown": "Error al generar resumen: Error desconocido."
+    },
+    "summary_button": {
+      "label": "Resumir",
+      "context_error_alert": "Omni Max: No se pudo identificar la atención activa para resumir."
+    },
+    "ai_context": {
+      "preamble_start": "Inicio de atención del protocolo {protocolNumber} con {customerName}.",
+      "preamble_segments": "Este protocolo incluye múltiples segmentos de atención fusionados (IDs: {ids}).",
+      "role_customer": "Cliente",
+      "role_agent": "Agente",
+      "role_system": "Sistema/Chatbot",
+      "role_unknown": "Desconocido"
+    }
+  },
+  "alerts": {
+    "copy_success": "¡\"{label}\" copiado al portapapeles!",
+    "copy_failed": "Error al copiar \"{label}\".",
+    "document_not_found": "Documento del cliente no encontrado en la página.",
+    "customer_name_not_found": "Nombre del cliente no encontrado en la página.",
+    "template_creation_failed": "No se pudo generar la plantilla."
+  },
+  "templates": {
+    "service_order": {
+      "situation": "Situación",
+      "phone": "Teléfono",
+      "protocol": "Protocolo",
+      "notes": "OBS",
+      "phone_placeholder": "TELÉFONO",
+      "protocol_placeholder": "PROTOCOLO"
+    }
   }
 }

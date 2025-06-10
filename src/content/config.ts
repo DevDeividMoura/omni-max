@@ -5,7 +5,7 @@
  * and text markers used for identifying specific data elements.
  */
 
-import { getLocaleFromAgent } from ".";
+import { getLocaleFromAgent } from '../utils/language';
 
 /**
  * Defines the structure for content script configurations.
