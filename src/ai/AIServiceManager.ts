@@ -1,3 +1,5 @@
+// src/ai/AIServiceManager.ts
+
 /**
  * @file src/ai/AIServiceManager.ts
  * @description Manages interactions with various AI service providers.
@@ -88,17 +90,30 @@ export class AIServiceManager {
   }
 
   /**
-   * Generates a summary for the given text using the configured AI provider and prompt.
+   * Generates a summary for the given text using the configured AI provider and prompt, ensuring the response language.
    * @public
    * @async
    * @param {string} text - The text to summarize.
+   * @param {string} locale - The desired language locale for the summary (e.g., 'en', 'pt-BR').
    * @returns {Promise<string>} A promise that resolves with the generated summary.
    */
-  public async generateSummary(text: string): Promise<string> {
+  public async generateSummary(text: string, locale: string): Promise<string> {
+    const languageMap: Record<string, string> = {
+      'pt-BR': 'Brazilian Portuguese',
+      'pt-PT': 'Portuguese (from Portugal)',
+      'en': 'English',
+      'es': 'Spanish',
+    };
+
     const provider = await this.loadProvider();
     const prompts = get(promptsStore); // `get` is synchronous
     const options = await this.buildOptions(provider);
-    return provider.generateSummary(text, prompts.summaryPrompt, options);
+    
+    const basePrompt = prompts.summaryPrompt;
+    const languageName = languageMap[locale] || 'English'; // Fallback to English
+    const finalPrompt = `${basePrompt}\n\n(IMPORTANT): The response must be written exclusively in ${languageName}.`;
+
+    return provider.generateSummary(text, finalPrompt, options);
   }
 
   /**

@@ -6,6 +6,7 @@ import type { MatrixApiService } from './MatrixApiService';
 import type { SummaryCacheService } from './SummaryCacheService';
 import type { ActiveChatContext, CustomerServiceSession } from '../types';
 import { maskSensitiveDocumentNumbers, decodeHtmlEntities } from '../../utils';
+import { getLocaleFromAgent } from '../index'; // Importar a função
 
 /** SVG icon for the close button. */
 const CLOSE_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>`;
@@ -92,16 +93,10 @@ export class SummaryUiService {
 
   /**
    * Generates the CSS styles for the summary popup's Shadow DOM.
-   * Includes base styles, layout for loading states, content display, and animations.
-   * Note: Styles for the injected summary button (which lives in the Light DOM) are
-   * also included here for reference but are primarily applied inline or via global CSS.
    * @returns {string} The CSS style string.
    * @private
    */
   private getPopupStyles(): string {
-    // Styles for the injected button are duplicated: here for reference/Shadow DOM fallback,
-    // and applied inline when the button is created in injectSummaryButton.
-    // Ideally, Light DOM button styling should come from a global stylesheet.
     return `
       :host { all: initial; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif; font-size: 14px; }
       
@@ -138,44 +133,15 @@ export class SummaryUiService {
       @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
       @keyframes bounce { 0%, 100% { transform: translateY(-25%); animation-timing-function: cubic-bezier(0.8,0,1,1); } 50% { transform: none; animation-timing-function: cubic-bezier(0,0,0.2,1); } }
       .popup-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 2147483646; background-color: rgba(0,0,0,0.1); }
-
-      /* Styles for the summary button (for reference, primarily applied inline or via global CSS) */
-      .${SUMMARY_BUTTON_CLASS} {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 4px 12px;
-        border-radius: 20px;
-        background-image: linear-gradient(to right, #a9276f, #d02125, #d6621c);
-        color: white;
-        font-size: 12px;
-        font-weight: 500;
-        border: none;
-        cursor: pointer;
-        text-decoration: none;
-        transition: filter 0.2s ease-out;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-      }
-      .${SUMMARY_BUTTON_CLASS}:hover {
-        filter: brightness(110%);
-      }
-      .${SUMMARY_BUTTON_CLASS} svg {
-        width: 12px;
-        height: 12px;
-        margin-right: 5px;
-        fill: "#ffffff";
-      }
     `;
   }
 
   /**
-   * Creates the basic HTML structure for the summary popup and appends it to the DOM (hidden initially).
-   * This includes the Shadow DOM host, stylesheet, overlay, and main popup elements.
-   * This method should only execute once.
+   * Creates the basic HTML structure for the summary popup.
    * @private
    */
   private createPopupBaseLayout(): void {
-    if (this.domService.query(`#${SUMMARY_POPUP_HOST_ID}`)) return; // Prevent multiple creations
+    if (this.domService.query(`#${SUMMARY_POPUP_HOST_ID}`)) return;
 
     this.summaryPopupHostElement = this.domService.createElementWithOptions('div', { id: SUMMARY_POPUP_HOST_ID });
     if (!this.summaryPopupHostElement) {
@@ -221,14 +187,13 @@ export class SummaryUiService {
     }
 
     this.popupContentAreaElement = this.domService.createElementWithOptions('div', {
-      id: 'popup-content-area-dynamic', // For potential targeting
+      id: 'popup-content-area-dynamic',
       parent: popupInner,
     });
   }
 
   /**
    * Updates the content of the summary popup based on the current loading state and summary text.
-   * Renders a loading skeleton or the (Markdown-parsed) summary.
    * @private
    */
   private updatePopupContent(): void {
@@ -249,8 +214,6 @@ export class SummaryUiService {
         </div>`;
     } else {
       try {
-        // Use `marked.parse` for potentially safer HTML output if `this.currentSummaryText` is untrusted.
-        // Ensure `marked` is configured to sanitize if necessary, or trust the source of `currentSummaryText`.
         const rawHtml = marked.parse(this.currentSummaryText || "Nenhum resumo disponível.");
         this.popupContentAreaElement.innerHTML = `<div class="summary-content">${rawHtml}</div>`;
       } catch (error) {
@@ -262,9 +225,8 @@ export class SummaryUiService {
 
   /**
    * Injects a "Resumir" (Summarize) button into the specified container element on the page.
-   * The button, when clicked, will trigger the summary generation and display process.
    * @param {HTMLDivElement} targetButtonContainerDiv The `div` element where the summary button should be injected.
-   * @param {string} initialProtocolNumber The protocol number associated with the chat context where the button is injected.
+   * @param {string} initialProtocolNumber The protocol number associated with the chat context.
    * @param {string} initialContactId The contact ID associated with the chat context.
    */
   public injectSummaryButton(
@@ -273,14 +235,11 @@ export class SummaryUiService {
     initialContactId: string
   ): void {
     if (targetButtonContainerDiv.querySelector(`.${SUMMARY_BUTTON_CLASS}`)) {
-      // console.log("Omni Max [SummaryUiService]: Summary button already injected.");
-      return; // Button already exists
+      return;
     }
 
     const summaryButtonElement = this.domService.createElementWithOptions('button', {
       className: SUMMARY_BUTTON_CLASS,
-      // Inline styles are applied here to ensure consistent appearance in the Light DOM,
-      // regardless of external stylesheets. The class can be used for overrides or global styling.
       styles: {
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         padding: '4px 12px', borderRadius: '20px',
@@ -288,7 +247,7 @@ export class SummaryUiService {
         color: 'white', fontSize: '12px', fontWeight: '500',
         border: 'none', cursor: 'pointer', textDecoration: 'none',
         boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-        verticalAlign: 'middle', // Helps align with other inline-block elements
+        verticalAlign: 'middle',
       }
     });
 
@@ -298,7 +257,6 @@ export class SummaryUiService {
     }
 
     summaryButtonElement.innerHTML = `${SPARKLES_SVG_WHITE} <span style="margin-left: 5px;">Resumir</span>`;
-    // Ensure SVG within the button is styled correctly.
     const svgElement = summaryButtonElement.querySelector('svg');
     if (svgElement) {
       this.domService.applyStyles(svgElement, {
@@ -308,19 +266,18 @@ export class SummaryUiService {
 
     summaryButtonElement.addEventListener('click', async (event: MouseEvent) => {
       event.preventDefault();
-      event.stopPropagation(); // Prevent event from bubbling up.
+      event.stopPropagation();
       if (this.isPopupVisible) {
         this.hide();
       } else {
         let currentProtocolNumber = initialProtocolNumber;
         let currentContactId = initialContactId;
 
-        // If initial IDs are not available (e.g., button context changed), try to get active context.
         if (!currentProtocolNumber || !currentContactId) {
           const activeChatCtx = this.getActiveChatContextCallback();
           if (activeChatCtx) {
-            currentProtocolNumber = activeChatCtx.protocolNumber; // Use updated type property
-            currentContactId = activeChatCtx.contactId;         // Use updated type property
+            currentProtocolNumber = activeChatCtx.protocolNumber;
+            currentContactId = activeChatCtx.contactId;
           }
         }
 
@@ -334,21 +291,19 @@ export class SummaryUiService {
       }
     });
 
-    // Insert the button strategically, e.g., before the first existing link or button.
     const firstInteractiveElement = targetButtonContainerDiv.querySelector('a, button');
     if (firstInteractiveElement) {
       targetButtonContainerDiv.insertBefore(summaryButtonElement, firstInteractiveElement);
     } else {
-      targetButtonContainerDiv.appendChild(summaryButtonElement); // Fallback if no other elements
+      targetButtonContainerDiv.appendChild(summaryButtonElement);
     }
 
     console.log(`Omni Max [SummaryUiService]: Summary button injected into:`, targetButtonContainerDiv);
   }
 
   /**
-   * Shows the summary popup, positions it near the trigger button, and initiates
-   * the summary generation process (fetching from cache or generating via AI).
-   * @param {DOMRect} triggerButtonRect The DOMRect of the button that triggered the popup, used for positioning.
+   * Shows the summary popup and initiates the summary generation process.
+   * @param {DOMRect} triggerButtonRect The DOMRect of the button that triggered the popup.
    * @param {string} protocolNumber The protocol number of the chat to summarize.
    * @param {string} contactId The contact ID associated with the chat.
    * @public
@@ -366,7 +321,7 @@ export class SummaryUiService {
     this.currentPopupPosition = { x: triggerButtonRect.left + triggerButtonRect.width / 2, y: triggerButtonRect.top };
     this.isPopupVisible = true;
     this.isLoadingSummary = true;
-    this.currentSummaryText = ""; // Clear previous summary
+    this.currentSummaryText = "";
 
     if (!this.summaryPopupHostElement.isConnected) {
       document.body.appendChild(this.summaryPopupHostElement);
@@ -374,13 +329,13 @@ export class SummaryUiService {
 
     this.domService.applyStyles(this.popupMainElement, {
       left: `${this.currentPopupPosition.x}px`,
-      bottom: `${window.innerHeight - this.currentPopupPosition.y + 10}px`, // Position above button
+      bottom: `${window.innerHeight - this.currentPopupPosition.y + 10}px`,
       transform: 'translateX(-50%)',
       display: 'block',
     });
     this.domService.applyStyles(this.popupOverlayElement, { display: 'block' });
-    document.body.style.overflow = 'hidden'; // Prevent page scroll when popup is open
-    this.updatePopupContent(); // Show loading state
+    document.body.style.overflow = 'hidden';
+    this.updatePopupContent();
     document.addEventListener('keydown', this.handleEscapeKey);
 
     if (this.activeSummaryRequests[protocolNumber]) {
@@ -401,7 +356,6 @@ export class SummaryUiService {
         if (currentSession && currentSession.messages.length > 0) {
           const customerNameForContext = currentSession.contactName || "Cliente";
 
-          // Adiciona informações do cabeçalho do atendimento
           let conversationPreamble = `Início do atendimento do protocolo ${protocolNumber} com ${customerNameForContext}.\n`;
           if (currentSession.originalAttendanceIds.length > 1) {
             conversationPreamble += `Este protocolo inclui múltiplos segmentos de atendimento fundidos (IDs: ${currentSession.originalAttendanceIds.join(', ')}).\n`;
@@ -409,29 +363,22 @@ export class SummaryUiService {
           conversationPreamble += "\n";
 
           const conversationTurns = currentSession.messages.map(msg => {
-            const decodedContent = decodeHtmlEntities(msg.content); // Decodifica HTML entities
-            const maskedContent = maskSensitiveDocumentNumbers(decodedContent); // Mascara documentos
-
-            // Determina o display name do remetente.
-            // msg.senderName já foi preenchido pelo MatrixApiService.
+            const decodedContent = decodeHtmlEntities(msg.content);
+            const maskedContent = maskSensitiveDocumentNumbers(decodedContent);
             let senderDisplayName = msg.senderName;
-
-            // Para clareza, podemos adicionar o tipo de remetente (Cliente, Atendente, Sistema)
             let roleLabel = "Desconhecido";
             if (msg.role === 'customer') roleLabel = "Cliente";
             else if (msg.role === 'agent') roleLabel = "Atendente";
             else if (msg.role === 'system') roleLabel = "Sistema/Chatbot";
-
             return `${senderDisplayName} (${roleLabel}): ${maskedContent}`;
           }).join('\n\n');
 
           const fullConversationForAI = conversationPreamble + conversationTurns;
 
-          console.log(`Omni Max [SummaryUiService]: Generating summary for protocol ${protocolNumber}. Full context for AI: ${fullConversationForAI.substring(0, 1000)}...`);
-          const newSummary = await this.aiManager.generateSummary(fullConversationForAI);
-
-          // Decidir se o newSummary precisa ser mascarado também.
-          // Por enquanto, vamos assumir que o prompt da IA cuida disso.
+          const currentLocale = getLocaleFromAgent();
+          console.log(`Omni Max [SummaryUiService]: Generating summary for protocol ${protocolNumber} in locale "${currentLocale}".`);
+          const newSummary = await this.aiManager.generateSummary(fullConversationForAI, currentLocale);
+          
           await this.summaryCacheService.saveSummary(protocolNumber, newSummary);
           this.currentSummaryText = newSummary;
         } else {
@@ -460,17 +407,15 @@ export class SummaryUiService {
     this.isPopupVisible = false;
     this.domService.applyStyles(this.popupMainElement, { display: 'none' });
     this.domService.applyStyles(this.popupOverlayElement, { display: 'none' });
-    document.body.style.overflow = ''; // Restore page scroll
+    document.body.style.overflow = '';
     document.removeEventListener('keydown', this.handleEscapeKey);
   }
 
   /**
    * Handles the 'Escape' key press to hide the summary popup.
-   * @param {KeyboardEvent} event The keyboard event.
    * @private
    */
   private handleEscapeKey = (event: KeyboardEvent): void => {
-    // Bound function for add/removeEventListener
     if (event.key === 'Escape') {
       this.hide();
     }

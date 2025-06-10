@@ -7,11 +7,18 @@ import type { MatrixApiService } from './MatrixApiService';
 import type { SummaryCacheService } from './SummaryCacheService';
 import type { ActiveChatContext, CustomerServiceSession } from '../types';
 import { marked } from 'marked';
+import { getLocaleFromAgent } from '../index';
 
 vi.mock('marked', () => ({
   marked: {
     parse: vi.fn((text: string) => `<p>${text}</p>`), // Simples mock de parse
   },
+}));
+
+// Mock do módulo que exporta 'getLocaleFromAgent'
+vi.mock('../index', () => ({
+  getLocaleFromAgent: vi.fn(() => 'pt-BR'), // Mock default para o locale
+  // Mantenha outros exports se houver, ou use vi.importActual se precisar dos reais
 }));
 
 const SUMMARY_POPUP_HOST_ID = 'omni-max-summary-popup-host';
@@ -332,16 +339,23 @@ describe('SummaryUiService', () => {
       expect(updatePopupContentSpy).toHaveBeenCalledTimes(2); // loading + final content
     });
 
-    it('should fetch atendimentos, generate summary if no cache, and save to cache', async () => {
+    it('should fetch atendimentos, generate summary with correct locale, and save to cache', async () => {
       mockSummaryCacheService.getSummary.mockResolvedValue(null);
       mockMatrixApiService.getAtendimentosByContato.mockResolvedValue([mockSession]);
       const generatedSummary = "Newly generated summary by AI.";
       mockAiManager.generateSummary.mockResolvedValue(generatedSummary);
+      
+      // Especificar o locale para este teste
+      (getLocaleFromAgent as Mock).mockReturnValue('en');
 
       await summaryUiService.showAndGenerateSummary(mockRect, protocolNumber, contactId);
 
       expect(mockMatrixApiService.getAtendimentosByContato).toHaveBeenCalledWith(contactId);
-      expect(mockAiManager.generateSummary).toHaveBeenCalledWith(expect.stringContaining(mockSession.messages[0].content));
+      // Verificar se a chamada para generateSummary inclui o locale correto
+      expect(mockAiManager.generateSummary).toHaveBeenCalledWith(
+        expect.stringContaining(mockSession.messages[0].content),
+        'en' // Verifica se o locale 'en' foi passado
+      );
       expect(mockSummaryCacheService.saveSummary).toHaveBeenCalledWith(protocolNumber, generatedSummary);
       expect((summaryUiService as any).currentSummaryText).toBe(generatedSummary);
       expect((summaryUiService as any).isLoadingSummary).toBe(false);
