@@ -54,6 +54,7 @@
 
   import { availableModules, type Module } from "../modules";
   import GithubMarkIcon from "./icons/GithubMarkIcon.svelte";
+  import extensionIcon from "../assets/icons/icon-48.png";
 
   // --- UI Control States ---
   let isLoading: boolean = true;
@@ -487,8 +488,12 @@
 <div class="omni-max-popup-container-fixed-layout">
   <div class="popup-header-fixed">
     <div class="header-title-group">
-      <h1>{$_("popup.header.title")}</h1>
-      <p>{$_("popup.header.subtitle")}</p>
+      <img src={extensionIcon} alt="Omni Max Logo" class="header-logo" />
+
+      <div class="header-text-wrapper">
+        <h1>{$_("popup.header.title")}</h1>
+        <p>{$_("popup.header.subtitle")}</p>
+      </div>
     </div>
     <div class="header-controls">
       <div class="header-global-toggle">
@@ -524,7 +529,7 @@
         class="github-link-header"
         title={$_("popup.header.repo_tooltip")}
       >
-        <GithubMarkIcon size={20} className="github-svg-icon" />
+        <GithubMarkIcon size={20} className="github-svg-icon" title={$_("popup.header.repo_tooltip")} />
       </a>
     </div>
   </div>
@@ -534,7 +539,7 @@
       <p class="loading-text">{$_("popup.placeholders.loading")}</p>
     {:else}
       <CollapsibleSection
-        title={$_("popup.sections.general.title")}
+        title={$_("modules.general.title")}
         icon={ListChecks}
         isOpen={localOpenSections?.modules}
         onToggle={() => toggleSectionCollapse("modules")}
@@ -573,7 +578,7 @@
       </CollapsibleSection>
 
       <CollapsibleSection
-        title={$_("popup.sections.shortcuts.title")}
+        title={$_("modules.shortcuts.title")}
         icon={Keyboard}
         isOpen={localOpenSections?.shortcuts}
         onToggle={() => toggleSectionCollapse("shortcuts")}
@@ -582,7 +587,7 @@
           <ToggleSwitch
             label={$_("popup.labels.toggle_module", {
               values: {
-                moduleName: $_("popup.sections.shortcuts.title"),
+                moduleName: $_("modules.shortcuts.title"),
               },
             })}
             enabled={localShortcutsOverallEnabled}
@@ -593,7 +598,7 @@
             disabled={!localGlobalEnabled}
             ariaLabel={$_("popup.labels.toggle_module", {
               values: {
-                moduleName: $_("popup.sections.shortcuts.title"),
+                moduleName: $_("modules.shortcuts.title"),
               },
             })}
           />
@@ -658,7 +663,7 @@
       </CollapsibleSection>
 
       <CollapsibleSection
-        title={$_("popup.sections.ai.title")}
+        title={$_("modules.ai.title")}
         icon={Cpu}
         isOpen={localOpenSections?.ai}
         onToggle={() => toggleSectionCollapse("ai")}
@@ -820,7 +825,7 @@
       </CollapsibleSection>
 
       <CollapsibleSection
-        title={$_("popup.sections.prompts.title")}
+        title={$_("modules.prompts.title")}
         icon={FileText}
         isOpen={localOpenSections?.prompts}
         onToggle={() => toggleSectionCollapse("prompts")}
@@ -1022,6 +1027,18 @@
     color: white;
     padding: 12px 16px;
   }
+  .header-title-group {
+    display: flex; /* Torna o container flexível */
+    align-items: center; /* Alinha o ícone e o texto verticalmente ao centro */
+    gap: 10px; /* Adiciona um espaço entre o ícone e o texto */
+  }
+
+  .header-logo {
+    width: 28px; /* Define um tamanho fixo para o ícone */
+    height: 28px;
+    object-fit: contain; /* Garante que a imagem não se distorça */
+  }
+
   .header-controls {
     display: flex;
     align-items: center;

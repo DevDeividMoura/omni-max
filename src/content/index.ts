@@ -6,7 +6,7 @@
  * summary button, and observes DOM changes to maintain functionality within the
  * target platform (Matrix Go).
  */
-import { CONFIG, type Config } from './config';
+import { getConfig, type Config } from './config';
 import { DomService } from './services/DomService';
 import { ClipboardService } from './services/ClipboardService';
 import { NotificationService } from './services/NotificationService';
@@ -50,8 +50,12 @@ function getLangFromScriptTag(): string | null {
   }
   return null;
 }
-
-function getLocaleFromAgent(): string {
+/**
+ * Determines the locale from the user agent or inline script tag.
+ * Fallbacks to 'pt-BR' if no suitable locale is found.
+ * @returns {string} The detected locale in the format 'xx-XX'.
+ */
+export function getLocaleFromAgent(): string {
     const defaultLocale = 'pt-BR';
     let langToProcess: string | null = getLangFromScriptTag();
 
@@ -178,6 +182,7 @@ export async function initializeOmniMaxContentScript(): Promise<void> {
 
     console.log(`Omni Max [Content Script]: Content Script v${extensionVersion} (layoutFix) - Initializing...`);
 
+    const CONFIG = getConfig();
     const domService = new DomService();
     const clipboardService = new ClipboardService();
     const notificationService = new NotificationService(domService);
@@ -351,8 +356,6 @@ export async function initializeOmniMaxContentScript(): Promise<void> {
     templateHandlingService.attachListeners();
 
     console.log(`Omni Max: Content Script v${extensionVersion} (layoutFix) initialization sequence complete.`);
-
-    console.log(`Omni Max [ContentIndex]: Linguagem da janela do agente ${(window as any).langAgente}`);
 }
 
 setupMessageListener();

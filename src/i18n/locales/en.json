@@ -1,0 +1,123 @@
+{
+  "popup": {
+    "header": {
+      "title": "Omni Max",
+      "subtitle": "Much more than an extension",
+      "active": "Active",
+      "inactive": "Inactive",
+      "enable_tooltip": "Enable/Disable the entire Omni Max extension",
+      "repo_tooltip": "View Omni Max repository on GitHub"
+    },
+    "footer": {
+      "made_with_love": "Made with ❤️ by"
+    },
+    "placeholders": {
+      "loading": "Loading settings...",
+      "no_general_modules": "No general modules configured.",
+      "enable_extension_for_shortcuts": "Enable the extension to configure shortcuts.",
+      "enable_all_shortcuts": "Enable \"All Shortcuts\" to configure individually.",
+      "enable_extension_for_ai": "Enable the extension to use AI.",
+      "enable_all_ai": "Enable \"All AI Features\" to configure.",
+      "no_ai_features": "No AI features configured.",
+      "enable_ai_for_prompts": "Prompts available when extension and AI features are enabled.",
+      "no_prompts_available": "No prompt configurations available for active AI features.",
+      "loading_models": "Loading models...",
+      "no_models_found": "No models found. Check credentials/URL.",
+      "select_model": "Select a model",
+      "shortcut_key": "Key",
+      "shortcut_key_for": "Key for {moduleName}",
+      "add_credentials_to_list_models": "To list models, add credentials in the modal below and save."
+    },
+    "labels": {
+      "toggle_module": "Enable/Disable {moduleName}",
+      "all_ai_features": "All AI Features",
+      "ai_provider": "AI Provider",
+      "model": "Model",
+      "individual_ai_modules": "Individual AI Modules:"
+    },
+    "buttons": {
+      "apply": "Apply Changes",
+      "apply_tooltip": "Apply all changes made",
+      "discard": "Discard",
+      "discard_tooltip": "Discard unsaved changes",
+      "manage_credentials": "Manage Credentials",
+      "manage_credentials_for": "Manage Credentials ({providerName})",
+      "cancel": "Cancel",
+      "ok": "OK"
+    },
+    "modal": {
+      "credentials_title": "Credentials: {providerName}",
+      "get_credentials_prompt": "How to get {credentialLabel}?",
+      "no_credentials_needed": "This provider doesn't require additional credentials.",
+      "select_valid_provider": "Select a valid AI provider."
+    },
+    "alerts": {
+      "ai_config_error": "AI configuration error: {error}. Please correct before saving.",
+      "ai_config_incomplete": "Incomplete AI configuration: Please select an AI model.",
+      "changes_applied": "Settings successfully applied!"
+    },
+    "errors": {
+      "ai": {
+        "load_failed_generic": "Failed to load models. Check credentials and provider access.",
+        "load_failed_specific": "Failed to load models: {message}",
+        "no_models_found_provider": "No models found for this provider. Check URL (Ollama) or if models are available.",
+        "extension_disabled": "Extension disabled.",
+        "features_disabled": "AI features disabled."
+      }
+    }
+  },
+  "modules": {
+    "general": {
+      "title": "General Modules",
+      "layout_correction": {
+        "name": "Layout Correction",
+        "description": "Moves the conversation list to the right and limits the height for better usability."
+      },
+      "template_processor": {
+        "name": "Template Processor",
+        "description": "Adjusts customer name ({NAME} => Name) and auto-selects variables ([VAR]) with Tab."
+      }
+    },
+    "shortcuts": {
+      "title": "Keyboard Shortcuts",
+      "shortcut_copy_name": {
+        "name": "Shortcut: Copy Customer Name",
+        "description": "Allows copying the customer's name using a keyboard shortcut."
+      },
+      "shortcut_copy_documentNumber": {
+        "name": "Shortcut: Copy Customer Document",
+        "description": "Allows copying the customer's document number using a keyboard shortcut."
+      },
+      "shortcut_service_order_template": {
+        "name": "Shortcut: Service Order Template",
+        "description": "Copies a Service Order template with pre-filled Phone and Protocol."
+      }
+    },
+    "ai": {
+      "title": "AI Settings",
+      "description": "Configure AI features to improve service efficiency.",
+      "ai_chat_summary": {
+        "name": "AI: Summarize Conversation",
+        "description": "Generates a summary of the current conversation history using Artificial Intelligence."
+      },
+      "ai_response_review": {
+        "name": "AI: Review and Improve Response",
+        "description": "Uses AI to analyze and suggest improvements to your response text before sending."
+      }
+    },
+    "prompts": {
+      "title": "Customizable Prompts",
+      "description": "Customize the prompts used by AI features to better meet your needs.",
+      "summary_prompt": {
+        "label": "Conversation Summary Prompt",
+        "placeholder": "Ex: Summarize this conversation concisely, focusing on the customer's main issue and the solution offered.",
+        "default": "Summarize this customer service conversation concisely, highlighting the main problem, primary cause, and resolution."
+      },
+      "improvement_prompt": {
+        "label": "Response Improvement Prompt",
+        "placeholder": "Ex: Review the following response to a customer, making it clearer, more empathetic, and professional.",
+        "default": "Review the following response to a customer, making it clearer, more empathetic, and professional, while maintaining the original meaning:"
+      }
+    }
+  }
+}

@@ -1,0 +1,123 @@
+{
+  "popup": {
+    "header": {
+      "title": "Omni Max",
+      "subtitle": "Mucho más que una extensión",
+      "active": "Activa",
+      "inactive": "Inactiva",
+      "enable_tooltip": "Habilitar/Deshabilitar toda la extensión Omni Max",
+      "repo_tooltip": "Ver repositorio de Omni Max en GitHub"
+    },
+    "footer": {
+      "made_with_love": "Hecho con ❤️ por"
+    },
+    "placeholders": {
+      "loading": "Cargando configuraciones...",
+      "no_general_modules": "No hay módulos generales configurados.",
+      "enable_extension_for_shortcuts": "Habilite la extensión para configurar atajos.",
+      "enable_all_shortcuts": "Habilite \"Todos los Atajos\" para configurar individualmente.",
+      "enable_extension_for_ai": "Habilite la extensión para usar IA.",
+      "enable_all_ai": "Habilite \"Todas las Funciones de IA\" para configurar.",
+      "no_ai_features": "No hay funcionalidades de IA configuradas.",
+      "enable_ai_for_prompts": "Prompts disponibles cuando la extensión y las funciones de IA estén habilitadas.",
+      "no_prompts_available": "No hay configuración de prompt disponible para las funcionalidades de IA activas.",
+      "loading_models": "Cargando modelos...",
+      "no_models_found": "No se encontraron modelos. Verifique las credenciales/URL.",
+      "select_model": "Seleccione un modelo",
+      "shortcut_key": "Tecla",
+      "shortcut_key_for": "Tecla para {moduleName}",
+      "add_credentials_to_list_models": "Para listar modelos, añada las credenciales en el modal de abajo y guarde."
+    },
+    "labels": {
+      "toggle_module": "Activar/Desactivar {moduleName}",
+      "all_ai_features": "Todas las Funciones de IA",
+      "ai_provider": "Proveedor de IA",
+      "model": "Modelo",
+      "individual_ai_modules": "Módulos de IA Individuales:"
+    },
+    "buttons": {
+      "apply": "Aplicar Cambios",
+      "apply_tooltip": "Aplicar todos los cambios realizados",
+      "discard": "Descartar",
+      "discard_tooltip": "Descartar cambios no guardados",
+      "manage_credentials": "Gestionar Credenciales",
+      "manage_credentials_for": "Gestionar Credenciales ({providerName})",
+      "cancel": "Cancelar",
+      "ok": "Aceptar"
+    },
+    "modal": {
+      "credentials_title": "Credenciales: {providerName}",
+      "get_credentials_prompt": "¿Cómo obtener {credentialLabel}?",
+      "no_credentials_needed": "Este proveedor no requiere credenciales adicionales.",
+      "select_valid_provider": "Seleccione un proveedor de IA válido."
+    },
+    "alerts": {
+      "ai_config_error": "Error en la configuración de IA: {error}. Por favor, corrija antes de guardar.",
+      "ai_config_incomplete": "Configuración de IA incompleta: Por favor, seleccione un modelo de IA.",
+      "changes_applied": "¡Configuraciones aplicadas con éxito!"
+    },
+    "errors": {
+      "ai": {
+        "load_failed_generic": "Error al cargar modelos. Verifique las credenciales y el acceso al proveedor.",
+        "load_failed_specific": "Error al cargar modelos: {message}",
+        "no_models_found_provider": "No se encontraron modelos para este proveedor. Verifique la URL (Ollama) o si hay modelos disponibles.",
+        "extension_disabled": "Extensión deshabilitada.",
+        "features_disabled": "Funciones de IA deshabilitadas."
+      }
+    }
+  },
+  "modules": {
+    "general": {
+      "title": "Módulos Generales",
+      "layout_correction": {
+        "name": "Corrección de Diseño",
+        "description": "Mueve la lista de conversaciones a la derecha y limita la altura para mejor usabilidad."
+      },
+      "template_processor": {
+        "name": "Procesador de Plantillas",
+        "description": "Ajusta el nombre del cliente ({NOMBRE} => Nombre) y auto selecciona variables ([VAR]) con Tab."
+      }
+    },
+    "shortcuts": {
+      "title": "Atajos de Teclado",
+      "shortcut_copy_name": {
+        "name": "Atajo: Copiar Nombre del Cliente",
+        "description": "Permite copiar el nombre del cliente usando un atajo de teclado."
+      },
+      "shortcut_copy_documentNumber": {
+        "name": "Atajo: Copiar Documento del Cliente",
+        "description": "Permite copiar el número de documento del cliente usando un atajo de teclado."
+      },
+      "shortcut_service_order_template": {
+        "name": "Atajo: Plantilla de Orden de Servicio",
+        "description": "Copia una plantilla de Orden de Servicio con Teléfono y Protocolo pre-rellenados."
+      }
+    },
+    "ai": {
+      "title": "Configuraciones de IA",
+      "description": "Configure las funcionalidades de IA para mejorar la eficiencia de la atención.",
+      "ai_chat_summary": {
+        "name": "IA: Resumir Atención",
+        "description": "Genera un resumen del historial de la conversación actual utilizando Inteligencia Artificial."
+      },
+      "ai_response_review": {
+        "name": "IA: Revisar y Mejorar Respuesta",
+        "description": "Utiliza IA para analizar y sugerir mejoras en el texto de su respuesta antes del envío."
+      }
+    },
+    "prompts": {
+      "title": "Prompts Personalizables",
+      "description": "Personalice los prompts utilizados por las funcionalidades de IA para satisfacer mejor sus necesidades.",
+      "summary_prompt": {
+        "label": "Prompt de Resumen de Atención",
+        "placeholder": "Ej: Resume esta conversación de forma concisa, centrándote en el problema principal del cliente y la solución ofrecida.",
+        "default": "Resume esta conversación de atención al cliente de forma concisa, destacando el problema principal, la causa principal y la resolución."
+      },
+      "improvement_prompt": {
+        "label": "Prompt de Mejora de Respuesta",
+        "placeholder": "Ej: Revisa la siguiente respuesta para un cliente, haciéndola más clara, empática y profesional.",
+        "default": "Revisa la siguiente respuesta para un cliente, haciéndola más clara, empática y profesional, manteniendo el significado original:"
+      }
+    }
+  }
+}
