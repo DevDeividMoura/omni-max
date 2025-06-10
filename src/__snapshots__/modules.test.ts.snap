@@ -25,9 +25,9 @@ exports[`availableModules > should match the snapshot of available modules 1`] =
   },
   {
     "defaultEnabled": true,
-    "description": "modules.shortcuts.shortcut_copy_documentNumber.description",
+    "description": "modules.shortcuts.shortcut_copy_document_number.description",
     "id": "shortcutCopyDocumentNumber",
-    "name": "modules.shortcuts.shortcut_copy_documentNumber.name",
+    "name": "modules.shortcuts.shortcut_copy_document_number.name",
     "released": true,
   },
   {

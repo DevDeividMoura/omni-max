@@ -19,9 +19,6 @@ async function loadTranslations(locale: string): Promise<LocaleFile> {
   }
 }
 
-
-
-
 /**
  * Navega em um objeto usando uma string de chave aninhada (ex: 'popup.header.title').
  * @param obj O objeto para pesquisar.
@@ -35,11 +32,15 @@ function getNestedValue(obj: any, key: string): string | undefined {
 /**
  * Classe que lida com a tradução de chaves para o idioma detectado.
  */
-class Translator {
+export class Translator {
   private translations: LocaleFile | null = null;
   private initPromise: Promise<void> | null = null;
 
-  constructor() {
+  /**
+   * Cria uma nova instância do tradutor.
+   * @param locale O código do locale a ser usado (ex: 'en', 'pt-BR').
+   */
+  constructor(private locale: string) {
     this.init();
   }
 
@@ -47,13 +48,10 @@ class Translator {
    * Inicializa o tradutor carregando o arquivo de idioma correto.
    */
   private init(): void {
-    // getLocaleFromAgent() precisa estar disponível aqui ou ser importado.
-    // Vamos assumir que ela será movida para um arquivo de utils compartilhado.
-    // Por enquanto, vamos redefini-la aqui para o exemplo ser autocontido.
-    const locale = getLocaleFromAgent(); // Esta função viria de um 'utils'
-    this.initPromise = loadTranslations(locale).then(trans => {
+    console.log(`[Translator] Using locale: ${this.locale}`);
+    this.initPromise = loadTranslations(this.locale).then(trans => {
       this.translations = trans;
-      console.log(`[Translator] Translations for "${locale}" loaded successfully.`);
+      console.log(`[Translator] Translations for "${this.locale}" loaded successfully.`);
     });
   }
 
@@ -83,6 +81,3 @@ class Translator {
     return translation;
   }
 }
-
-// Exporta uma instância única do tradutor para ser usada em todo o content script
-export const translator = new Translator();

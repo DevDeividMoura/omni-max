@@ -7,8 +7,7 @@ import type { SummaryCacheService } from './SummaryCacheService';
 import type { ActiveChatContext, CustomerServiceSession } from '../types';
 import { maskSensitiveDocumentNumbers, decodeHtmlEntities } from '../../utils';
 import { getLocaleFromAgent } from '../../utils/language';
-import { translator } from '../../i18n/translator.content';
-import type { P } from 'vitest/dist/chunks/environment.d.Dmw5ulng.js';
+import { Translator } from '../../i18n/translator.content';
 
 /** SVG icon for the close button. */
 const CLOSE_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>`;
@@ -66,8 +65,8 @@ export class SummaryUiService {
 
   /** Tracks active summary generation requests to prevent duplicates for the same protocol. Key is protocolNumber. */
   private activeSummaryRequests: { [protocolNumber: string]: boolean } = {};
+  private t: (key: string, options?: { values?: Record<string, string | number> }) => Promise<string>;
 
-  private t = translator.t.bind(translator);
 
   /**
    * Constructs an instance of SummaryUiService.
@@ -82,8 +81,10 @@ export class SummaryUiService {
     private aiManager: AIServiceManager,
     private matrixApiService: MatrixApiService,
     private summaryCacheService: SummaryCacheService,
-    private getActiveChatContextCallback: () => ActiveChatContext | null
+    private getActiveChatContextCallback: () => ActiveChatContext | null,
+    private translator: Translator
   ) {
+    this.t = this.translator.t.bind(this.translator);
     this.initialize();
   }
 
@@ -244,9 +245,14 @@ export class SummaryUiService {
     initialProtocolNumber: string,
     initialContactId: string
   ): Promise<void> {
-    if (targetButtonContainerDiv.querySelector(`.${SUMMARY_BUTTON_CLASS}`)) {
-      return;
-    }
+    if (
+    targetButtonContainerDiv.querySelector(`.${SUMMARY_BUTTON_CLASS}`) || 
+    targetButtonContainerDiv.dataset.omniMaxSummaryButtonInjected === 'true'
+  ) {
+    return;
+  }
+
+  targetButtonContainerDiv.dataset.omniMaxSummaryButtonInjected = 'true';
 
     const summaryButtonElement = this.domService.createElementWithOptions('button', {
       className: SUMMARY_BUTTON_CLASS,

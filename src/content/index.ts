@@ -20,9 +20,10 @@ import { getLocaleFromAgent } from '../utils/language';
 import { getConfig } from './config';
 import packageJson from '../../package.json';
 import { getActiveTabChatContext } from './utils/context';
+import { Translator } from '../i18n/translator.content';
 
 const extensionVersion = packageJson.version;
-export const OMNI_MAX_CONTENT_LOADED_FLAG = `omniMaxContentLoaded_v${extensionVersion}_refactor`;
+export const OMNI_MAX_CONTENT_LOADED_FLAG = `omniMaxContentLoaded_v${extensionVersion}`;
 
 /**
  * Initializes and runs the main application logic for the content script.
@@ -36,12 +37,23 @@ export async function initializeOmniMaxContentScript(): Promise<void> {
 
     console.log(`Omni Max [Content Script]: v${extensionVersion} - Initializing...`);
 
+    // Get locale for translator
+    const locale = getLocaleFromAgent();
+
+    // Instantiate translator with detected locale
+    const translator = new Translator(locale);
+
     // --- Composition Root: Instantiate all services ---
     const domService = new DomService();
     const clipboardService = new ClipboardService();
     const notificationService = new NotificationService(domService);
     const extractionService = new ExtractionService(getConfig(), domService);
-    const shortcutService = new ShortcutService(extractionService, clipboardService, notificationService);
+    const shortcutService = new ShortcutService(
+        extractionService,
+        clipboardService,
+        notificationService,
+        translator
+    );
     const templateHandlingService = new TemplateHandlingService(getConfig(), domService);
     const aiManager = new AIServiceManager();
     const matrixApiService = new MatrixApiService();
@@ -51,7 +63,8 @@ export async function initializeOmniMaxContentScript(): Promise<void> {
         aiManager,
         matrixApiService,
         summaryCacheService,
-        () => getActiveTabChatContext(domService)
+        () => getActiveTabChatContext(domService),
+        translator
     );
 
     // --- Instantiate and run the main application orchestrator ---

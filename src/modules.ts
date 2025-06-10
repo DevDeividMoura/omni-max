@@ -87,8 +87,8 @@ export const availableModules: Module[] = [
   },
   {
     id: 'shortcutCopyDocumentNumber',
-    name: 'modules.shortcuts.shortcut_copy_documentNumber.name',
-    description: 'modules.shortcuts.shortcut_copy_documentNumber.description',
+    name: 'modules.shortcuts.shortcut_copy_document_number.name',
+    description: 'modules.shortcuts.shortcut_copy_document_number.description',
     defaultEnabled: true,
     released: true,
   },

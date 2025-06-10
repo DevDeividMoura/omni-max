@@ -82,14 +82,17 @@
       "title": "Keyboard Shortcuts",
       "shortcut_copy_name": {
         "name": "Shortcut: Copy Customer Name",
+        "label": "Customer Name",
         "description": "Allows copying the customer's name using a keyboard shortcut."
       },
-      "shortcut_copy_documentNumber": {
+      "shortcut_copy_document_number": {
         "name": "Shortcut: Copy Customer Document",
+        "label": "Document Number",
         "description": "Allows copying the customer's document number using a keyboard shortcut."
       },
       "shortcut_service_order_template": {
         "name": "Shortcut: Service Order Template",
+        "label": "Service Order Template",
         "description": "Copies a Service Order template with pre-filled Phone and Protocol."
       }
     },
@@ -144,7 +147,7 @@
     }
   },
   "alerts": {
-    "copy_success": "\"{label}\" copied to clipboard!",
+    "copy_success": "{label} \"{data}\" copied to clipboard!",
     "copy_failed": "Failed to copy \"{label}\".",
     "document_not_found": "Customer document not found on page.",
     "customer_name_not_found": "Customer name not found on page.",
@@ -157,7 +160,9 @@
       "protocol": "Protocol",
       "notes": "NOTES",
       "phone_placeholder": "PHONE",
-      "protocol_placeholder": "PROTOCOL"
+      "protocol_placeholder": "PROTOCOL",
+      "situation_placeholder": "SITUATION",
+      "notes_placeholder": "NOTES"
     }
   }
 }

@@ -82,14 +82,17 @@
       "title": "Atalhos de Teclado",
       "shortcut_copy_name": {
         "name": "Atalho: Copiar Nome do Cliente",
+        "label": "Nome do Cliente",
         "description": "Permite copiar o nome do cliente usando um atalho de teclado."
       },
-      "shortcut_copy_documentNumber": {
+      "shortcut_copy_document_number": {
         "name": "Atalho: Copiar Documento do Cliente",
+        "label": "Número do Documento",
         "description": "Permite copiar o número do documento do cliente usando um atalho de teclado."
       },
       "shortcut_service_order_template": {
         "name": "Atalho: Template de Ordem de Serviço",
+        "label": "Template de Ordem de Serviço",
         "description": "Copia um template de Ordem de Serviço com Telefone e Protocolo pré-preenchidos."
       }
     },
@@ -144,7 +147,7 @@
     }
   },
   "alerts": {
-    "copy_success": "\"{label}\" copiado para a área de transferência!",
+    "copy_success": "{label} \"{data}\" copiado para a área de transferência!",
     "copy_failed": "Falha ao copiar \"{label}\".",
     "document_not_found": "Documento do cliente não encontrado na página.",
     "customer_name_not_found": "Nome do cliente não encontrado na página.",
@@ -157,7 +160,9 @@
       "protocol": "Protocolo",
       "notes": "OBS",
       "phone_placeholder": "TELEFONE",
-      "protocol_placeholder": "PROTOCOLO"
+      "protocol_placeholder": "PROTOCOLO",
+      "situation_placeholder": "SITUAÇÃO",
+      "notes_placeholder": "OBSERVAÇÕES"
     }
   }
 }
