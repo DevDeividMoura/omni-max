@@ -5,6 +5,8 @@
  * and text markers used for identifying specific data elements.
  */
 
+import { getLocaleFromAgent } from '../utils/language';
+
 /**
  * Defines the structure for content script configurations.
  */
@@ -86,28 +88,61 @@ export interface Config {
   };
 }
 
-/**
- * Static configuration object for the content script.
- * It is frozen to prevent accidental modifications at runtime.
- */
-export const CONFIG: Config = Object.freeze({
-  selectors: {
-    conversaContainer: '.tab-pane.active .conversa.col-lg-12',
-    editableChatbox: "#Abas .tab-pane.active .faketextbox.pastable[contenteditable='true']",
-    cpfInfoContainer: 'small',
-    cpfLabelQueryInContainer: 'strong', 
-    nameInfoContainer: 'small',
-    phoneInfoContainer: 'small',
-    phoneLabelQueryInContainer: 'strong',
-    protocolInfoContainer: 'small',
-    protocolLabelQueryInContainer: 'strong',
-    tabsList: '#tabs',
-  },
-  textMarkers: {
+// O objeto que contém todas as traduções dos marcadores
+const textMarkerTranslations: Record<string, Config['textMarkers']> = {
+  'pt-BR': {
     cpfLabel: 'CPF Cliente:',
     customerNameIndicator: 'Matrícula:',
     customerNameSeparator: ' - ',
     phoneLabel: 'Telefone:',
     protocolLabel: 'Número de protocolo:',
   },
-});
+  'pt-PT': {
+    cpfLabel: 'CPF Cliente:', // Exemplo de variação para Portugal
+    customerNameIndicator: 'Matrícula:',
+    customerNameSeparator: ' - ',
+    phoneLabel: 'Telefone:',
+    protocolLabel: 'Número de protocolo:',
+  },
+  'en': {
+    cpfLabel: 'Document Id:',
+    customerNameIndicator: 'Registration:',
+    customerNameSeparator: ' - ',
+    phoneLabel: 'Phone:',
+    protocolLabel: 'Protocol number:',
+  },
+  'es': {
+    cpfLabel: 'Documento:',
+    customerNameIndicator: 'Registro:',
+    customerNameSeparator: ' - ',
+    phoneLabel: 'Teléfono:',
+    protocolLabel: 'Número de protocolo:',
+  }
+};
+
+/**
+ * Gera dinamicamente a configuração baseada no idioma atual salvo na store.
+ * @returns {Config} O objeto de configuração para o idioma atual.
+ */
+export function getConfig(): Config {
+  const currentLocale = getLocaleFromAgent() || 'pt-BR';
+  const markers = textMarkerTranslations[currentLocale] || textMarkerTranslations['pt-BR'];
+
+  return {
+    selectors: {
+      // Seletores de CSS geralmente são independentes do idioma
+      conversaContainer: '.tab-pane.active .conversa.col-lg-12',
+      editableChatbox: "#Abas .tab-pane.active .faketextbox.pastable[contenteditable='true']",
+      cpfInfoContainer: 'small',
+      cpfLabelQueryInContainer: 'strong',
+      nameInfoContainer: 'small',
+      phoneInfoContainer: 'small',
+      phoneLabelQueryInContainer: 'strong',
+      protocolInfoContainer: 'small',
+      protocolLabelQueryInContainer: 'strong',
+      tabsList: '#tabs',
+    },
+    textMarkers: markers,
+  };
+}
+

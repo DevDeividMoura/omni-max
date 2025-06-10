@@ -1,0 +1,168 @@
+{
+  "popup": {
+    "header": {
+      "title": "Omni Max",
+      "subtitle": "Muito mais que uma extensão",
+      "active": "Ativa",
+      "inactive": "Inativa",
+      "enable_tooltip": "Habilitar/Desabilitar toda a extensão Omni Max",
+      "repo_tooltip": "Ver repositório do Omni Max no GitHub"
+    },
+    "footer": {
+      "made_with_love": "Feito com ❤️ por"
+    },
+    "placeholders": {
+      "loading": "Carregando configurações...",
+      "no_general_modules": "Nenhum módulo geral configurado.",
+      "enable_extension_for_shortcuts": "Habilite a extensão para configurar atalhos.",
+      "enable_all_shortcuts": "Habilite \"Todos os Atalhos\" para configurar individualmente.",
+      "enable_extension_for_ai": "Habilite a extensão para usar IA.",
+      "enable_all_ai": "Habilite \"Todas as Funções de IA\" para configurar.",
+      "no_ai_features": "Nenhuma funcionalidade de IA configurada.",
+      "enable_ai_for_prompts": "Prompts disponíveis quando a extensão e as funções de IA estiverem habilitadas.",
+      "no_prompts_available": "Nenhuma configuração de prompt disponível para as funcionalidades de IA ativas.",
+      "loading_models": "Carregando modelos...",
+      "no_models_found": "Nenhum modelo encontrado. Verifique as credenciais/URL.",
+      "select_model": "Selecione um modelo",
+      "shortcut_key": "Tecla",
+      "shortcut_key_for": "Tecla para {moduleName}",
+      "add_credentials_to_list_models": "Para listar modelos, adicione as credenciais no modal abaixo e salve."
+    },
+    "labels": {
+      "toggle_module": "Ativar/Desativar {moduleName}",
+      "all_ai_features": "Todas as Funções de IA",
+      "ai_provider": "Provedor de IA",
+      "model": "Modelo",
+      "individual_ai_modules": "Módulos de IA Individuais:"
+    },
+    "buttons": {
+      "apply": "Aplicar Alterações",
+      "apply_tooltip": "Aplicar todas as alterações feitas",
+      "discard": "Descartar",
+      "discard_tooltip": "Descartar alterações não salvas",
+      "manage_credentials": "Gerenciar Credenciais",
+      "manage_credentials_for": "Gerenciar Credenciais ({providerName})",
+      "cancel": "Cancelar",
+      "ok": "OK"
+    },
+    "modal": {
+      "credentials_title": "Credenciais: {providerName}",
+      "get_credentials_prompt": "Como obter {credentialLabel}?",
+      "no_credentials_needed": "Este provedor não requer credenciais adicionais.",
+      "select_valid_provider": "Selecione um provedor de IA válido."
+    },
+    "alerts": {
+      "ai_config_error": "Erro na configuração de IA: {error}. Por favor, corrija antes de salvar.",
+      "ai_config_incomplete": "Configuração de IA incompleta: Por favor, selecione um modelo de IA.",
+      "changes_applied": "Configurações aplicadas com sucesso!"
+    },
+    "errors": {
+      "ai": {
+        "load_failed_generic": "Falha ao carregar modelos. Verifique as credenciais e o acesso ao provedor.",
+        "load_failed_specific": "Falha ao carregar modelos: {message}",
+        "no_models_found_provider": "Nenhum modelo encontrado para este provedor. Verifique a URL (Ollama) ou se há modelos disponíveis.",
+        "extension_disabled": "Extensão desabilitada.",
+        "features_disabled": "Recursos de IA desabilitados."
+      }
+    }
+  },
+  "modules": {
+    "general": {
+      "title": "Módulos Gerais",
+      "layout_correction": {
+        "name": "Correção de Layout",
+        "description": "Move a lista de conversas para a direita e limita a altura para melhor usabilidade."
+      },
+      "template_processor": {
+        "name": "Processador de Templates",
+        "description": "Ajusta o nome do cliente ({NOME} => Nome) e auto seleciona variáveis ([VAR]) com Tab."
+      }
+    },
+    "shortcuts": {
+      "title": "Atalhos de Teclado",
+      "shortcut_copy_name": {
+        "name": "Atalho: Copiar Nome do Cliente",
+        "label": "Nome do Cliente",
+        "description": "Permite copiar o nome do cliente usando um atalho de teclado."
+      },
+      "shortcut_copy_document_number": {
+        "name": "Atalho: Copiar Documento do Cliente",
+        "label": "Número do Documento",
+        "description": "Permite copiar o número do documento do cliente usando um atalho de teclado."
+      },
+      "shortcut_service_order_template": {
+        "name": "Atalho: Template de Ordem de Serviço",
+        "label": "Template de Ordem de Serviço",
+        "description": "Copia um template de Ordem de Serviço com Telefone e Protocolo pré-preenchidos."
+      }
+    },
+    "ai": {
+      "title": "Configurações de IA",
+      "description": "Configure as funcionalidades de IA para melhorar a eficiência do atendimento.",
+      "ai_chat_summary": {
+        "name": "IA: Resumir Atendimento",
+        "description": "Gera um resumo do histórico da conversa atual utilizando Inteligência Artificial."
+      },
+      "ai_response_review": {
+        "name": "IA: Revisar e Melhorar Resposta",
+        "description": "Utiliza IA para analisar e sugerir melhorias no texto da sua resposta antes do envio."
+      }
+    },
+    "prompts": {
+      "title": "Prompts Customizáveis",
+      "description": "Personalize os prompts utilizados pelas funcionalidades de IA para melhor atender às suas necessidades.",
+      "summary_prompt": {
+        "label": "Prompt de Resumo do Atendimento",
+        "placeholder": "Ex: Resuma esta conversa de forma concisa, focando no problema principal do cliente e na solução oferecida.",
+        "default": "Resuma esta conversa de atendimento ao cliente de forma concisa, destacando o problema principal, a principal causa e a resolução."
+      },
+      "improvement_prompt": {
+        "label": "Prompt de Melhoria de Resposta",
+        "placeholder": "Ex: Revise a seguinte resposta para um cliente, tornando-a mais clara, empática e profissional.",
+        "default": "Revise a seguinte resposta para um cliente, tornando-a mais clara, empática e profissional, mantendo o significado original:"
+      }
+    }
+  },
+  "content": {
+    "summary_popup": {
+      "title": "Resumo da Conversa",
+      "close_button_title": "Fechar",
+      "close_button_aria_label": "Fechar resumo",
+      "loading_text": "Analisando conversa...",
+      "no_summary_available": "Nenhum resumo disponível.",
+      "error_generating": "Erro ao gerar resumo: {message}",
+      "error_generating_unknown": "Erro ao gerar resumo: Erro desconhecido."
+    },
+    "summary_button": {
+      "label": "Resumir",
+      "context_error_alert": "Omni Max: Não foi possível identificar o atendimento ativo para resumir."
+    },
+    "ai_context": {
+      "preamble_start": "Início do atendimento do protocolo {protocolNumber} com {customerName}.",
+      "preamble_segments": "Este protocolo inclui múltiplos segmentos de atendimento fundidos (IDs: {ids}).",
+      "role_customer": "Cliente",
+      "role_agent": "Atendente",
+      "role_system": "Sistema/Chatbot",
+      "role_unknown": "Desconhecido"
+    }
+  },
+  "alerts": {
+    "copy_success": "{label} \"{data}\" copiado para a área de transferência!",
+    "copy_failed": "Falha ao copiar \"{label}\".",
+    "document_not_found": "Documento do cliente não encontrado na página.",
+    "customer_name_not_found": "Nome do cliente não encontrado na página.",
+    "template_creation_failed": "Não foi possível gerar o template."
+  },
+  "templates": {
+    "service_order": {
+      "situation": "Situação",
+      "phone": "Telefone",
+      "protocol": "Protocolo",
+      "notes": "OBS",
+      "phone_placeholder": "TELEFONE",
+      "protocol_placeholder": "PROTOCOLO",
+      "situation_placeholder": "SITUAÇÃO",
+      "notes_placeholder": "OBSERVAÇÕES"
+    }
+  }
+}

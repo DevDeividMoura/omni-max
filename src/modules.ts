@@ -66,61 +66,61 @@ export interface Module {
 export const availableModules: Module[] = [
   {
     id: 'layoutCorrection',
-    name: 'Correção de Layout',
-    description: 'Move a lista de conversas para a direia e limita a altura 70% da tela para melhor usabilidade.',
+    name: 'modules.general.layout_correction.name',
+    description: 'modules.general.layout_correction.description',
+    defaultEnabled: false,
+    released: true,
+  },
+  {
+    id: 'templateProcessor',
+    name: 'modules.general.template_processor.name',
+    description: 'modules.general.template_processor.description',
     defaultEnabled: true,
     released: true,
   },
   {
     id: 'shortcutCopyName',
-    name: 'Atalho: Copiar Nome do Cliente',
-    description: 'Permite copiar o nome do cliente usando um atalho de teclado (padrão: Ctrl+Shift+Z).',
+    name: 'modules.shortcuts.shortcut_copy_name.name',
+    description: 'modules.shortcuts.shortcut_copy_name.description',
     defaultEnabled: true,
     released: true,
   },
   {
     id: 'shortcutCopyDocumentNumber',
-    name: 'Atalho: Copiar Número do Documento do Cliente',
-    description: 'Permite copiar o Número do Documento do cliente usando um atalho de teclado (padrão: Ctrl+Shift+X).',
+    name: 'modules.shortcuts.shortcut_copy_document_number.name',
+    description: 'modules.shortcuts.shortcut_copy_document_number.description',
     defaultEnabled: true,
     released: true,
   },
   {
     id: 'shortcutServiceOrderTemplate',
-    name: 'Atalho: Template de Ordem de Serviço',
-    description: 'Copia um template de Ordem de Serviço para a área de transferência com Telefone e Protocolo pré-preenchidos (padrão: Ctrl+Shift+S).',
-    defaultEnabled: true,
-    released: true,
-  },
-  {
-    id: 'templateProcessor',
-    name: 'Processador de Templates de Mensagens',
-    description: 'Ajusta o nome do cliente ({ANA MARIA} => Ana), auto seleciona variavel ([VARIAVEL]) com Tab.',
+    name: 'modules.shortcuts.shortcut_service_order_template.name',
+    description: 'modules.shortcuts.shortcut_service_order_template.description',
     defaultEnabled: true,
     released: true,
   },
   {
     id: 'aiChatSummary',
-    name: 'IA: Resumir Atendimento',
-    description: 'Gera um resumo do histórico da conversa (protocolo) atual utilizando Inteligência Artificial.',
-    defaultEnabled: false,
+    name: 'modules.ai.ai_chat_summary.name',
+    description: 'modules.ai.ai_chat_summary.description',
+    defaultEnabled: true,
     released: true,
     promptSettings: {
-      label: 'Prompt de Resumo do Atendimento',
+      label: 'modules.prompts.summary_prompt.label',
       configKey: 'summaryPrompt',
-      placeholder: 'Ex: Resuma esta conversa de forma concisa, focando no problema principal do cliente e na solução oferecida.'
+      placeholder: 'modules.prompts.summary_prompt.placeholder'
     }
   },
   {
     id: 'aiResponseReview',
-    name: 'IA: Revisar e Melhorar Resposta',
-    description: 'Utiliza IA para analisar e sugerir melhorias no texto da sua resposta antes do envio.',
+    name: 'modules.ai.ai_response_review.name',
+    description: 'modules.ai.ai_response_review.description',
     defaultEnabled: false,
     released: false,     // <<< FEATURE NOT RELEASED IN THIS VERSION
     promptSettings: {
-      label: 'Prompt de Melhoria de Resposta',
+      label: 'modules.prompts.improvement_prompt.label',
       configKey: 'improvementPrompt',
-      placeholder: 'Ex: Revise a seguinte resposta para um cliente, tornando-a mais clara, empática e profissional, mantendo o significado original e o tom amigável.'
+      placeholder: 'modules.prompts.improvement_prompt.placeholder'
     }
   },
 ];

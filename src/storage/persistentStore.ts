@@ -45,16 +45,16 @@ export function persistentStore<T>(
   let lastSavedState = initialValue; // Stores the last value successfully saved to the adapter
 
   // Check for Chrome storage availability
-  const isChromeStorageAvailable =
+  const hasChromeSync =
     typeof chrome !== 'undefined' &&
     chrome.storage !== undefined &&
     chrome.storage.sync !== undefined;
 
-  if (!isChromeStorageAvailable) {
+  if (!hasChromeSync) {
     console.warn(
-      `[PersistentStore] Chrome storage.sync API not available for key "${key}". Store will operate in-memory only for this session.`
+      `Omni Max [PersistentStore] chrome.storage.sync não disponível para a chave "${key}". Operando em memória.`
     );
-    initialized = true; // Mark as initialized to allow normal store operations (in-memory)
+    initialized = true;
     return store;
   }
 
@@ -90,7 +90,7 @@ export function persistentStore<T>(
       .then(() => {
         lastSavedState = currentValue; // Update last known saved state upon successful save
       })
-      .catch(error => console.warn(`[PersistentStore] Error saving key "${key}" to storage:`, error));
+      .catch(error => console.warn(`Omni Max [PersistentStore] Error saving key "${key}" to storage:`, error));
   }, 1000);
 
   // Subscribe to store changes to trigger saves, only after initialization
@@ -103,7 +103,7 @@ export function persistentStore<T>(
 
   // Listen for external changes to the storage key (e.g., from other extension parts or synced instances)
   chrome.storage.onChanged.addListener((changes, areaName) => {
-    if (areaName === 'sync' && Object.hasOwn(changes, key)) {
+    if ((areaName === 'local' || areaName === 'sync') && Object.hasOwn(changes, key)) {
       const { newValue } = changes[key];
       const currentValueInStore = get(store);
 

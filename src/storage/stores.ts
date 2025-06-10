@@ -212,3 +212,11 @@ export const collapsibleSectionsStateStore =
  */
 export const shortcutKeysStore =
   persistentStore<ShortcutKeysConfig>('omniMaxShortcutKeys', ShortcutKeysConfigDefaults);
+
+/**
+ * @const {Writable<string>} selectedLocaleStore
+ * @description Persistent Svelte store for the selected locale of the application.
+ * Defaults to 'pt-BR' (Brazilian Portuguese).
+ */
+export const selectedLocaleStore = 
+  persistentStore<string>('omniMaxSelectedLocale', '');

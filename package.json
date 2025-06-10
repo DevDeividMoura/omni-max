@@ -45,6 +45,7 @@
         "@types/marked": "^5.0.2",
         "lodash.debounce": "^4.0.8",
         "lucide-svelte": "^0.511.0",
-        "marked": "^15.0.12"
+        "marked": "^15.0.12",
+        "svelte-i18n": "^4.0.1"
     }
 }
