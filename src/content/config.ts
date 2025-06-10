@@ -109,7 +109,7 @@ const textMarkerTranslations: Record<string, Config['textMarkers']> = {
     customerNameIndicator: 'Registration:',
     customerNameSeparator: ' - ',
     phoneLabel: 'Phone:',
-    protocolLabel: 'Protocol Number:',
+    protocolLabel: 'Protocol number:',
   },
   'es': {
     cpfLabel: 'Documento:',
