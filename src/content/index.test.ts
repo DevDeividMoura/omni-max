@@ -1,56 +1,55 @@
-// // src/content/index.test.ts
-// import {
-//   initializeOmniMaxContentScript,
-//   OMNI_MAX_CONTENT_LOADED_FLAG
-// } from './index';
-// // A importação de 'handleLayoutCorrection' foi removida.
-// import { ShortcutService } from './services/ShortcutService';
-// import { TemplateHandlingService } from './services/TemplateHandlingService';
-// import { vi, describe, it, beforeEach, afterEach, expect } from 'vitest';
+// src/content/index.test.ts
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { mount } from 'svelte';
+import { AppManager } from './core/AppManager';
+import { initializeOmniMaxContentScript, OMNI_MAX_CONTENT_LOADED_FLAG } from './index';
 
-// import { globalExtensionEnabledStore, moduleStatesStore } from '../storage/stores';
+// Mocks
+vi.mock('svelte', () => ({
+  mount: vi.fn(),
+}));
 
-// // O describe block para 'handleLayoutCorrection' foi totalmente removido.
+vi.mock('./core/AppManager', () => {
+  const AppManager = vi.fn();
+  AppManager.prototype.run = vi.fn();
+  return { AppManager };
+});
 
-// describe('initializeOmniMaxContentScript', () => {
-//   let attachShortSpy: ReturnType<typeof vi.spyOn>;
-//   let attachTempSpy: ReturnType<typeof vi.spyOn>;
+vi.mock('../utils/language', () => ({
+  getLocaleFromAgent: () => 'pt-BR',
+}));
 
-//   beforeEach(() => {
-//     attachShortSpy = vi.spyOn(ShortcutService.prototype, 'attachListeners').mockImplementation(() => { });
-//     attachTempSpy = vi.spyOn(TemplateHandlingService.prototype, 'attachListeners').mockImplementation(() => { });
+describe('initializeOmniMaxContentScript', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    delete (window as any)[OMNI_MAX_CONTENT_LOADED_FLAG];
+    document.body.innerHTML = '';
+  });
 
-//     delete (window as any)[OMNI_MAX_CONTENT_LOADED_FLAG];
+  it('should initialize services, mount UIs, and run AppManager', async () => {
+    await initializeOmniMaxContentScript();
 
-//     vi.spyOn(document, 'querySelector').mockImplementation((selector: string) => {
-//       if (selector === 'ul#tabs') {
-//         return document.createElement('ul');
-//       }
-//       return null;
-//     });
-//     vi.spyOn(document, 'querySelectorAll').mockReturnValue([] as any);
+    // CORREÇÃO: Espera-se que `mount` seja chamado 2 vezes.
+    // Uma para NotificationContainer e outra para SummaryPopup (via SummaryUiService).
+    expect(mount).toHaveBeenCalledTimes(2); 
 
-//     globalExtensionEnabledStore.set(true);
-//     moduleStatesStore.set({ layoutCorrection: true, aiChatSummary: true });
-//   });
+    const notificationHost = document.getElementById('omni-max-notification-host');
+    expect(notificationHost).not.toBeNull();
+    
+    // Verifica se uma das chamadas foi para o container de notificação
+    expect(mount).toHaveBeenCalledWith(expect.anything(), { target: notificationHost });
+    
+    expect(AppManager).toHaveBeenCalledOnce();
+    const appManagerInstance = vi.mocked(AppManager).mock.instances[0];
+    expect(appManagerInstance.run).toHaveBeenCalledOnce();
 
-//   afterEach(() => {
-//     vi.restoreAllMocks();
-//   });
+    expect((window as any)[OMNI_MAX_CONTENT_LOADED_FLAG]).toBe(true);
+  });
 
-//   it('initializes once and calls attachListeners', async () => {
-//     await initializeOmniMaxContentScript();
-//     expect((window as any)[OMNI_MAX_CONTENT_LOADED_FLAG]).toBe(true);
-//     // Estes testes garantem que o AppManager está rodando e chamando os listeners,
-//     // que é o comportamento esperado do script de inicialização.
-//     expect(attachShortSpy).toHaveBeenCalled();
-//     expect(attachTempSpy).toHaveBeenCalled();
-//   });
-
-//   it('does NOT re-initialize if flag is set', async () => {
-//     (window as any)[OMNI_MAX_CONTENT_LOADED_FLAG] = true;
-//     await initializeOmniMaxContentScript();
-//     expect(attachShortSpy).not.toHaveBeenCalled();
-//     expect(attachTempSpy).not.toHaveBeenCalled();
-//   });
-// });
+  it('should NOT run initialization if the script has already been loaded', async () => {
+    (window as any)[OMNI_MAX_CONTENT_LOADED_FLAG] = true;
+    await initializeOmniMaxContentScript();
+    expect(mount).not.toHaveBeenCalled();
+    expect(AppManager).not.toHaveBeenCalled();
+  });
+});
