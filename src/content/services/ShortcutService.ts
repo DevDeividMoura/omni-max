@@ -2,21 +2,16 @@ import { get } from 'svelte/store';
 import { globalExtensionEnabledStore, shortcutsOverallEnabledStore, moduleStatesStore, shortcutKeysStore } from '../../storage/stores';
 import type { ExtractionService } from './ExtractionService';
 import type { ClipboardService } from './ClipboardService';
-import type { NotificationService } from './NotificationService';
+import { addNotification } from '../../components/notifications/notifications';
 import type { ShortcutKeysConfig } from '../../storage/stores';
 import type { Translator } from '../../i18n/translator.content';
 
 export class ShortcutService {
   private extractionService: ExtractionService;
   private clipboardService: ClipboardService;
-  private notificationService: NotificationService;
   private translator: Translator;
-
   private boundHandleKeyDown: (event: KeyboardEvent) => Promise<void>;
 
-  /**
-   * Maps shortcut module IDs to their respective action functions.
-   */
   private readonly actionsMap = new Map<keyof ShortcutKeysConfig, () => Promise<{ data: string | null; label: string; notFoundKey: string }>>([
     ['shortcutCopyDocumentNumber', async () => {
       const data = await this.extractionService.extractDocumentNumber();
@@ -41,12 +36,7 @@ export class ShortcutService {
       const protocolPlaceholder = await this.translator.t('templates.service_order.protocol_placeholder');
       const notesPlaceholder = await this.translator.t('templates.service_order.notes_placeholder');
 
-
-      const template = `${situationLabel}: [${situationPlaceholder}] |||
-${phoneLabel}: ${phoneNumber || `[${phonePlaceholder}]`} |||
-${protocolLabel}: ${protocolNumber || `[${protocolPlaceholder}]`} |||
-${notesLabel}: [${notesPlaceholder}]`;
-
+      const template = `${situationLabel}: [${situationPlaceholder}] |||\n${phoneLabel}: ${phoneNumber || `[${phonePlaceholder}]`} |||\n${protocolLabel}: ${protocolNumber || `[${protocolPlaceholder}]`} |||\n${notesLabel}: [${notesPlaceholder}]`;
       const label = await this.translator.t('modules.shortcuts.shortcut_service_order_template.label');
       return { data: template, label, notFoundKey: 'alerts.template_creation_failed' };
     }],
@@ -55,12 +45,10 @@ ${notesLabel}: [${notesPlaceholder}]`;
   constructor(
     extractionService: ExtractionService,
     clipboardService: ClipboardService,
-    notificationService: NotificationService,
     translator: Translator
   ) {
     this.extractionService = extractionService;
     this.clipboardService = clipboardService;
-    this.notificationService = notificationService;
     this.translator = translator;
     this.boundHandleKeyDown = this.handleCtrlShiftKeyDown.bind(this);
   }
@@ -69,46 +57,39 @@ ${notesLabel}: [${notesPlaceholder}]`;
     if (!event.ctrlKey || !event.shiftKey) {
       return;
     }
-    event.preventDefault();
-    event.stopPropagation();
-
+    
     const globalEnable = get(globalExtensionEnabledStore);
     const shortcutsEnable = get(shortcutsOverallEnabledStore);
+    if (!globalEnable || !shortcutsEnable) return;
+    
     const moduleStates = get(moduleStatesStore);
     const shortcutKeys = get(shortcutKeysStore);
-
-    if (!globalEnable || !shortcutsEnable) return;
-
     const pressedKey = event.key.toUpperCase();
-    const defaultKeys: Partial<ShortcutKeysConfig> = {
-      shortcutCopyDocumentNumber: 'X',
-      shortcutCopyName: 'Z',
-      shortcutServiceOrderTemplate: 'S',
-    };
-
+    
     for (const [moduleId, actionFunction] of this.actionsMap.entries()) {
       const isModuleEnabled = moduleStates[moduleId] !== false;
-      const configuredKey = (shortcutKeys[moduleId] || defaultKeys[moduleId]!).toUpperCase();
+      const configuredKey = (shortcutKeys[moduleId] || '').toUpperCase();
 
-      if (isModuleEnabled && pressedKey === configuredKey) {
-        console.log(`[ShortcutService]: Shortcut '${moduleId}' triggered!`);
+      if (isModuleEnabled && pressedKey === configuredKey && configuredKey !== '') {
+        event.preventDefault();
+        event.stopPropagation();
+        
         const { data, label, notFoundKey } = await actionFunction();
-
         if (!data) {
           const warningText = await this.translator.t(notFoundKey);
-          this.notificationService.showToast(warningText, 'warning');
+          addNotification(warningText, 'warning');
           return;
         }
 
         if (!(await this.clipboardService.copy(data, label))) {
           const errorText = await this.translator.t('alerts.copy_failed', { values: { label } });
-          this.notificationService.showToast(errorText, 'error');
+          addNotification(errorText, 'error');
           return;
         }
 
         const successText = await this.translator.t('alerts.copy_success', { values: { label, data } });
-        this.notificationService.showToast(successText, 'success');
-        return;
+        addNotification(successText, 'success');
+        return; // Exit after handling one shortcut
       }
     }
   }
