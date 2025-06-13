@@ -16,6 +16,8 @@ import packageJson from '../../package.json';
 import { getActiveTabChatContext } from './utils/context';
 import { Translator } from '../i18n/translator.content';
 import NotificationContainer from '../components/notifications/NotificationContainer.svelte';
+import { AssistantUiService } from './services/AssistantUiService';
+
 
 const extensionVersion = packageJson.version;
 export const OMNI_MAX_CONTENT_LOADED_FLAG = `omniMaxContentLoaded_v${extensionVersion}`;
@@ -61,6 +63,8 @@ export async function initializeOmniMaxContentScript(): Promise<void> {
         () => getActiveTabChatContext(domService),
         translator
     );
+    const assistantUiService = new AssistantUiService(domService, translator);
+
 
     // --- Instantiate and run the main application orchestrator ---
     const app = new AppManager(
@@ -68,7 +72,8 @@ export async function initializeOmniMaxContentScript(): Promise<void> {
         shortcutService,
         templateHandlingService,
         summaryUiService,
-        summaryCacheService
+        summaryCacheService,
+        assistantUiService
     );
 
     app.run();

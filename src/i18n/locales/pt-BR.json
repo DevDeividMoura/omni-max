@@ -106,6 +106,10 @@
       "ai_response_review": {
         "name": "IA: Revisar e Melhorar Resposta",
         "description": "Utiliza IA para analisar e sugerir melhorias no texto da sua resposta antes do envio."
+      },
+      "ai_assistant": {
+        "name": "IA: Assistente de Chat",
+        "description": "Abre um popup com um assistente de IA para ajudar com tarefas contextuais durante o atendimento."
       }
     },
     "prompts": {
@@ -163,6 +167,26 @@
       "protocol_placeholder": "PROTOCOLO",
       "situation_placeholder": "SITUAÇÃO",
       "notes_placeholder": "OBSERVAÇÕES"
+    }
+  },
+  "assistant": {
+    "button_label": "Assistente",
+    "title": "Assistente IA",
+    "how_can_i_help": "Como posso ajudar?",
+    "choose_or_type": "Escolha uma sugestão ou digite sua pergunta",
+    "suggestions": {
+        "summarize": "Resumir este atendimento",
+        "summarize_desc": "Obtenha os pontos principais da conversa",
+        "extract_actions": "Extrair ações necessárias",
+        "extract_actions_desc": "Identifique tarefas e próximos passos",
+        "translate": "Traduzir este atendimento",
+        "translate_desc": "Traduza para outro idioma",
+        "connect_apps": "Conectar aplicativos",
+        "connect_apps_desc": "Integre com outras ferramentas"
+    },
+    "mock_response": {
+        "suggestion_response": "Claro, aqui está a ação para",
+        "user_query_response": "Entendi sua pergunta sobre"
     }
   }
 }

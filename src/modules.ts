@@ -123,6 +123,13 @@ export const availableModules: Module[] = [
       placeholder: 'modules.prompts.improvement_prompt.placeholder'
     }
   },
+  {
+    id: 'aiAssistant',
+    name: 'modules.ai.ai_assistant.name',
+    description: 'modules.ai.ai_assistant.description',
+    defaultEnabled: true,
+    released: true,
+  },
 ];
 
 /**
