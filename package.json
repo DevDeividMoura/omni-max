@@ -1,6 +1,6 @@
 {
     "name": "omni-max",
-    "description": "Omni Max: An AI-powered Chrome extension that enhances the MatrixGo omnichannel customer service platform with features like chat summarization, response improvement, message templates, and quick data copy shortcuts.",
+    "description": "Melhore a plataforma ASC SAC com resumos de chat por IA, templates e atalhos para agilizar seu atendimento.",
     "author": "Deivid Carvalho Moura <deividcarvalhomoura@gmail.com> (https://github.com/DevDeividMoura)",
     "version": "0.1.0",
     "type": "module",

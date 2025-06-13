@@ -2,7 +2,7 @@
 
 <div align="center">
 
-<img src="src/assets/icons/icon-128.png" alt="daily.dev animated logo" height="80">
+<img src="src/assets/icons/icon-128.png" alt="logo Omni Max" height="80">
 
 <br>
 
@@ -10,9 +10,10 @@
 
 [English](README.md) · Portuguese · [Spanish](README.md) 
 
-Sabemos como é desafiador atender clientes. Mas, não precisa ser assim. <br/>
-Omni Max é a extensão que todo agente merece. <br/>
-Resumos de conversas automatizados, preenchimento rápido de modelos de mensagem e acesso instantâneo a dados — muito além do que você já viu. Experimente 😉
+ **E aí, agente! Já desejou ter um superpoder para lidar com a rotina do atendimento ao cliente?** <br/>
+  Nós sabemos como o trabalho pode ser desafiador. Por isso, criamos a Omni Max: a extensão de IA que todo profissional de atendimento merece. <br/>
+  Resumos de conversas, templates mágicos e atalhos que salvam vidas. É uma experiência de antes e depois. 😉
+
 
 
 <!-- SHIELD GROUP -->
@@ -21,12 +22,12 @@ Resumos de conversas automatizados, preenchimento rápido de modelos de mensagem
 [![][latest-version-shield]][latest-version-link]
 [![][github-license-shield]][github-license-link]<br/>
 
-**Ajude mais agentes a sofrer menos compartilhando a Omni Max**
+<!-- **Ajude mais agentes a sofrer menos compartilhando a Omni Max**
 
 [![][share-x-shield]][share-x-link]
 [![][share-telegram-shield]][share-telegram-link]
 [![][share-whatsapp-shield]][share-whatsapp-link]
-[![][share-linkedin-shield]][share-linkedin-link]
+[![][share-linkedin-shield]][share-linkedin-link] -->
 
 
 
@@ -36,12 +37,15 @@ Resumos de conversas automatizados, preenchimento rápido de modelos de mensagem
 
 </div>
 
-## ❤️ Sobre a Omni Max
+
+## ❤️ Sobre o Projeto
 
 > [!IMPORTANT]
-> Marque-nos com uma estrela para mostrar seu apoio e amor pela Omni Max ⭐️
+> A Omni Max nasceu de uma ideia simples: **o trabalho de atendimento não precisa ser um sofrimento.** Se você concorda, marque este repositório com uma estrela para nos dar aquela força! ⭐️
 
-A Omni Max será sua melhor amiga, turbinada com Inteligência Artificial, projetada para otimizar a plataforma de atendimento ao cliente omnichannel [Matrix Go](https://www.matrixgo.ai/). Ele fornece aos agentes ferramentas para resumo de chats, processamento de modelos de mensagens e acesso rápido a dados para melhorar a eficiência e as interações com os clientes.
+A Omni Max é sua nova arma secreta para a plataforma Matrix Go (ASC SAC, e variações). Uma amiga turbinada com Inteligência Artificial, projetada para automatizar o trabalho chato e repetitivo.
+
+Nosso objetivo é dar a você as ferramentas para otimizar seu fluxo de trabalho, reduzir o estresse e permitir que você foque no que realmente importa: entregar um atendimento humano e excepcional.
 
 <img src="assets/github repo star graphic.png" alt="banner de estrelas Omni Max" width="100%">
 
@@ -67,21 +71,19 @@ Adquira agora em:
     </a>
 </p>
 
-## ✨ Funcionalidades Principais
+## ✨ O Que a Omni Max Faz, Afinal?
 
-A Omni Max visa otimizar o fluxo de trabalho dos agentes de atendimento ao cliente na plataforma omnichannel, oferecendo:
+* 🤖 **Resumos Inteligentes:** Chega de scroll infinito! Entenda o contexto de qualquer chat em segundos com resumos gerados por IA.
 
-* 🤖 **Assistência com Inteligência Artificial:**
-    * **Resumo de Chat:** Gere instantaneamente resumos concisos de conversas longas com clientes, proporcionando rápida contextualização da solicitação e indicando os próximos passos do atendimento.
-* 📝 **Processamento de Modelos de Mensagem:** Insira nomes de clientes de forma rápida e formatada; selecione variáveis nos modelos com um único clique.
-* 🖱️ **Atalhos de Cópia Rápida:**
-    * Copiar nome do cliente (ex: `Ctrl+Shift+Z` por padrão).
-    * Copiar número do documento do cliente (CPF/CNPJ) (ex: `Ctrl+Shift+X` por padrão).
-    * Copiar um modelo de descrição de Ordem de Serviço pré-preenchido (ex: `Ctrl+Shift+S` por padrão).
-* ⚙️ **Design Modular:** Habilite ou desabilite funcionalidades específicas (módulos) através do menu popup da extensão para personalizar a experiência de acordo com suas necessidades individuais.
-* 🎨 **Correções de Layout:** Ajustes opcionais no layout da plataforma omnichannel para melhor usabilidade (ex: mover a lista de conversas para a esuqerda).
+* 📝 **Templates Mágicos:** Responda perguntas frequentes com um clique. Insira nomes e variáveis de forma automática, rápida e sem erros.
 
-## 🛠️ Tecnologias Utilizadas (Principais)
+* 🖱️ **Atalhos que Salvam Vidas:** Copie nome, CPF/CNPJ e outras informações com um simples atalho de teclado. É quase... mágica.
+
+* ⚙️ **Você no Comando (Design Modular):** A Omni Max se adapta a você. Habilite ou desabilite cada funcionalidade para criar sua experiência de trabalho perfeita.
+
+* 🎨 **Layout Sob Medida (Correções Opcionais):** Prefere a lista de conversas na esquerda? Com um clique, ajuste pequenos detalhes da interface para máximo conforto.
+
+## 🛠️ O Que Tem Por Baixo do Capô? (Principais Tecnologias)
 
 * **[Svelte](https://svelte.dev/)** (v5) – framework reativo leve para construção da UI.
 * **[TypeScript](https://www.typescriptlang.org/)** – tipagem estática e autocompletar, garantindo mais segurança no código.
@@ -159,9 +161,11 @@ npm run build
 
 Isso gerará arquivos otimizados no diretório `/dist`.
 
-## 🤝 Contribuindo
+## 🤝 Quer Fazer Parte Disso?
 
-Nós encorajamos contribuições para o Omni Max! Para contribuir, por favor:
+Incrível! A Omni Max é um projeto de código aberto e adoraríamos ter sua ajuda para torná-lo ainda melhor. Toda contribuição, de uma correção de bug a uma nova funcionalidade, é super bem-vinda.
+
+Para contribuir, por favor:
 
 1.  Siga o fluxo de trabalho Gitflow. O desenvolvimento de funcionalidades deve ocorrer em branches derivadas de `develop`.
 2.  Use Commits Convencionais para suas mensagens de commit (veja a tabela na descrição da persona do projeto).
@@ -200,16 +204,16 @@ Feito com ❤️ por [@DevDeividMoura](https://github.com/DevDeividMoura)
 
 <!-- SHIELDS GROUP -->
 
-[chrome-users-shield]: https://img.shields.io/chrome-web-store/users/jlmpjdjjbgclbocgajdjefcidcncaied?style=flat-square&logo=googlechrome&logoColor=white&label=chrome%20active%20users&labelColor=black&color=9E15D9
-[chrome-users-link]: https://chromewebstore.google.com/detail/dailydev-the-homepage-dev/jlmpjdjjbgclbocgajdjefcidcncaied
+[chrome-users-shield]: https://img.shields.io/chrome-web-store/users/lddmoiehfgdcmkgkfocnlddlolhehmnh?style=flat-square&logo=googlechrome&logoColor=white&label=chrome%20active%20users&labelColor=black&color=9E15D9
+[chrome-users-link]: https://chromewebstore.google.com/detail/dailydev-the-homepage-dev/lddmoiehfgdcmkgkfocnlddlolhehmnh
 [extension-rating-shield]: https://img.shields.io/amo/rating/daily?style=flat-square&labelColor=black&color=0FC54F
 [extension-rating-link]: https://api.daily.dev/get
-[latest-version-shield]: https://img.shields.io/chrome-web-store/v/jlmpjdjjbgclbocgajdjefcidcncaied?style=flat-square&label=latest%20version&labelColor=black&color=0FC54F
+[latest-version-shield]: https://img.shields.io/chrome-web-store/v/lddmoiehfgdcmkgkfocnlddlolhehmnh?style=flat-square&label=latest%20version&labelColor=black&color=0FC54F
 [latest-version-link]: https://api.daily.dev/get
 [github-stars-shield]: https://img.shields.io/github/stars/dailydotdev/daily?style=flat-square&logo=github&labelColor=black&color=508CF9
 [github-stars-link]: https://github.com/dailydotdev/daily/stargazers
-[github-license-shield]: https://img.shields.io/github/license/dailydotdev/daily?style=flat-square&logo=github&labelColor=black&color=508CF9
-[github-license-link]: https://github.com/dailydotdev/daily/issues
+[github-license-shield]: https://img.shields.io/github/license/DevDeividMoura/omni-max?style=flat-square&logo=github&labelColor=black&color=508CF9
+[github-license-link]: https://github.com/DevDeividMoura/omni-max/issues
 
 <!-- SHARE BUTTONS GROUP -->
 
