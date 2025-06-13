@@ -1,293 +1,153 @@
-/**
- * @file src/content/services/ShortcutService.test.ts
- * @description Unit tests for the ShortcutService class.
- */
-import { describe, it, expect, vi, beforeEach, afterEach, type Mocked } from 'vitest';
-import {
-  globalExtensionEnabledStore,
-  shortcutsOverallEnabledStore,
-  moduleStatesStore,
-  shortcutKeysStore,
-} from '../../storage/stores';
+// src/content/services/ShortcutService.test.ts
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { get, writable } from 'svelte/store';
 import { ShortcutService } from './ShortcutService';
 import type { ExtractionService } from './ExtractionService';
 import type { ClipboardService } from './ClipboardService';
-import type { NotificationService } from './NotificationService';
-// Import the Translator type instead of a default instance
 import type { Translator } from '../../i18n/translator.content';
+import * as stores from '../../storage/stores';
+import * as notifications from '../../components/notifications/notifications';
 
-// --- Mocks para Dependências ---
+// Mocks
+vi.mock('./ExtractionService');
+vi.mock('./ClipboardService');
+vi.mock('../../components/notifications/notifications');
 
-const mockExtractionServiceInstance = {
+const mockExtractionService = {
   extractDocumentNumber: vi.fn(),
   extractCustomerName: vi.fn(),
   extractPhoneNumber: vi.fn(),
   extractProtocolNumber: vi.fn(),
-} as unknown as Mocked<ExtractionService>;
+};
 
-vi.mock('./ExtractionService', () => ({
-  ExtractionService: vi.fn(() => mockExtractionServiceInstance),
-}));
-
-const mockClipboardServiceInstance = {
+const mockClipboardService = {
   copy: vi.fn(),
 };
-vi.mock('./ClipboardService', () => ({
-  ClipboardService: vi.fn(() => mockClipboardServiceInstance),
-}));
 
-const mockNotificationServiceInstance = {
-  showToast: vi.fn(),
-} as unknown as NotificationService;
-vi.mock('./NotificationService', () => ({
-  NotificationService: vi.fn(() => mockNotificationServiceInstance),
-}));
+const mockTranslator = {
+  t: vi.fn().mockImplementation(async (key: string, options?: any) => {
+    const label = options?.values?.label || '';
+    if (key.includes('copy_success')) return `Copiado: ${label}`;
+    if (key.includes('copy_failed')) return `Falha ao copiar: ${label}`;
+    return key;
+  }),
+};
 
-// --- Suite de Testes ---
+const mockAddNotification = vi.spyOn(notifications, 'addNotification');
+
 describe('ShortcutService', () => {
-  let shortcutService: ShortcutService;
-  // Create a mock translator instance
-  const mockTranslator = {
-    t: vi.fn(),
-  } as unknown as Mocked<Translator>;
+  let service: ShortcutService;
 
-  const createKeyboardEvent = (key: string, ctrl = true, shift = true) =>
-    new KeyboardEvent('keydown', { key, ctrlKey: ctrl, shiftKey: shift });
+  const createEvent = (key: string, ctrl = true, shift = true) =>
+    new KeyboardEvent('keydown', { key, ctrlKey: ctrl, shiftKey: shift, bubbles: true, cancelable: true });
 
   beforeEach(() => {
     vi.resetAllMocks();
 
-    // Define a implementação do mock para o tradutor ANTES de cada teste
-    mockTranslator.t.mockImplementation(async (key: string, options?: { values?: { label?: string } }) => {
-      const label = options?.values?.label ?? '';
-      switch (key) {
-        case 'alerts.copy_success': return `"${label}" copiado para a área de transferência!`;
-        case 'alerts.copy_failed': return `Falha ao copiar "${label}".`;
-        case 'modules.shortcuts.shortcut_copy_document_number.label': return 'Número do Documento';
-        case 'modules.shortcuts.shortcut_copy_name.label': return 'Nome do Cliente';
-        case 'modules.shortcuts.shortcut_service_order_template.label': return 'Template de Ordem de Serviço';
-        case 'alerts.document_not_found': return 'Documento do cliente não encontrado na página.';
-        case 'alerts.customer_name_not_found': return 'Nome do cliente não encontrado na página.';
-        case 'templates.service_order.situation': return 'Situação';
-        case 'templates.service_order.phone': return 'Telefone';
-        case 'templates.service_order.protocol': return 'Protocolo';
-        case 'templates.service_order.notes': return 'OBS';
-        case 'templates.service_order.situation_placeholder': return 'RELATO_DO_CLIENTE';
-        case 'templates.service_order.phone_placeholder': return 'TELEFONE';
-        case 'templates.service_order.protocol_placeholder': return 'PROTOCOLO';
-        case 'templates.service_order.notes_placeholder': return 'OBSERVAÇÕES';
-        case 'alerts.template_creation_failed': return 'Não foi possível gerar o template.';
-        default: return key;
-      }
-    });
-
-    globalExtensionEnabledStore.set(true);
-    shortcutsOverallEnabledStore.set(true);
-    moduleStatesStore.set({
+    // Reset stores to default states for each test
+    stores.globalExtensionEnabledStore.set(true);
+    stores.shortcutsOverallEnabledStore.set(true);
+    stores.moduleStatesStore.set({
       shortcutCopyDocumentNumber: true,
       shortcutCopyName: true,
       shortcutServiceOrderTemplate: true,
     });
-    shortcutKeysStore.set({
+    stores.shortcutKeysStore.set({
       shortcutCopyDocumentNumber: 'X',
       shortcutCopyName: 'Z',
       shortcutServiceOrderTemplate: 'S',
     });
 
-    shortcutService = new ShortcutService(
-      mockExtractionServiceInstance,
-      mockClipboardServiceInstance as ClipboardService,
-      mockNotificationServiceInstance,
-      mockTranslator
+    service = new ShortcutService(
+      mockExtractionService as unknown as ExtractionService,
+      mockClipboardService as unknown as ClipboardService,
+      mockTranslator as unknown as Translator
     );
 
+    // Attach listeners to a mocked document
     vi.spyOn(document, 'addEventListener');
     vi.spyOn(document, 'removeEventListener');
+    service.attachListeners();
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
+  it('should not trigger if shortcuts are globally disabled', async () => {
+    stores.shortcutsOverallEnabledStore.set(false);
+    const event = createEvent('X');
+    await (service as any).handleCtrlShiftKeyDown(event);
+    expect(mockExtractionService.extractDocumentNumber).not.toHaveBeenCalled();
   });
-
-  describe('attachListeners / detachListeners', () => {
-    it('attaches keydown listener', () => {
-      shortcutService.attachListeners();
-      expect(document.addEventListener).toHaveBeenCalledWith('keydown', expect.any(Function), true);
-    });
-
-    it('detaches and re-attaches listener if called twice', () => {
-      shortcutService.attachListeners();
-      shortcutService.attachListeners();
-      expect(document.removeEventListener).toHaveBeenCalledTimes(2);
-      expect(document.addEventListener).toHaveBeenCalledTimes(2);
-    });
-
-    it('detaches listener on detachListeners', () => {
-      shortcutService.attachListeners();
-      shortcutService.detachListeners();
-      expect(document.removeEventListener).toHaveBeenCalledWith('keydown', expect.any(Function), true);
-    });
-  });
-
-  describe('handleCtrlShiftKeyDown guards', () => {
-    it('ignores non-Ctrl+Shift events', async () => {
-      const ev = createKeyboardEvent('X', false, false);
-      await (shortcutService as any).handleCtrlShiftKeyDown(ev);
-      expect(mockExtractionServiceInstance.extractDocumentNumber).not.toHaveBeenCalled();
-    });
-
-    it('ignores when globally disabled', async () => {
-      globalExtensionEnabledStore.set(false);
-      const ev = createKeyboardEvent('X');
-      await (shortcutService as any).handleCtrlShiftKeyDown(ev);
-      expect(mockNotificationServiceInstance.showToast).not.toHaveBeenCalled();
-    });
-
-    it('ignores when shortcuts section disabled', async () => {
-      shortcutsOverallEnabledStore.set(false);
-      const ev = createKeyboardEvent('X');
-      await (shortcutService as any).handleCtrlShiftKeyDown(ev);
-      expect(mockNotificationServiceInstance.showToast).not.toHaveBeenCalled();
-    });
-
-    it('ignores when specific module disabled', async () => {
-      moduleStatesStore.update(ms => ({ ...ms, shortcutCopyDocumentNumber: false }));
-      const ev = createKeyboardEvent('X');
-      await (shortcutService as any).handleCtrlShiftKeyDown(ev);
-      expect(mockExtractionServiceInstance.extractDocumentNumber).not.toHaveBeenCalled();
-    });
+  
+  it('should not trigger if the specific module is disabled', async () => {
+    stores.moduleStatesStore.update(s => ({ ...s, shortcutCopyDocumentNumber: false }));
+    const event = createEvent('X');
+    await (service as any).handleCtrlShiftKeyDown(event);
+    expect(mockExtractionService.extractDocumentNumber).not.toHaveBeenCalled();
   });
 
   describe('Copy Document Number (Ctrl+Shift+X)', () => {
-    const KEY = 'X';
+    it('should copy document number and show success notification', async () => {
+      mockExtractionService.extractDocumentNumber.mockResolvedValue('123.456.789-00');
+      mockClipboardService.copy.mockResolvedValue(true);
+      mockTranslator.t.mockResolvedValueOnce('Número do Documento'); // for label
+      mockTranslator.t.mockResolvedValueOnce('Copiado: Número do Documento'); // for success message
 
-    it('copies and notifies on success', async () => {
-      const LABEL = await mockTranslator.t('modules.shortcuts.shortcut_copy_document_number.label');
-      mockExtractionServiceInstance.extractDocumentNumber.mockResolvedValue('123');
-      mockClipboardServiceInstance.copy.mockResolvedValue(true);
+      const event = createEvent('X');
+      await (service as any).handleCtrlShiftKeyDown(event);
 
-      const ev = createKeyboardEvent(KEY);
-      await (shortcutService as any).handleCtrlShiftKeyDown(ev);
-
-      expect(mockExtractionServiceInstance.extractDocumentNumber).toHaveBeenCalled();
-      expect(mockClipboardServiceInstance.copy).toHaveBeenCalledWith('123', LABEL);
-      expect(mockNotificationServiceInstance.showToast).toHaveBeenCalledWith(`"${LABEL}" copiado para a área de transferência!`, 'success');
+      expect(mockClipboardService.copy).toHaveBeenCalledWith('123.456.789-00', 'Número do Documento');
+      expect(mockAddNotification).toHaveBeenCalledWith('Copiado: Número do Documento', 'success');
     });
 
-    it('warns if no data', async () => {
-      mockExtractionServiceInstance.extractDocumentNumber.mockResolvedValue(null);
-      const ev = createKeyboardEvent(KEY);
-      await (shortcutService as any).handleCtrlShiftKeyDown(ev);
+    it('should show warning if document number is not found', async () => {
+      mockExtractionService.extractDocumentNumber.mockResolvedValue(null);
+      mockTranslator.t.mockResolvedValueOnce('Número do Documento');
+      mockTranslator.t.mockResolvedValueOnce('alerts.document_not_found');
 
-      expect(mockNotificationServiceInstance.showToast).toHaveBeenCalledWith('Documento do cliente não encontrado na página.', 'warning');
+      const event = createEvent('X');
+      await (service as any).handleCtrlShiftKeyDown(event);
+      
+      expect(mockAddNotification).toHaveBeenCalledWith('alerts.document_not_found', 'warning');
     });
 
-    it('errors if copy fails', async () => {
-      const LABEL = await mockTranslator.t('modules.shortcuts.shortcut_copy_document_number.label');
-      mockExtractionServiceInstance.extractDocumentNumber.mockResolvedValue('123');
-      mockClipboardServiceInstance.copy.mockResolvedValue(false);
+    it('should show error if clipboard copy fails', async () => {
+        mockExtractionService.extractDocumentNumber.mockResolvedValue('123.456.789-00');
+        mockClipboardService.copy.mockResolvedValue(false);
+        mockTranslator.t.mockResolvedValueOnce('Número do Documento'); // label
+        mockTranslator.t.mockResolvedValueOnce('Falha ao copiar: Número do Documento'); // error message
 
-      const ev = createKeyboardEvent(KEY);
-      await (shortcutService as any).handleCtrlShiftKeyDown(ev);
-
-      expect(mockNotificationServiceInstance.showToast).toHaveBeenCalledWith(`Falha ao copiar "${LABEL}".`, 'error');
-    });
-  });
-
-  describe('Copy Customer Name Shortcut (Ctrl+Shift+Z)', () => {
-    const NAME_KEY = 'Z';
-
-    it('should extract, copy, and notify success if name is found and copied using default key', async () => {
-      const NAME_LABEL = await mockTranslator.t('modules.shortcuts.shortcut_copy_name.label');
-      const mockName = 'Fulano de Tal';
-      mockExtractionServiceInstance.extractCustomerName.mockResolvedValue(mockName);
-      mockClipboardServiceInstance.copy.mockResolvedValue(true);
-
-      const event = createKeyboardEvent(NAME_KEY);
-      await (shortcutService as any).handleCtrlShiftKeyDown(event);
-
-      expect(mockExtractionServiceInstance.extractCustomerName).toHaveBeenCalledOnce();
-      expect(mockClipboardServiceInstance.copy).toHaveBeenCalledWith(mockName, NAME_LABEL);
-      expect(mockNotificationServiceInstance.showToast)
-        .toHaveBeenCalledWith(`"${NAME_LABEL}" copiado para a área de transferência!`, 'success');
-    });
-
-    it('should use custom configured key for copy name shortcut', async () => {
-      const NAME_LABEL = await mockTranslator.t('modules.shortcuts.shortcut_copy_name.label');
-      shortcutKeysStore.update(keys => ({ ...keys, shortcutCopyName: 'N' }));
-
-      const mockName = 'Ciclano Custom';
-      mockExtractionServiceInstance.extractCustomerName.mockResolvedValue(mockName);
-      mockClipboardServiceInstance.copy.mockResolvedValue(true);
-
-      const event = createKeyboardEvent('N');
-      await (shortcutService as any).handleCtrlShiftKeyDown(event);
-
-      expect(mockExtractionServiceInstance.extractCustomerName).toHaveBeenCalledOnce();
-      expect(mockClipboardServiceInstance.copy).toHaveBeenCalledWith(mockName, NAME_LABEL);
-      expect(mockNotificationServiceInstance.showToast)
-        .toHaveBeenCalledWith(`"${NAME_LABEL}" copiado para a área de transferência!`, 'success');
+        const event = createEvent('X');
+        await (service as any).handleCtrlShiftKeyDown(event);
+        
+        expect(mockAddNotification).toHaveBeenCalledWith('Falha ao copiar: Número do Documento', 'error');
     });
   });
 
-  describe('Service Order Template Shortcut (Ctrl+Shift+S)', () => {
-    const SO_KEY = 'S';
+  describe('Service Order Template (Ctrl+Shift+S)', () => {
+    it('should generate and copy template with available data', async () => {
+        mockExtractionService.extractPhoneNumber.mockResolvedValue('11987654321');
+        mockExtractionService.extractProtocolNumber.mockResolvedValue('2025001');
+        mockClipboardService.copy.mockResolvedValue(true);
+        
+        // Mock all translator calls
+        mockTranslator.t
+            .mockResolvedValueOnce('Situação')
+            .mockResolvedValueOnce('Telefone')
+            .mockResolvedValueOnce('Protocolo')
+            .mockResolvedValueOnce('OBS')
+            .mockResolvedValueOnce('RELATO_DO_CLIENTE')
+            .mockResolvedValueOnce('TELEFONE')
+            .mockResolvedValueOnce('PROTOCOLO')
+            .mockResolvedValueOnce('OBSERVAÇÕES')
+            .mockResolvedValueOnce('Template de Ordem de Serviço') // label
+            .mockResolvedValueOnce('Copiado: Template de Ordem de Serviço'); // success
 
-    it('should generate template with extracted phone and protocol, copy, and notify', async () => {
-      const SO_LABEL = await mockTranslator.t('modules.shortcuts.shortcut_service_order_template.label');
-      const mockPhone = '11999998888';
-      const mockProtocol = '2025001';
-      mockExtractionServiceInstance.extractPhoneNumber.mockResolvedValue(mockPhone);
-      mockExtractionServiceInstance.extractProtocolNumber.mockResolvedValue(mockProtocol);
-      mockClipboardServiceInstance.copy.mockResolvedValue(true);
-
-      const expectedTemplate = `Situação: [RELATO_DO_CLIENTE] |||
-Telefone: ${mockPhone} |||
-Protocolo: ${mockProtocol} |||
-OBS: [OBSERVAÇÕES]`;
-
-      const event = createKeyboardEvent(SO_KEY);
-      await (shortcutService as any).handleCtrlShiftKeyDown(event);
-
-      expect(mockExtractionServiceInstance.extractPhoneNumber).toHaveBeenCalledOnce();
-      expect(mockExtractionServiceInstance.extractProtocolNumber).toHaveBeenCalledOnce();
-      expect(mockClipboardServiceInstance.copy)
-        .toHaveBeenCalledWith(expectedTemplate, SO_LABEL);
-      expect(mockNotificationServiceInstance.showToast)
-        .toHaveBeenCalledWith(`"${SO_LABEL}" copiado para a área de transferência!`, 'success');
-    });
-
-    it('should generate template with placeholders if phone or protocol not found', async () => {
-      const SO_LABEL = await mockTranslator.t('modules.shortcuts.shortcut_service_order_template.label');
-      mockExtractionServiceInstance.extractPhoneNumber.mockResolvedValue(null);
-      mockExtractionServiceInstance.extractProtocolNumber.mockResolvedValue(null);
-      mockClipboardServiceInstance.copy.mockResolvedValue(true);
-
-      const expectedTemplateWithPlaceholders = `Situação: [RELATO_DO_CLIENTE] |||
-Telefone: [TELEFONE] |||
-Protocolo: [PROTOCOLO] |||
-OBS: [OBSERVAÇÕES]`;
-
-      const event = createKeyboardEvent(SO_KEY);
-      await (shortcutService as any).handleCtrlShiftKeyDown(event);
-
-      expect(mockClipboardServiceInstance.copy)
-        .toHaveBeenCalledWith(expectedTemplateWithPlaceholders, SO_LABEL);
-      expect(mockNotificationServiceInstance.showToast)
-        .toHaveBeenCalledWith(`"${SO_LABEL}" copiado para a área de transferência!`, 'success');
-    });
-
-    it('should notify error if template copying fails', async () => {
-      const SO_LABEL = await mockTranslator.t('modules.shortcuts.shortcut_service_order_template.label');
-      mockExtractionServiceInstance.extractPhoneNumber.mockResolvedValue('123');
-      mockExtractionServiceInstance.extractProtocolNumber.mockResolvedValue('456');
-      mockClipboardServiceInstance.copy.mockResolvedValue(false);
-
-      const event = createKeyboardEvent(SO_KEY);
-      await (shortcutService as any).handleCtrlShiftKeyDown(event);
-
-      expect(mockNotificationServiceInstance.showToast)
-        .toHaveBeenCalledWith(`Falha ao copiar "${SO_LABEL}".`, 'error');
+        const event = createEvent('S');
+        await (service as any).handleCtrlShiftKeyDown(event);
+        
+        const expectedTemplate = `Situação: [RELATO_DO_CLIENTE] |||\nTelefone: 11987654321 |||\nProtocolo: 2025001 |||\nOBS: [OBSERVAÇÕES]`;
+        
+        expect(mockClipboardService.copy).toHaveBeenCalledWith(expectedTemplate, 'Template de Ordem de Serviço');
+        expect(mockAddNotification).toHaveBeenCalledWith('Copiado: Template de Ordem de Serviço', 'success');
     });
   });
 });

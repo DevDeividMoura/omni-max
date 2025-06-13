@@ -1,5 +1,3 @@
-import { getLocaleFromAgent } from '../utils/language'; // Importa a função que detecta o locale do agente
-
 // Define um tipo para garantir que todos os arquivos de locale tenham a mesma estrutura
 type LocaleFile = { [key: string]: any };
 
@@ -66,12 +64,15 @@ export class Translator {
       await this.initPromise;
     }
     
-    // O '!' aqui é seguro por causa do await acima.
-    let translation = getNestedValue(this.translations!, key) || key;
-    if (!translation) {
+    const foundTranslation = getNestedValue(this.translations!, key);
+    
+    if (foundTranslation === undefined) {
       console.warn(`[Translator] Key "${key}" not found in translations.`);
-      return key; // Retorna a chave original se não houver tradução
+      return key; // Retorna a chave original
     }
+
+    let translation = foundTranslation;
+
     if (options?.values) {
       for (const [placeholder, value] of Object.entries(options.values)) {
         translation = translation.replace(`{${placeholder}}`, String(value));

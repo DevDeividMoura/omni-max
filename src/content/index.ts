@@ -1,13 +1,7 @@
-// src/content/index.ts
-/**
- * @file src/content/index.ts
- * @description Main entry point for the Omni Max content script.
- * This script composes the application by instantiating services and running the AppManager.
- */
+import { mount } from 'svelte';
 import { AppManager } from './core/AppManager';
 import { DomService } from './services/DomService';
 import { ClipboardService } from './services/ClipboardService';
-import { NotificationService } from './services/NotificationService';
 import { ExtractionService } from './services/ExtractionService';
 import { ShortcutService } from './services/ShortcutService';
 import { TemplateHandlingService } from './services/TemplateHandlingService';
@@ -21,6 +15,7 @@ import { getConfig } from './config';
 import packageJson from '../../package.json';
 import { getActiveTabChatContext } from './utils/context';
 import { Translator } from '../i18n/translator.content';
+import NotificationContainer from '../components/notifications/NotificationContainer.svelte';
 
 const extensionVersion = packageJson.version;
 export const OMNI_MAX_CONTENT_LOADED_FLAG = `omniMaxContentLoaded_v${extensionVersion}`;
@@ -37,21 +32,21 @@ export async function initializeOmniMaxContentScript(): Promise<void> {
 
     console.log(`Omni Max [Content Script]: v${extensionVersion} - Initializing...`);
 
-    // Get locale for translator
+    // --- Mount Svelte-based UI Systems ---
+    const notificationHost = document.createElement('div');
+    notificationHost.id = 'omni-max-notification-host';
+    document.body.appendChild(notificationHost);
+    mount(NotificationContainer, { target: notificationHost });
+
+    // --- Instantiate services and dependencies ---
     const locale = getLocaleFromAgent();
-
-    // Instantiate translator with detected locale
     const translator = new Translator(locale);
-
-    // --- Composition Root: Instantiate all services ---
     const domService = new DomService();
     const clipboardService = new ClipboardService();
-    const notificationService = new NotificationService(domService);
     const extractionService = new ExtractionService(getConfig(), domService);
     const shortcutService = new ShortcutService(
         extractionService,
         clipboardService,
-        notificationService,
         translator
     );
     const templateHandlingService = new TemplateHandlingService(getConfig(), domService);

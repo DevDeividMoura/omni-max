@@ -1,56 +1,55 @@
 // src/content/index.test.ts
-import {
-  initializeOmniMaxContentScript,
-  OMNI_MAX_CONTENT_LOADED_FLAG
-} from './index';
-// A importação de 'handleLayoutCorrection' foi removida.
-import { ShortcutService } from './services/ShortcutService';
-import { TemplateHandlingService } from './services/TemplateHandlingService';
-import { vi, describe, it, beforeEach, afterEach, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { mount } from 'svelte';
+import { AppManager } from './core/AppManager';
+import { initializeOmniMaxContentScript, OMNI_MAX_CONTENT_LOADED_FLAG } from './index';
 
-import { globalExtensionEnabledStore, moduleStatesStore } from '../storage/stores';
+// Mocks
+vi.mock('svelte', () => ({
+  mount: vi.fn(),
+}));
 
-// O describe block para 'handleLayoutCorrection' foi totalmente removido.
+vi.mock('./core/AppManager', () => {
+  const AppManager = vi.fn();
+  AppManager.prototype.run = vi.fn();
+  return { AppManager };
+});
+
+vi.mock('../utils/language', () => ({
+  getLocaleFromAgent: () => 'pt-BR',
+}));
 
 describe('initializeOmniMaxContentScript', () => {
-  let attachShortSpy: ReturnType<typeof vi.spyOn>;
-  let attachTempSpy: ReturnType<typeof vi.spyOn>;
-
   beforeEach(() => {
-    attachShortSpy = vi.spyOn(ShortcutService.prototype, 'attachListeners').mockImplementation(() => { });
-    attachTempSpy = vi.spyOn(TemplateHandlingService.prototype, 'attachListeners').mockImplementation(() => { });
-
+    vi.resetAllMocks();
     delete (window as any)[OMNI_MAX_CONTENT_LOADED_FLAG];
-
-    vi.spyOn(document, 'querySelector').mockImplementation((selector: string) => {
-      if (selector === 'ul#tabs') {
-        return document.createElement('ul');
-      }
-      return null;
-    });
-    vi.spyOn(document, 'querySelectorAll').mockReturnValue([] as any);
-
-    globalExtensionEnabledStore.set(true);
-    moduleStatesStore.set({ layoutCorrection: true, aiChatSummary: true });
+    document.body.innerHTML = '';
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it('initializes once and calls attachListeners', async () => {
+  it('should initialize services, mount UIs, and run AppManager', async () => {
     await initializeOmniMaxContentScript();
+
+    // CORREÇÃO: Espera-se que `mount` seja chamado 2 vezes.
+    // Uma para NotificationContainer e outra para SummaryPopup (via SummaryUiService).
+    expect(mount).toHaveBeenCalledTimes(2); 
+
+    const notificationHost = document.getElementById('omni-max-notification-host');
+    expect(notificationHost).not.toBeNull();
+    
+    // Verifica se uma das chamadas foi para o container de notificação
+    expect(mount).toHaveBeenCalledWith(expect.anything(), { target: notificationHost });
+    
+    expect(AppManager).toHaveBeenCalledOnce();
+    const appManagerInstance = vi.mocked(AppManager).mock.instances[0];
+    expect(appManagerInstance.run).toHaveBeenCalledOnce();
+
     expect((window as any)[OMNI_MAX_CONTENT_LOADED_FLAG]).toBe(true);
-    // Estes testes garantem que o AppManager está rodando e chamando os listeners,
-    // que é o comportamento esperado do script de inicialização.
-    expect(attachShortSpy).toHaveBeenCalled();
-    expect(attachTempSpy).toHaveBeenCalled();
   });
 
-  it('does NOT re-initialize if flag is set', async () => {
+  it('should NOT run initialization if the script has already been loaded', async () => {
     (window as any)[OMNI_MAX_CONTENT_LOADED_FLAG] = true;
     await initializeOmniMaxContentScript();
-    expect(attachShortSpy).not.toHaveBeenCalled();
-    expect(attachTempSpy).not.toHaveBeenCalled();
+    expect(mount).not.toHaveBeenCalled();
+    expect(AppManager).not.toHaveBeenCalled();
   });
 });
