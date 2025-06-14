@@ -99,14 +99,6 @@
     "ai": {
       "title": "Configurações de IA",
       "description": "Configure as funcionalidades de IA para melhorar a eficiência do atendimento.",
-      "ai_chat_summary": {
-        "name": "IA: Resumir Atendimento",
-        "description": "Gera um resumo do histórico da conversa atual utilizando Inteligência Artificial."
-      },
-      "ai_response_review": {
-        "name": "IA: Revisar e Melhorar Resposta",
-        "description": "Utiliza IA para analisar e sugerir melhorias no texto da sua resposta antes do envio."
-      },
       "ai_assistant": {
         "name": "IA: Assistente de Chat",
         "description": "Abre um popup com um assistente de IA para ajudar com tarefas contextuais durante o atendimento."
@@ -174,19 +166,20 @@
     "title": "Assistente IA",
     "how_can_i_help": "Como posso ajudar?",
     "choose_or_type": "Escolha uma sugestão ou digite sua pergunta",
+    "thinking": "Pensando...",
+    "assistant_name": "Assistente IA",
+    "type_your_query": "Pergunte qualquer coisa para a IA...",
+    "locale_code": "pt-BR",
     "suggestions": {
         "summarize": "Resumir este atendimento",
         "summarize_desc": "Obtenha os pontos principais da conversa",
         "extract_actions": "Extrair ações necessárias",
-        "extract_actions_desc": "Identifique tarefas e próximos passos",
-        "translate": "Traduzir este atendimento",
-        "translate_desc": "Traduza para outro idioma",
-        "connect_apps": "Conectar aplicativos",
-        "connect_apps_desc": "Integre com outras ferramentas"
+        "extract_actions_desc": "Identifique tarefas e próximos passos"
     },
-    "mock_response": {
-        "suggestion_response": "Claro, aqui está a ação para",
-        "user_query_response": "Entendi sua pergunta sobre"
+    "errors": {
+        "no_context": "Contexto de atendimento não encontrado.",
+        "no_messages_to_summarize": "Não há mensagens para resumir.",
+        "summary_failed": "Falha ao gerar resumo: {message}"
     }
   }
 }

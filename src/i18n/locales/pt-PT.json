@@ -99,13 +99,9 @@
     "ai": {
       "title": "Configurações de IA",
       "description": "Configure as funcionalidades de IA para melhorar a eficiência do atendimento.",
-      "ai_chat_summary": {
-        "name": "IA: Resumir Atendimento",
-        "description": "Gera um resumo do histórico da conversa actual utilizando Inteligência Artificial."
-      },
-      "ai_response_review": {
-        "name": "IA: Rever e Melhorar Resposta",
-        "description": "Utiliza IA para analisar e sugerir melhorias no texto da sua resposta antes do envio."
+      "ai_assistant": {
+        "name": "IA: Assistente de Chat",
+        "description": "Abre um popup com um assistente de IA para ajudar com tarefas contextuais durante o atendimento."
       }
     },
     "prompts": {
@@ -163,6 +159,27 @@
       "protocol_placeholder": "PROTOCOLO",
       "situation_placeholder": "SITUAÇÃO",
       "notes_placeholder": "OBSERVAÇÕES"
+    }
+  },
+  "assistant": {
+    "button_label": "Assistente",
+    "title": "Assistente IA",
+    "how_can_i_help": "Como posso ajudar?",
+    "choose_or_type": "Escolha uma sugestão ou escreva a sua pergunta",
+    "thinking": "A pensar...",
+    "assistant_name": "Assistente IA",
+    "type_your_query": "Pergunte qualquer coisa para a IA...",
+    "locale_code": "pt-PT",
+    "suggestions": {
+        "summarize": "Resumir este atendimento",
+        "summarize_desc": "Obtenha os pontos principais da conversa",
+        "extract_actions": "Extrair acções necessárias",
+        "extract_actions_desc": "Identifique tarefas e próximos passos"
+    },
+    "errors": {
+        "no_context": "Contexto de atendimento não encontrado.",
+        "no_messages_to_summarize": "Não há mensagens para resumir.",
+        "summary_failed": "Falha ao gerar resumo: {message}"
     }
   }
 }

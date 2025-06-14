@@ -99,13 +99,9 @@
     "ai": {
       "title": "Configuraciones de IA",
       "description": "Configure las funcionalidades de IA para mejorar la eficiencia de la atención.",
-      "ai_chat_summary": {
-        "name": "IA: Resumir Atención",
-        "description": "Genera un resumen del historial de la conversación actual utilizando Inteligencia Artificial."
-      },
-      "ai_response_review": {
-        "name": "IA: Revisar y Mejorar Respuesta",
-        "description": "Utiliza IA para analizar y sugerir mejoras en el texto de su respuesta antes del envío."
+      "ai_assistant": {
+        "name": "IA: Asistente de Chat",
+        "description": "Abre un popup con un asistente de IA para ayudar con tareas contextuales durante la atención."
       }
     },
     "prompts": {
@@ -163,6 +159,27 @@
       "protocol_placeholder": "PROTOCOLO",
       "situation_placeholder": "SITUACIÓN",
       "notes_placeholder": "OBSERVACIONES"
+    }
+  },
+  "assistant": {
+    "button_label": "Asistente",
+    "title": "Asistente IA",
+    "how_can_i_help": "¿Cómo puedo ayudar?",
+    "choose_or_type": "Elija una sugerencia o escriba su pregunta",
+    "thinking": "Pensando...",
+    "assistant_name": "Asistente IA",
+    "type_your_query": "Pregunte cualquier cosa a la IA...",
+    "locale_code": "es",
+    "suggestions": {
+        "summarize": "Resumir esta atención",
+        "summarize_desc": "Obtenga los puntos principales de la conversación",
+        "extract_actions": "Extraer acciones necesarias",
+        "extract_actions_desc": "Identifique tareas y próximos pasos"
+    },
+    "errors": {
+        "no_context": "Contexto de atención no encontrado.",
+        "no_messages_to_summarize": "No hay mensajes para resumir.",
+        "summary_failed": "Error al generar resumen: {message}"
     }
   }
 }

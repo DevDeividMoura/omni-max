@@ -65,5 +65,16 @@ export default defineManifest(async () => {
       "storage",
       "tabs",
     ] as chrome.runtime.ManifestPermissions[],
+    web_accessible_resources: [
+      {
+        resources: [
+          "src/assets/icons/icon-16.png",
+          "src/assets/icons/icon-32.png",
+          "src/assets/icons/icon-48.png",
+          "src/assets/icons/icon-128.png",
+        ],
+        matches: ["https://vipmax.matrixdobrasil.ai/*"],
+      },
+    ],
   };
 });

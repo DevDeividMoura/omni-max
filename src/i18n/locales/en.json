@@ -99,13 +99,9 @@
     "ai": {
       "title": "AI Settings",
       "description": "Configure AI features to improve service efficiency.",
-      "ai_chat_summary": {
-        "name": "AI: Summarize Conversation",
-        "description": "Generates a summary of the current conversation history using Artificial Intelligence."
-      },
-      "ai_response_review": {
-        "name": "AI: Review and Improve Response",
-        "description": "Uses AI to analyze and suggest improvements to your response text before sending."
+      "ai_assistant": {
+        "name": "AI: Chat Assistant",
+        "description": "Opens a popup with an AI assistant to help with contextual tasks during service."
       }
     },
     "prompts": {
@@ -163,6 +159,27 @@
       "protocol_placeholder": "PROTOCOL",
       "situation_placeholder": "SITUATION",
       "notes_placeholder": "NOTES"
+    }
+  },
+  "assistant": {
+    "button_label": "Assistant",
+    "title": "AI Assistant",
+    "how_can_i_help": "How can I help?",
+    "choose_or_type": "Choose a suggestion or type your question",
+    "thinking": "Thinking...",
+    "assistant_name": "AI Assistant",
+    "type_your_query": "Ask anything to the AI...",
+    "locale_code": "en",
+    "suggestions": {
+        "summarize": "Summarize this conversation",
+        "summarize_desc": "Get the main points of the conversation",
+        "extract_actions": "Extract necessary actions",
+        "extract_actions_desc": "Identify tasks and next steps"
+    },
+    "errors": {
+        "no_context": "Service context not found.",
+        "no_messages_to_summarize": "No messages to summarize.",
+        "summary_failed": "Failed to generate summary: {message}"
     }
   }
 }

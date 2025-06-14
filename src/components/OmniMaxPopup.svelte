@@ -113,7 +113,7 @@
   );
   const aiModules: Module[] = availableModules.filter(
     (m) =>
-      ["aiChatSummary", "aiResponseReview"].includes(m.id) &&
+      ["aiAssistant"].includes(m.id) &&
       m.released !== false,
   );
   let promotableAiModules: Module[];

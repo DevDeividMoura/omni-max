@@ -100,30 +100,6 @@ export const availableModules: Module[] = [
     released: true,
   },
   {
-    id: 'aiChatSummary',
-    name: 'modules.ai.ai_chat_summary.name',
-    description: 'modules.ai.ai_chat_summary.description',
-    defaultEnabled: true,
-    released: true,
-    promptSettings: {
-      label: 'modules.prompts.summary_prompt.label',
-      configKey: 'summaryPrompt',
-      placeholder: 'modules.prompts.summary_prompt.placeholder'
-    }
-  },
-  {
-    id: 'aiResponseReview',
-    name: 'modules.ai.ai_response_review.name',
-    description: 'modules.ai.ai_response_review.description',
-    defaultEnabled: false,
-    released: false,     // <<< FEATURE NOT RELEASED IN THIS VERSION
-    promptSettings: {
-      label: 'modules.prompts.improvement_prompt.label',
-      configKey: 'improvementPrompt',
-      placeholder: 'modules.prompts.improvement_prompt.placeholder'
-    }
-  },
-  {
     id: 'aiAssistant',
     name: 'modules.ai.ai_assistant.name',
     description: 'modules.ai.ai_assistant.description',
