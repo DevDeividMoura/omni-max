@@ -171,15 +171,32 @@
     "type_your_query": "Pregunte cualquier cosa a la IA...",
     "locale_code": "es",
     "suggestions": {
-        "summarize": "Resumir esta atención",
-        "summarize_desc": "Obtenga los puntos principales de la conversación",
-        "extract_actions": "Extraer acciones necesarias",
-        "extract_actions_desc": "Identifique tareas y próximos pasos"
+      "summarize": "Resumir esta atención",
+      "summarize_desc": "Obtenga los puntos principales de la conversación",
+      "extract_actions": "Extraer acciones necesarias",
+      "extract_actions_desc": "Identifique tareas y próximos pasos"
     },
     "errors": {
-        "no_context": "Contexto de atención no encontrado.",
-        "no_messages_to_summarize": "No hay mensajes para resumir.",
-        "summary_failed": "Error al generar resumen: {message}"
+      "no_context": "Contexto de atención no encontrado.",
+      "no_messages_to_summarize": "No hay mensajes para resumir.",
+      "summary_failed": "Error al generar resumen: {message}"
+    },
+    "mcp_popup": {
+      "title": "Servidores MCP",
+      "close_button_title": "Cerrar",
+      "tab_connect": "Conectar un MCP",
+      "tab_my_mcps": "Mis MCPs",
+      "form_name_label": "Nombre",
+      "form_type_label": "Tipo",
+      "form_command_label": "Comando",
+      "form_name_placeholder": "Ejemplo: Stripe",
+      "form_command_placeholder": "Ejemplo: npx -y @stripe/mcp --tools=all...",
+      "button_cancel": "Cancelar",
+      "button_confirm": "Confirmar",
+      "empty_list_message": "Aún no hay MCPs conectados.",
+      "reload_button_title": "Recargar",
+      "delete_button_title": "Eliminar",
+      "tools_label": "Herramientas"
     }
   }
 }

@@ -171,15 +171,32 @@
     "type_your_query": "Ask anything to the AI...",
     "locale_code": "en",
     "suggestions": {
-        "summarize": "Summarize this conversation",
-        "summarize_desc": "Get the main points of the conversation",
-        "extract_actions": "Extract necessary actions",
-        "extract_actions_desc": "Identify tasks and next steps"
+      "summarize": "Summarize this conversation",
+      "summarize_desc": "Get the main points of the conversation",
+      "extract_actions": "Extract necessary actions",
+      "extract_actions_desc": "Identify tasks and next steps"
     },
     "errors": {
-        "no_context": "Service context not found.",
-        "no_messages_to_summarize": "No messages to summarize.",
-        "summary_failed": "Failed to generate summary: {message}"
+      "no_context": "Service context not found.",
+      "no_messages_to_summarize": "No messages to summarize.",
+      "summary_failed": "Failed to generate summary: {message}"
+    },
+    "mcp_popup": {
+      "title": "MCP Servers",
+      "close_button_title": "Close",
+      "tab_connect": "Connect an MCP",
+      "tab_my_mcps": "My MCPs",
+      "form_name_label": "Name",
+      "form_type_label": "Type",
+      "form_command_label": "Command",
+      "form_name_placeholder": "Example: Stripe",
+      "form_command_placeholder": "Example: npx -y @stripe/mcp --tools=all...",
+      "button_cancel": "Cancel",
+      "button_confirm": "Confirm",
+      "empty_list_message": "No MCPs connected yet.",
+      "reload_button_title": "Reload",
+      "delete_button_title": "Delete",
+      "tools_label": "Tools"
     }
   }
 }

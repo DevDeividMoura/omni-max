@@ -73,22 +73,22 @@
     translations.typeYourQuery = await t("assistant.type_your_query");
   });
 
-  $: if (isVisible && triggerButtonRect && popupWrapperElement) {
-    positionPopup();
-  }
+  // $: if (isVisible && triggerButtonRect && popupWrapperElement) {
+  //   positionPopup();
+  // }
 
-  // --- Funções ---
+  // // --- Funções ---
 
-  function positionPopup() {
-    if (!popupWrapperElement || !triggerButtonRect) return;
+  // function positionPopup() {
+  //   if (!popupWrapperElement || !triggerButtonRect) return;
     
-    const x = triggerButtonRect.left + triggerButtonRect.width / 2;
-    const y = triggerButtonRect.top;
+  //   const x = triggerButtonRect.left + triggerButtonRect.width / 2;
+  //   const y = triggerButtonRect.top;
     
-    popupWrapperElement.style.left = `${x}px`;
-    popupWrapperElement.style.bottom = `${window.innerHeight - y + 10}px`;
-    popupWrapperElement.style.transform = 'translateX(-50%)';
-  }
+  //   popupWrapperElement.style.left = `${x}px`;
+  //   popupWrapperElement.style.bottom = `${window.innerHeight - y + 10}px`;
+  //   popupWrapperElement.style.transform = 'translateX(-50%)';
+  // }
   
   async function handleSuggestionClick(suggestionId: string) {
     if (suggestionId === 'summarize') {
@@ -250,7 +250,7 @@
                 <ChevronDown size={12} style="margin-left: 4px;" />
               </button>
               <button class="composer-button" on:click={() => isMCPPopupOpen = true} title="Servidores MCP">
-                <Plug size={12} />
+                <Plug size={16} />
               </button>
             </div>
             <button class="send-button" on:click={() => {}} disabled={!inputValue.trim()}>
@@ -264,5 +264,9 @@
 {/if}
 
 {#if isMCPPopupOpen}
-  <MCPServersPopup on:close={() => isMCPPopupOpen = false} />
+  <MCPServersPopup 
+    isOpen={isMCPPopupOpen} 
+    onClose={() => isMCPPopupOpen = false}
+    {translator}
+  />
 {/if}
