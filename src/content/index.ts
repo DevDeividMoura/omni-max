@@ -5,22 +5,20 @@ import { ClipboardService } from './services/ClipboardService';
 import { ExtractionService } from './services/ExtractionService';
 import { ShortcutService } from './services/ShortcutService';
 import { TemplateHandlingService } from './services/TemplateHandlingService';
-import { AIServiceManager } from '../ai/AIServiceManager';
-import { MatrixApiService } from './services/MatrixApiService';
+import { AssistantUiService } from './services/AssistantUiService'; // Único serviço de UI necessário
+
 import { getLocaleFromAgent } from '../utils/language';
 import { getConfig } from './config';
 import packageJson from '../../package.json';
 import { Translator } from '../i18n/translator.content';
 import NotificationContainer from '../components/notifications/NotificationContainer.svelte';
-import { AssistantUiService } from './services/AssistantUiService';
 
 const extensionVersion = packageJson.version;
 export const OMNI_MAX_CONTENT_LOADED_FLAG = `omniMaxContentLoaded_v${extensionVersion}`;
 
 /**
- * Initializes and runs the main application logic for the content script.
- * This function sets up the dependency injection and starts the AppManager.
- */
+ * Initializes and runs the main application logic for the content script.
+ */
 export async function initializeOmniMaxContentScript(): Promise<void> {
     if ((window as any)[OMNI_MAX_CONTENT_LOADED_FLAG]) {
         return; // Prevent multiple initializations
@@ -35,34 +33,27 @@ export async function initializeOmniMaxContentScript(): Promise<void> {
     document.body.appendChild(notificationHost);
     mount(NotificationContainer, { target: notificationHost });
 
-    // --- Instantiate services and dependencies ---
+    // --- Instantiate services and dependencies for the Content Script ---
     const locale = getLocaleFromAgent();
     const translator = new Translator(locale);
     const domService = new DomService();
     const clipboardService = new ClipboardService();
     const extractionService = new ExtractionService(getConfig(), domService);
+    
     const shortcutService = new ShortcutService(
         extractionService,
         clipboardService,
         translator
     );
     const templateHandlingService = new TemplateHandlingService(getConfig(), domService);
-    const aiManager = new AIServiceManager();
-    const matrixApiService = new MatrixApiService();
     
-    // REMOVIDO: SummaryCacheService e SummaryUiService não são mais necessários.
-
-    // ATUALIZADO: AssistantUiService agora recebe os serviços de IA e API
-    // para poder executar a lógica de resumo internamente.
+    // O AssistantUiService agora gerencia sua própria dependência do AgentService internamente.
     const assistantUiService = new AssistantUiService(
         domService,
-        translator,
-        aiManager,
-        matrixApiService
+        translator
     );
 
     // --- Instantiate and run the main application orchestrator ---
-    // ATUALIZADO: O AppManager agora é mais simples e recebe apenas o serviço do assistente.
     const app = new AppManager(
         domService,
         shortcutService,
@@ -74,8 +65,8 @@ export async function initializeOmniMaxContentScript(): Promise<void> {
 }
 
 /**
- * Sets up a listener for messages from other parts of the extension (e.g., popup).
- */
+ * Sets up a listener for messages from other parts of the extension.
+ */
 function setupMessageListener(): void {
     chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
         if (request.type === 'GET_PAGE_LANGUAGE') {

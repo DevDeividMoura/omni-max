@@ -86,6 +86,36 @@ export const AiProviderConfigDefaults: AiProviderConfig = {
 };
 
 /**
+ * @interface Persona
+ * @description Defines the structure for a user-configurable agent persona.
+ */
+export interface Persona {
+  id: string;
+  name: string;
+  description: string;
+  prompt: string;
+}
+
+/**
+ * @const {Persona[]} PersonasDefaults
+ * @description Default personas to initialize the extension with.
+ */
+export const PersonasDefaults: Persona[] = [
+  {
+    id: '1718544000000-support', // Example timestamp-based ID
+    name: 'Suporte Padrão',
+    description: 'Assistente geral para resolução de problemas comuns.',
+    prompt: 'You are a helpful support assistant. Your goal is to understand the user\'s issue and provide a clear, step-by-step solution. Be polite and empathetic.'
+  },
+  {
+    id: '1718544000001-sales',
+    name: 'Vendas Consultivas',
+    description: 'Assistente focado em identificar oportunidades e apresentar produtos.',
+    prompt: 'You are a persuasive sales consultant. Your main objective is to identify customer needs and recommend products that solve their problems. Highlight benefits and create a sense of urgency.'
+  }
+];
+
+/**
  * @interface PromptsConfig
  * @description Defines the structure for configurable AI prompts.
  * Note: Default prompt texts are in Portuguese as they are user-facing.
@@ -117,6 +147,8 @@ export interface CollapsibleSectionsState {
   shortcuts: boolean;
   /** @property {boolean} ai - State for the AI configuration section. True if open, false if closed. */
   ai: boolean;
+  /** @property {boolean} personas - State for the agent personas configuration section. True if open, false if closed. */
+  personas: boolean;
   /** @property {boolean} prompts - State for the AI prompts configuration section. True if open, false if closed. */
   prompts: boolean;
 }
@@ -127,6 +159,7 @@ export interface CollapsibleSectionsState {
 export const CollapsibleSectionsStateDefaults: CollapsibleSectionsState = {
   modules: false,
   shortcuts: false,
+  personas: false,
   ai: false,
   prompts: false,
 };
@@ -220,3 +253,9 @@ export const shortcutKeysStore =
  */
 export const selectedLocaleStore = 
   persistentStore<string>('omniMaxSelectedLocale', '');
+
+/**
+ * @const {Writable<Persona[]>} personasStore
+ * @description Persistent Svelte store for managing the list of user-defined agent personas.
+ */
+export const personasStore = persistentStore<Persona[]>('omniMaxPersonas', PersonasDefaults);

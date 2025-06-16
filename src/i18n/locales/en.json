@@ -11,6 +11,23 @@
     "footer": {
       "made_with_love": "Made with ❤️ by"
     },
+    "personas": {
+      "title": "Persona Management",
+      "add_button": "Add New Persona",
+      "edit_button_title": "Edit Persona",
+      "delete_button_title": "Delete Persona",
+      "modal_title_add": "Add New Persona",
+      "modal_title_edit": "Edit Persona",
+      "name_label": "Persona Name",
+      "name_placeholder": "Ex: Level 2 Technical Support",
+      "description_label": "Short Description",
+      "description_placeholder": "Ex: Specialist in advanced technical issues.",
+      "prompt_label": "System Prompt",
+      "prompt_placeholder": "You are an expert in...",
+      "confirm_delete_message": "Are you sure you want to delete the persona \"{name}\"?",
+      "validation_error": "Persona name and prompt cannot be empty.",
+      "no_personas_yet": "No personas created yet. Click below to add one."
+    },
     "placeholders": {
       "loading": "Loading settings...",
       "no_general_modules": "No general modules configured.",
@@ -43,7 +60,8 @@
       "manage_credentials": "Manage Credentials",
       "manage_credentials_for": "Manage Credentials ({providerName})",
       "cancel": "Cancel",
-      "ok": "OK"
+      "ok": "OK",
+      "save": "Save"
     },
     "modal": {
       "credentials_title": "Credentials: {providerName}",

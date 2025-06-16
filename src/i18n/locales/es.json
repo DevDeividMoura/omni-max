@@ -11,6 +11,23 @@
     "footer": {
       "made_with_love": "Hecho con ❤️ por"
     },
+    "personas": {
+      "title": "Gestión de Personas",
+      "add_button": "Añadir Nueva Persona",
+      "edit_button_title": "Editar Persona",
+      "delete_button_title": "Eliminar Persona",
+      "modal_title_add": "Añadir Nueva Persona",
+      "modal_title_edit": "Editar Persona",
+      "name_label": "Nombre de la Persona",
+      "name_placeholder": "Ej: Soporte Técnico Nivel 2",
+      "description_label": "Descripción Breve",
+      "description_placeholder": "Ej: Especialista en problemas técnicos avanzados.",
+      "prompt_label": "Prompt del Sistema",
+      "prompt_placeholder": "Eres un experto en...",
+      "confirm_delete_message": "¿Está seguro de que desea eliminar la persona \"{name}\"?",
+      "validation_error": "El nombre y el prompt de la persona no pueden estar vacíos.",
+      "no_personas_yet": "Aún no hay personas creadas. Haga clic abajo para añadir una."
+    },
     "placeholders": {
       "loading": "Cargando configuraciones...",
       "no_general_modules": "No hay módulos generales configurados.",
@@ -43,7 +60,8 @@
       "manage_credentials": "Gestionar Credenciales",
       "manage_credentials_for": "Gestionar Credenciales ({providerName})",
       "cancel": "Cancelar",
-      "ok": "Aceptar"
+      "ok": "Aceptar",
+      "save": "Guardar"
     },
     "modal": {
       "credentials_title": "Credenciales: {providerName}",

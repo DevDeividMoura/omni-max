@@ -4,8 +4,13 @@
  * and helper functions to retrieve their initial states.
  */
 
-// Important: The keys here should correspond to the keys in PromptsConfig
 import type { PromptsConfig } from './storage/stores';
+
+/**
+ * @type ModuleCategory
+ * @description Defines the valid categories a module can belong to. This is used for grouping in the UI.
+ */
+export type ModuleCategory = 'general' | 'shortcut' | 'ai';
 
 /**
  * @interface Module
@@ -18,12 +23,17 @@ export interface Module {
   id: string;
 
   /**
-   * @property {string} name - User-friendly name of the module, displayed in the UI.
+   * @property {ModuleCategory} category - The category the module belongs to, for UI grouping.
+   */
+  category: ModuleCategory;
+
+  /**
+   * @property {string} name - User-friendly name of the module, displayed in the UI (i18n key).
    */
   name: string;
 
   /**
-   * @property {string} description - Detailed description of what the module does, displayed in the UI.
+   * @property {string} description - Detailed description of what the module does (i18n key).
    */
   description: string;
 
@@ -48,7 +58,6 @@ export interface Module {
     label: string;
     /**
      * @property {keyof PromptsConfig} configKey - Key in the PromptsConfig store where this prompt's value is stored.
-     * It's crucial that this key matches a property in the `PromptsConfig` type.
      */
     configKey: keyof PromptsConfig;
     /**
@@ -66,6 +75,7 @@ export interface Module {
 export const availableModules: Module[] = [
   {
     id: 'layoutCorrection',
+    category: 'general',
     name: 'modules.general.layout_correction.name',
     description: 'modules.general.layout_correction.description',
     defaultEnabled: false,
@@ -73,6 +83,7 @@ export const availableModules: Module[] = [
   },
   {
     id: 'templateProcessor',
+    category: 'general',
     name: 'modules.general.template_processor.name',
     description: 'modules.general.template_processor.description',
     defaultEnabled: true,
@@ -80,6 +91,7 @@ export const availableModules: Module[] = [
   },
   {
     id: 'shortcutCopyName',
+    category: 'shortcut',
     name: 'modules.shortcuts.shortcut_copy_name.name',
     description: 'modules.shortcuts.shortcut_copy_name.description',
     defaultEnabled: true,
@@ -87,6 +99,7 @@ export const availableModules: Module[] = [
   },
   {
     id: 'shortcutCopyDocumentNumber',
+    category: 'shortcut',
     name: 'modules.shortcuts.shortcut_copy_document_number.name',
     description: 'modules.shortcuts.shortcut_copy_document_number.description',
     defaultEnabled: true,
@@ -94,6 +107,7 @@ export const availableModules: Module[] = [
   },
   {
     id: 'shortcutServiceOrderTemplate',
+    category: 'shortcut',
     name: 'modules.shortcuts.shortcut_service_order_template.name',
     description: 'modules.shortcuts.shortcut_service_order_template.description',
     defaultEnabled: true,
@@ -101,6 +115,7 @@ export const availableModules: Module[] = [
   },
   {
     id: 'aiAssistant',
+    category: 'ai',
     name: 'modules.ai.ai_assistant.name',
     description: 'modules.ai.ai_assistant.description',
     defaultEnabled: true,
@@ -110,10 +125,7 @@ export const availableModules: Module[] = [
 
 /**
  * Generates an initial state object for all defined modules.
- * This object maps module IDs to their default enabled/disabled status,
- * which is useful for initializing persistent storage when the extension is first run
- * or when new modules are introduced.
- * @returns {Record<string, boolean>} An object where keys are module IDs and values are their default enabled status (e.g., { moduleId1: true, moduleId2: false }).
+ * @returns {Record<string, boolean>} An object where keys are module IDs and values are their default enabled status.
  */
 export function getInitialModuleStates(): Record<string, boolean> {
   const initialState: Record<string, boolean> = {};

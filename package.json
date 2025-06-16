@@ -40,12 +40,14 @@
         "@langchain/core": "^0.3.57",
         "@langchain/google-genai": "^0.2.10",
         "@langchain/groq": "^0.2.2",
+        "@langchain/langgraph": "^0.3.3",
         "@langchain/ollama": "^0.2.0",
         "@langchain/openai": "^0.5.11",
         "@types/marked": "^5.0.2",
         "lodash.debounce": "^4.0.8",
         "lucide-svelte": "^0.511.0",
         "marked": "^15.0.12",
-        "svelte-i18n": "^4.0.1"
+        "svelte-i18n": "^4.0.1",
+        "zod": "^3.25.64"
     }
 }
