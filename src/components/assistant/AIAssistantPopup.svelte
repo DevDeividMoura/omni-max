@@ -52,6 +52,7 @@
   let extensionIconUrl = "";
   let t: (key: string, options?: any) => Promise<string>;
   let contentAreaEl: HTMLElement;
+  let textareaEl: HTMLTextAreaElement;
   let isPersonaPopupOpen = false;
 
   const suggestions = [
@@ -93,6 +94,7 @@
   $: if (typeof document !== "undefined") {
     if (isVisible) {
       document.body.style.overflow = "hidden";
+      scrollToBottom(); // Scroll to bottom when popup opens
     } else {
       document.body.style.overflow = ""; // Restaura o padrão
     }
@@ -120,7 +122,6 @@
     });
   }
 
-
   // --- Event Handlers ---
   async function handleBackgroundMessage(message: any) {
     if (
@@ -139,6 +140,10 @@
       return;
 
     inputValue = ""; // Clear input immediately
+    if (textareaEl) {
+      textareaEl.style.height = "auto";
+    }
+
     agentChatStore.addMessage(protocolNumber, query);
     scrollToBottom();
 
@@ -178,7 +183,6 @@
         values: { message: (error as Error).message },
       });
       agentChatStore.updateLastAiMessage(protocolNumber, errorMessage);
-
     }
   }
 
@@ -210,6 +214,17 @@
       handleSendMessage(inputValue);
     }
   };
+
+  /**
+   * Ajusta a altura da textarea dinamicamente com base no seu conteúdo.
+   */
+  function autoResizeTextarea(event: Event) {
+    const textarea = event.target as HTMLTextAreaElement;
+    // Reseta a altura para o browser recalcular o scrollHeight
+    textarea.style.height = "auto";
+    // Define a altura para o tamanho total do conteúdo
+    textarea.style.height = `${textarea.scrollHeight}px`;
+  }
 </script>
 
 <svelte:window on:keydown={handleEscapeKey} />
@@ -266,7 +281,9 @@
                 <div class="message-content {message.type}">
                   {#if message.type === "ai"}
                     <div class="ai-header">
-                      <div class="ai-icon-wrapper"><span>✨</span></div>
+                      <div class="ai-icon-wrapper">
+                        <img src={extensionIconUrl} alt="Omni Max Logo" />
+                      </div>
                       <span class="ai-header-name"
                         >{translations.assistantName}</span
                       >
@@ -295,25 +312,39 @@
       <div class="composer">
         <div class="composer-input-wrapper">
           <textarea
+            bind:this={textareaEl}
             bind:value={inputValue}
             on:keydown={handleTextareaKeyDown}
+            on:input={autoResizeTextarea}
+            rows="1"
             placeholder={translations.typeYourQuery}
             disabled={isAgentThinking}
           ></textarea>
+
           <div class="composer-controls">
             <div class="composer-actions">
-              <button
-                class="persona-selector-button"
-                on:click={() => (isPersonaPopupOpen = !isPersonaPopupOpen)}
-                title="Selecionar Persona"
-              >
-                <span class="button-icon">👤</span>
-                <span class="button-text">
-                  {availablePersonas.find((p) => p.id === selectedPersonaId)
-                    ?.name || "Selecionar..."}
-                </span>
-                <ChevronDown class="button-chevron" size={14} />
-              </button>
+              <div style="position: relative;">
+                <button
+                  class="persona-selector-button"
+                  on:click={() => (isPersonaPopupOpen = !isPersonaPopupOpen)}
+                  title="Selecionar Persona"
+                >
+                  <span class="button-icon">👤</span>
+                  <span class="button-text">
+                    {availablePersonas.find((p) => p.id === selectedPersonaId)
+                      ?.name || "Selecionar..."}
+                  </span>
+                  <ChevronDown class="button-chevron" size={14} />
+                </button>
+
+                <PersonaSelectorPopup
+                  isOpen={isPersonaPopupOpen}
+                  personas={availablePersonas}
+                  {selectedPersonaId}
+                  onSelect={handlePersonaSelect}
+                  onClose={() => (isPersonaPopupOpen = false)}
+                />
+              </div>
               <button
                 class="composer-button-icon"
                 on:click={() => (isMCPPopupOpen = true)}
@@ -322,7 +353,6 @@
                 <Plug size={16} />
               </button>
             </div>
-
             <div class="composer-actions-right">
               <button
                 class="send-button"
@@ -332,13 +362,6 @@
                 <ArrowUp size={16} color="white" />
               </button>
             </div>
-            <PersonaSelectorPopup
-              isOpen={isPersonaPopupOpen}
-              personas={availablePersonas}
-              {selectedPersonaId}
-              onSelect={handlePersonaSelect}
-              onClose={() => (isPersonaPopupOpen = false)}
-            />
           </div>
         </div>
       </div>

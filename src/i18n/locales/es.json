@@ -215,6 +215,8 @@
       "empty_list_message": "Aún no hay MCPs conectados.",
       "reload_button_title": "Recargar",
       "delete_button_title": "Eliminar",
+      "command_label": "Comando",
+      "url_label": "URL",
       "tools_label": "Herramientas"
     }
   }
