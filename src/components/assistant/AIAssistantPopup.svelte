@@ -1,146 +1,199 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import { marked } from "marked";
-  import {
-    ChevronDown,
-    X,
-    ArrowUp,
-    Plug,
-  } from "lucide-svelte";
-  import { assistantPopupStore, type AssistantPopupState } from "./assistantPopupStore";
-  import MCPServersPopup from "./MCPServersPopup.svelte";
-  import { getLocaleFromAgent } from "../../utils/language";
-  import type { Translator } from "../../i18n/translator.content";
-  import type { AIServiceManager } from "../../ai/AIServiceManager";
-  import type { MatrixApiService } from "../../content/services/MatrixApiService";
-  import { decodeHtmlEntities } from "../../utils";
+  import { ChevronDown, X, ArrowUp, Plug } from "lucide-svelte";
 
-  // --- Melhora de Legibilidade: Definindo um tipo para a mensagem ---
-  type Message = {
-    id: string;
-    type: "user" | "ai";
-    content: string;
-    isThinking?: boolean;
-  };
+  import { assistantPopupStore } from "./assistantPopupStore";
+  import PersonaSelectorPopup from "./PersonaSelectorPopup.svelte";
+  import { agentChatStore } from "./agentChatStore";
+  import { personasStore, type Persona } from "../../storage/stores";
+
+  import MCPServersPopup from "./MCPServersPopup.svelte";
+  import type { Translator } from "../../i18n/translator.content";
+  import type { AgentService } from "../../content/services/AgentService";
 
   // --- Props (Serviços injetados pelo AssistantUiService) ---
   export let translator: Translator;
-  export let aiManager: AIServiceManager;
-  export let matrixApiService: MatrixApiService;
-  
-  // --- Estado Reativo da Store ---
-  let assistantState: AssistantPopupState;
-  assistantPopupStore.subscribe(value => {
-    assistantState = value;
-  });
+  export let agentService: AgentService;
 
+  // --- Store Auto-Subscriptions ---
+  $: assistantState = $assistantPopupStore;
+  $: allChats = $agentChatStore;
+  $: availablePersonas = $personasStore;
+
+  // --- Reactive Variables (CORRECTED) ---
   $: isVisible = assistantState.isVisible;
-  $: protocolNumber = assistantState.protocolNumber;
-  $: contactId = assistantState.contactId;
-  $: triggerButtonRect = assistantState.triggerButtonRect;
+  $: context = assistantState.context;
+  $: protocolNumber = context?.protocolNumber ?? null;
 
-  // --- Referência ao elemento do DOM para posicionamento ---
-  let popupWrapperElement: HTMLElement;
-  
-  // --- Estado Interno do Componente ---
-  let messages: Message[] = []; // Usando o novo tipo Message
+  $: currentChat = protocolNumber
+    ? allChats[protocolNumber] || { messages: [] }
+    : { messages: [] };
+  $: messages = currentChat.messages;
+
+  // NEW LOGIC: Determine if the agent is thinking by inspecting the LAST message.
+  $: isAgentThinking =
+    messages.length > 0 &&
+    messages[messages.length - 1].type === "ai" &&
+    messages[messages.length - 1].isThinking === true;
+
+  // --- Component's Internal State ---
   let inputValue = "";
   let isMCPPopupOpen = false;
-  let currentPersona = "Comercial";
-
+  let selectedPersonaId: string | undefined;
+  let translations = {
+    title: "...",
+    thinking: "...",
+    assistantName: "...",
+    typeYourQuery: "...",
+    howCanIHelp: "...",
+    chooseOrType: "...",
+  };
   let extensionIconUrl = "";
+  let t: (key: string, options?: any) => Promise<string>;
+  let contentAreaEl: HTMLElement;
+  let isPersonaPopupOpen = false;
 
   const suggestions = [
-    { id: 'summarize', icon: "📄", titleKey: "assistant.suggestions.summarize", descriptionKey: "assistant.suggestions.summarize_desc" },
-    { id: 'extract_actions', icon: "✅", titleKey: "assistant.suggestions.extract_actions", descriptionKey: "assistant.suggestions.extract_actions_desc" },
+    {
+      id: "summarize",
+      icon: "📄",
+      titleKey: "assistant.suggestions.summarize",
+      descriptionKey: "assistant.suggestions.summarize_desc",
+      promptKey: "assistant.suggestions.summarize_prompt_text",
+    },
+    {
+      id: "extract_actions",
+      icon: "✅",
+      titleKey: "assistant.suggestions.extract_actions",
+      descriptionKey: "assistant.suggestions.extract_actions_desc",
+      promptKey: "assistant.suggestions.extract_actions_prompt_text",
+    },
   ];
 
-  let t: (key: string, options?: { values: Record<string, any> }) => Promise<string>;
-  let translations = {
-    title: "...", howCanIHelp: "...", chooseOrType: "...", thinking: "...", assistantName: "...", typeYourQuery: "...",
-  };
-
-  // --- Lógica de Ciclo de Vida e Efeitos ---
+  // --- Lifecycle and Listeners ---
   onMount(async () => {
     extensionIconUrl = chrome.runtime.getURL("src/assets/icons/icon-48.png");
-
     t = (key, options) => translator.t(key, options);
+
     translations.title = await t("assistant.title");
-    translations.howCanIHelp = await t("assistant.how_can_i_help");
-    translations.chooseOrType = await t("assistant.choose_or_type");
     translations.thinking = await t("assistant.thinking");
     translations.assistantName = await t("assistant.assistant_name");
     translations.typeYourQuery = await t("assistant.type_your_query");
+    translations.howCanIHelp = await t("assistant.how_can_i_help");
+    translations.chooseOrType = await t("assistant.choose_or_type");
+
+    if (availablePersonas.length > 0) {
+      selectedPersonaId = availablePersonas[0].id;
+    }
+
+    chrome.runtime.onMessage.addListener(handleBackgroundMessage);
   });
 
-  // $: if (isVisible && triggerButtonRect && popupWrapperElement) {
-  //   positionPopup();
-  // }
-
-  // // --- Funções ---
-
-  // function positionPopup() {
-  //   if (!popupWrapperElement || !triggerButtonRect) return;
-    
-  //   const x = triggerButtonRect.left + triggerButtonRect.width / 2;
-  //   const y = triggerButtonRect.top;
-    
-  //   popupWrapperElement.style.left = `${x}px`;
-  //   popupWrapperElement.style.bottom = `${window.innerHeight - y + 10}px`;
-  //   popupWrapperElement.style.transform = 'translateX(-50%)';
-  // }
-  
-  async function handleSuggestionClick(suggestionId: string) {
-    if (suggestionId === 'summarize') {
-      const title = await t(suggestions[0].titleKey);
-      messages = [{ id: Date.now().toString(), type: 'user', content: title }];
-      await generateSummary();
+  $: if (typeof document !== "undefined") {
+    if (isVisible) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = ""; // Restaura o padrão
     }
   }
-  
-  async function generateSummary() {
-      const thinkingMessage: Message = { id: Date.now().toString(), type: "ai", content: "", isThinking: true };
-      messages = [...messages, thinkingMessage];
 
-      try {
-          if (!protocolNumber || !contactId) {
-            throw new Error(await t("assistant.errors.no_context"));
-          }
+  onDestroy(() => {
+    if (typeof document !== "undefined") {
+      document.body.style.overflow = "";
+    }
+    cleanup(); // Sua função de cleanup existente
+  });
 
-          const allSessions = await matrixApiService.getAtendimentosByContato(contactId);
-          const currentSession = allSessions.find(s => s.protocolNumber === protocolNumber);
-          
-          if (!currentSession || currentSession.messages.length === 0) {
-              throw new Error(await t("assistant.errors.no_messages_to_summarize"));
-          }
-
-          const customerName = currentSession.contactName || await t("content.ai_context.role_customer");
-          let preamble = await t("content.ai_context.preamble_start", { values: { protocolNumber, customerName } });
-          
-          const conversationTurns = await Promise.all(currentSession.messages.map(async msg => {
-              const roleLabel = await t(`content.ai_context.role_${msg.role}`);
-              return `${msg.senderName} (${roleLabel}): ${decodeHtmlEntities(msg.content)}`;
-          }));
-          
-          const fullTextForAI = `${preamble}\n\n${conversationTurns.join('\n\n')}`;
-          const currentLocale = getLocaleFromAgent();
-          
-          const summary = await aiManager.generateSummary(fullTextForAI, currentLocale);
-          
-          // FIX: Adicionado 'await' para garantir que marked.parse() resolva para uma string.
-          const finalContent = await marked.parse(summary);
-          
-          messages = messages.map(m => m.id === thinkingMessage.id ? { ...m, content: finalContent, isThinking: false } : m);
-
-      } catch (error: any) {
-          console.error("Omni Max [Assistant]: Error generating summary:", error);
-          const errorMessage = await t("assistant.errors.summary_failed", { values: { message: error.message } });
-          messages = messages.map(m => m.id === thinkingMessage.id ? { ...m, content: `<p style="color: red;">${errorMessage}</p>`, isThinking: false } : m);
-      }
+  function cleanup() {
+    chrome.runtime.onMessage.removeListener(handleBackgroundMessage);
   }
 
-  function handleNewChat() {
-    messages = [];
+  /**
+   * Waits for the next DOM update and then scrolls the chat area to the bottom.
+   */
+  function scrollToBottom() {
+    requestAnimationFrame(() => {
+      if (contentAreaEl) {
+        contentAreaEl.scrollTop = contentAreaEl.scrollHeight;
+      }
+    });
+  }
+
+
+  // --- Event Handlers ---
+  async function handleBackgroundMessage(message: any) {
+    if (
+      message.type === "agentResponse" &&
+      message.context?.protocolNumber === protocolNumber &&
+      protocolNumber
+    ) {
+      const formattedHtml = await marked.parse(message.reply);
+      agentChatStore.updateLastAiMessage(protocolNumber, formattedHtml);
+      scrollToBottom();
+    }
+  }
+
+  async function handleSendMessage(query: string) {
+    if (!query.trim() || !context || !protocolNumber || !selectedPersonaId)
+      return;
+
+    inputValue = ""; // Clear input immediately
+    agentChatStore.addMessage(protocolNumber, query);
+    scrollToBottom();
+
+    try {
+      await agentService.invoke({
+        context,
+        query,
+        personaId: selectedPersonaId,
+      });
+    } catch (error) {
+      console.error("Error invoking agent:", error);
+      const errorMessage = await t("assistant.errors.invoke_failed", {
+        values: { message: (error as Error).message },
+      });
+      agentChatStore.updateLastAiMessage(protocolNumber, errorMessage);
+    }
+  }
+
+  async function handleSuggestionClick(suggestion: (typeof suggestions)[0]) {
+    if (!context || !protocolNumber || !selectedPersonaId) return;
+
+    const hiddenPrompt = await t(suggestion.promptKey);
+    const userFacingMessage = await t(suggestion.titleKey);
+
+    agentChatStore.addMessage(protocolNumber, userFacingMessage);
+    scrollToBottom();
+
+    try {
+      await agentService.invoke({
+        context,
+        query: hiddenPrompt,
+        personaId: selectedPersonaId,
+      });
+    } catch (error) {
+      console.error("Error invoking agent from suggestion:", error);
+      const errorMessage = await t("assistant.errors.invoke_failed", {
+        values: { message: (error as Error).message },
+      });
+      agentChatStore.updateLastAiMessage(protocolNumber, errorMessage);
+
+    }
+  }
+
+  function handlePersonaSelect(selectedId: string) {
+    selectedPersonaId = selectedId; // Atualiza o ID
+    isPersonaPopupOpen = false; // Fecha o popup
+    handlePersonaChange(); // Notifica o agente da mudança (função que já existe)
+  }
+
+  async function handlePersonaChange() {
+    if (!selectedPersonaId || !context) return;
+    await agentService.changePersona({
+      context,
+      newPersonaId: selectedPersonaId,
+    });
   }
 
   function hide() {
@@ -148,17 +201,15 @@
   }
 
   const handleEscapeKey = (event: KeyboardEvent) => {
-    if (event.key === "Escape" && isVisible) {
-      hide();
-    }
+    if (event.key === "Escape" && isVisible) hide();
   };
 
   const handleTextareaKeyDown = (e: KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      // handleSendMessage(); // A ser implementado
+      handleSendMessage(inputValue);
     }
-  }
+  };
 </script>
 
 <svelte:window on:keydown={handleEscapeKey} />
@@ -167,8 +218,7 @@
   <div class="popup-overlay" on:click={hide} role="presentation">
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div class="popup-wrapper" bind:this={popupWrapperElement} on:click|stopPropagation>
-      
+    <div class="popup-wrapper" on:click|stopPropagation>
       <div class="popup-header">
         <span class="header-title">
           {#if protocolNumber}{translations.title}: {protocolNumber}{:else}{translations.title}{/if}
@@ -178,60 +228,67 @@
         </div>
       </div>
 
-      <div class="content-area">
+      <div class="content-area" bind:this={contentAreaEl}>
         {#if messages.length === 0}
-            <div class="welcome-state">
-                <div class="welcome-icon-wrapper">
-                  <img src={extensionIconUrl} alt="Omni Max Logo" />
-                </div>
-                <div>
-                    <h2 class="welcome-title">{translations.howCanIHelp}</h2>
-                    <p class="welcome-subtitle">{translations.chooseOrType}</p>
-                </div>
-                <div class="suggestions-list">
-                    {#each suggestions as suggestion (suggestion.id)}
-                      <button class="suggestion-item" on:click={() => handleSuggestionClick(suggestion.id)}>
-                          <div class="suggestion-item-inner">
-                          <span class="suggestion-icon">{suggestion.icon}</span>
-                          <div>
-                              <div class="suggestion-title">
-                                {#await t(suggestion.titleKey) then title}{title}{/await}
-                              </div>
-                              <div class="suggestion-description">
-                                {#await t(suggestion.descriptionKey) then desc}{desc}{/await}
-                              </div>
-                          </div>
-                          </div>
-                      </button>
-                    {/each}
-                </div>
+          <div class="welcome-state">
+            <div class="welcome-icon-wrapper">
+              <img src={extensionIconUrl} alt="Omni Max Logo" />
             </div>
-        {:else}
-            <div class="conversation-state">
-              {#each messages as message (message.id)}
-                  <div class="message-bubble {message.type}">
-                    <div class="message-content {message.type}">
-                        {#if message.type === 'ai'}
-                          <div class="ai-header">
-                              <div class="ai-icon-wrapper"><span>✨</span></div>
-                              <span class="ai-header-name">{translations.assistantName}</span>
-                          </div>
-                        {/if}
-
-                        {#if message.isThinking}
-                          <div class="thinking-indicator">
-                              <span>{translations.thinking}</span>
-                              <div class="thinking-dots">
-                                  <div class="dot"></div><div class="dot"></div><div class="dot"></div>
-                              </div>
-                          </div>
-                        {:else}
-                          {@html message.content}
-                        {/if}
+            <div>
+              <h2 class="welcome-title">{translations.howCanIHelp}</h2>
+              <p class="welcome-subtitle">{translations.chooseOrType}</p>
+            </div>
+            <div class="suggestions-list">
+              {#each suggestions as suggestion (suggestion.id)}
+                <button
+                  class="suggestion-item"
+                  on:click={() => handleSuggestionClick(suggestion)}
+                >
+                  <div class="suggestion-item-inner">
+                    <span class="suggestion-icon">{suggestion.icon}</span>
+                    <div>
+                      <div class="suggestion-title">
+                        {#await t(suggestion.titleKey) then title}{title}{/await}
+                      </div>
+                      <div class="suggestion-description">
+                        {#await t(suggestion.descriptionKey) then desc}{desc}{/await}
+                      </div>
                     </div>
                   </div>
+                </button>
               {/each}
             </div>
+          </div>
+        {:else}
+          <div class="conversation-state">
+            {#each messages as message (message.id)}
+              <div class="message-bubble {message.type}">
+                <div class="message-content {message.type}">
+                  {#if message.type === "ai"}
+                    <div class="ai-header">
+                      <div class="ai-icon-wrapper"><span>✨</span></div>
+                      <span class="ai-header-name"
+                        >{translations.assistantName}</span
+                      >
+                    </div>
+                  {/if}
+
+                  {#if message.isThinking}
+                    <div class="thinking-indicator">
+                      <span>{translations.thinking}</span>
+                      <div class="thinking-dots">
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                      </div>
+                    </div>
+                  {:else}
+                    {@html message.content}
+                  {/if}
+                </div>
+              </div>
+            {/each}
+          </div>
         {/if}
       </div>
 
@@ -241,21 +298,47 @@
             bind:value={inputValue}
             on:keydown={handleTextareaKeyDown}
             placeholder={translations.typeYourQuery}
+            disabled={isAgentThinking}
           ></textarea>
           <div class="composer-controls">
             <div class="composer-actions">
-              <button class="composer-button">
-                <span>👤</span>
-                <span style="margin-left: 4px;">{currentPersona}</span>
-                <ChevronDown size={12} style="margin-left: 4px;" />
+              <button
+                class="persona-selector-button"
+                on:click={() => (isPersonaPopupOpen = !isPersonaPopupOpen)}
+                title="Selecionar Persona"
+              >
+                <span class="button-icon">👤</span>
+                <span class="button-text">
+                  {availablePersonas.find((p) => p.id === selectedPersonaId)
+                    ?.name || "Selecionar..."}
+                </span>
+                <ChevronDown class="button-chevron" size={14} />
               </button>
-              <button class="composer-button" on:click={() => isMCPPopupOpen = true} title="Servidores MCP">
+              <button
+                class="composer-button-icon"
+                on:click={() => (isMCPPopupOpen = true)}
+                title="Servidores MCP"
+              >
                 <Plug size={16} />
               </button>
             </div>
-            <button class="send-button" on:click={() => {}} disabled={!inputValue.trim()}>
-              <ArrowUp size={16} color="white" />
-            </button>
+
+            <div class="composer-actions-right">
+              <button
+                class="send-button"
+                on:click={() => handleSendMessage(inputValue)}
+                disabled={!inputValue.trim() || isAgentThinking}
+              >
+                <ArrowUp size={16} color="white" />
+              </button>
+            </div>
+            <PersonaSelectorPopup
+              isOpen={isPersonaPopupOpen}
+              personas={availablePersonas}
+              {selectedPersonaId}
+              onSelect={handlePersonaSelect}
+              onClose={() => (isPersonaPopupOpen = false)}
+            />
           </div>
         </div>
       </div>
@@ -263,10 +346,8 @@
   </div>
 {/if}
 
-{#if isMCPPopupOpen}
-  <MCPServersPopup 
-    isOpen={isMCPPopupOpen} 
-    onClose={() => isMCPPopupOpen = false}
-    {translator}
-  />
-{/if}
+<MCPServersPopup
+  isOpen={isMCPPopupOpen}
+  onClose={() => (isMCPPopupOpen = false)}
+  {translator}
+/>

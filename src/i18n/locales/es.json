@@ -191,6 +191,7 @@
     "suggestions": {
       "summarize": "Resumir esta atención",
       "summarize_desc": "Obtenga los puntos principales de la conversación",
+      "summarize_prompt_text": "Resume esta conversación de atención al cliente de forma concisa, destacando el problema principal, la causa principal y la resolución.",
       "extract_actions": "Extraer acciones necesarias",
       "extract_actions_desc": "Identifique tareas y próximos pasos"
     },

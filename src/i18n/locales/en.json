@@ -191,6 +191,7 @@
     "suggestions": {
       "summarize": "Summarize this conversation",
       "summarize_desc": "Get the main points of the conversation",
+      "summarize_prompt_text": "Summarize this customer service conversation concisely, highlighting the main problem, primary cause, and resolution.",
       "extract_actions": "Extract necessary actions",
       "extract_actions_desc": "Identify tasks and next steps"
     },
