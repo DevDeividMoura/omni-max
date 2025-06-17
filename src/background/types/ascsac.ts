@@ -49,3 +49,16 @@ export interface ProcessedMessage {
   content: string;
   timestamp: Date;
 }
+
+/**
+ * @interface ListMessagesApiResponse
+ * @description Defines the actual structure of the JSON response from the
+ * /atendimento/listar-mensagens-por-atendimento endpoint.
+ */
+export interface ListMessagesApiResponse {
+  page: string;
+  records: string;
+  rows: string;
+  lstMsgs: RawMessage[]; // A chave correta é lstMsgs
+  bol_padrao_para_transcricao_de_audio_adm: number;
+}

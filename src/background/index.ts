@@ -1,101 +1,157 @@
-/**
- * @file src/background/index.ts
- * @description The main service worker for the Omni Max extension.
- * It listens for messages from the UI, orchestrates the AI agent's logic,
- * and sends back responses.
- */
-
-import { personasStore, type Persona } from '../storage/stores';
 import { get } from 'svelte/store';
-import { getAgentSession, saveAgentSession } from './services/agentDataManager'; // Assumindo que o data manager está aqui
+import { HumanMessage } from "@langchain/core/messages";
+import {
+  personasStore,
+  aiProviderConfigStore,
+  aiCredentialsStore,
+  type Persona
+} from '../storage/stores';
+import { PROVIDER_METADATA_MAP } from '../ai/providerMetadata';
+import type { AgentState } from './agent/state';
+import { app as agentGraph } from './agent/graph';
+import { masterToolRegistry } from './agent/tools'; // Necessário para o teste de ferramentas
 
-// Mantém uma cópia em memória da lista de personas para acesso rápido.
-let availablePersonas: Persona[] = [];
-
-// Inscreve-se na store para atualizar a lista sempre que o usuário fizer alterações no popup.
+// Carrega as personas da store, como antes.
+let availablePersonas: Persona[] = get(personasStore);
 personasStore.subscribe(updatedPersonas => {
-  console.log('Service Worker: Personas list updated.', updatedPersonas);
   availablePersonas = updatedPersonas;
 });
 
-// Inicializa a primeira carga.
-availablePersonas = get(personasStore);
+// Add these interfaces at the top of your file or in a separate types file
 
-/**
- * The main message listener for the extension.
- * Handles requests from the content scripts and popup.
- */
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  console.log('Service Worker: Received message from UI:', request);
+interface EntireProtocolHistoryTool {
+  invoke(args: {
+    contactId: string;
+    protocolNumber: string;
+    baseUrl: string;
+  }): Promise<any>;
+  name: string;
+}
 
-  // Garante que a mensagem veio de uma aba válida
-  if (!sender.tab?.id) {
-    console.error("Service Worker: Message received without a valid sender tab.");
-    return;
-  }
-  const tabId = sender.tab.id;
 
-  // --- Handler para invocar o agente com uma query ---
-  if (request.type === 'invokeAgent') {
-    (async () => {
-      const { context, query, personaId } = request;
-      const persona = availablePersonas.find(p => p.id === personaId) ?? availablePersonas[0];
 
-      // MOCK: Simula o carregamento do estado da sessão
-      const sessionState = await getAgentSession(context.protocolNumber);
-      console.log(`Service Worker: Invoking agent for protocol ${context.protocolNumber} with persona "${persona?.name}"`);
+interface LatestMessagesFromSessionTool {
+  invoke(args: {
+    sessionId: string;
+    baseUrl: string
+  }): Promise<any>;
+  name: string;
+}
 
-      // MOCK: Simula um tempo de processamento da IA (1.5 segundos)
-      setTimeout(() => {
-        let mockReply = `Como um assistente de **${persona?.name}**, eu analisei sua pergunta sobre "${query}".`;
 
-        // MOCK: Gera respostas diferentes com base na query
-        if (query.toLowerCase().includes('resumo')) {
-          mockReply = `### Resumo do Atendimento - Protocolo ${context.protocolNumber}\n\nCom base na persona **${persona.name}**, aqui estão os pontos principais:\n\n* **Problema Principal:** O cliente relatou um problema com a entrega do pedido #12345.\n* **Ação Tomada:** O atendente verificou o status e abriu um chamado com a transportadora.\n* **Próximo Passo:** Aguardar o retorno da transportadora em até 48 horas.`;
-        } else if (query.toLowerCase().includes('extrair ações')) {
-            mockReply = `### Ações Necessárias\n\n1.  **[Pendente]** Notificar o cliente assim que a transportadora responder.\n2.  **[Concluído]** Registrar o protocolo de contato com a transportadora.\n3.  **[Sugestão]** Oferecer um cupom de desconto pela inconveniência.`;
-        }
 
-        // MOCK: Simula a persistência do novo estado da conversa
-        console.log(`Service Worker: Mock saving state for protocol ${context.protocolNumber}`);
-        // await saveAgentSession(context.protocolNumber, newSessionState);
-        
-        // Envia a resposta de volta para a aba que a solicitou
-        chrome.tabs.sendMessage(tabId, {
-            type: 'agentResponse',
-            reply: mockReply,
-            context: context,
-        });
+// --- FUNÇÃO AUXILIAR PARA EXECUTAR FERRAMENTAS MANUALMENTE ---
+async function executeToolCommand(toolName: string, context: any, sender: chrome.runtime.MessageSender) {
+  console.log(`[Background] Slash command detected for tool: ${toolName}`);
+  const tabId = sender.tab!.id!;
+  const toolToExecute = masterToolRegistry[toolName];
+  let reply: string;
 
-      }, 1500);
-    })();
-    
-    // Indica que a resposta será enviada de forma assíncrona.
-    // O retorno de `sendResponse` não será usado aqui, pois usamos `tabs.sendMessage`.
-    return true; 
-  }
+  if (!sender.tab?.url) {
+    reply = "```\nError: Could not determine the origin URL to run the tool.\n```";
+  } else if (!toolToExecute) {
+    reply = `\`\`\`\nError: Tool "${toolName}" not found in the registry.\n\`\`\``;
+  } else {
+    try {
+      const baseUrl = new URL(sender.tab.url).origin;
+      let result: any;
 
-  // --- Handler para mudança de persona ---
-  if (request.type === 'changePersona') {
-    (async () => {
-      const { context, newPersonaId } = request;
-      const newPersona = availablePersonas.find(p => p.id === newPersonaId);
-
-      if (newPersona) {
-        console.log(`Service Worker: Changing persona for protocol ${context.protocolNumber} to "${newPersona.name}"`);
-        // MOCK: Aqui é onde salvaríamos a mudança de estado na sessão do agente
-        // Ex: Adicionar uma nova SystemMessage ao histórico do chat.
-        // await saveAgentSession(...)
-        
-        // Retornamos uma confirmação simples para a chamada original
-        sendResponse({ success: true, message: `Persona changed to ${newPersona.name}` });
+      // Lógica específica para os argumentos de cada ferramenta
+      if (toolName === 'get_entire_protocol_history') {
+        result = await (toolToExecute as EntireProtocolHistoryTool).invoke({ contactId: context.contactId, protocolNumber: context.protocolNumber, baseUrl });
+      } else if (toolName === 'get_latest_messages_from_session') {
+        result = await (toolToExecute as LatestMessagesFromSessionTool).invoke({ sessionId: context.attendanceId, baseUrl });
       } else {
-        sendResponse({ success: false, error: "Persona not found" });
+        throw new Error(`No specific argument handler implemented for tool: ${toolName}`);
       }
-    })();
 
-    return true; // Indica resposta assíncrona
+      const formattedResult = typeof result === 'object' ? JSON.stringify(result, null, 2) : String(result);
+      reply = '```json\n' + formattedResult + '\n```';
+    } catch (error: any) {
+      reply = `\`\`\`\n❌ Error executing tool "${toolName}":\n\n${error.message}\n\`\`\``;
+    }
+  }
+
+  chrome.tabs.sendMessage(tabId, { type: 'agentResponse', reply, context });
+}
+
+// --- FUNÇÃO AUXILIAR PARA INVOCAR O GRAFO DE AGENTE ---
+async function invokeAgentGraph(request: any, sender: chrome.runtime.MessageSender) {
+  const { context, query, personaId } = request;
+  const tabId = sender.tab!.id!;
+
+  try {
+    const selectedPersona = availablePersonas.find(p => p.id === personaId) ?? availablePersonas[0];
+    if (!selectedPersona) throw new Error("No personas configured.");
+
+    const providerConfig = get(aiProviderConfigStore);
+    const credentials = get(aiCredentialsStore);
+    const providerMeta = PROVIDER_METADATA_MAP.get(providerConfig.provider);
+    if (!providerMeta) throw new Error(`Provider metadata for "${providerConfig.provider}" not found.`);
+
+    let apiKey, baseUrl;
+    if (providerMeta.apiKeySettings?.credentialKey) {
+      apiKey = credentials[providerMeta.apiKeySettings.credentialKey];
+    }
+    if (providerMeta.baseUrlSettings?.credentialKey) {
+      baseUrl = credentials[providerMeta.baseUrlSettings.credentialKey];
+    }
+
+    console.log(`[Background] Invoking graph with ${providerConfig.provider}/${providerConfig.model}`);
+
+    const initialState: AgentState = {
+      messages: [new HumanMessage(query)],
+      system_prompt: selectedPersona.prompt,
+      available_tool_names: selectedPersona.tool_names,
+      protocol_number: context.protocolNumber,
+      attendance_id: context.attendanceId,
+      contact_id: context.contactId,
+      base_url: new URL(sender.tab!.url!).origin, // Passando a URL do contexto aqui
+      last_processed_client_message_timestamp: null,
+      provider: providerConfig.provider,
+      model: providerConfig.model,
+      api_key: apiKey,
+      llm_base_url: baseUrl, // Renomeado para evitar conflito
+    };
+
+    const finalState = await agentGraph.invoke(initialState);
+    const lastMessage = finalState.messages[finalState.messages.length - 1];
+    const reply = lastMessage.content;
+
+    chrome.tabs.sendMessage(tabId, {
+      type: 'agentResponse',
+      reply: typeof reply === 'string' ? reply : JSON.stringify(reply),
+      context: context,
+    });
+  } catch (e: any) {
+    console.error("[Background] Error invoking agent graph:", e);
+    const errorMessage = `\`\`\`\n❌ An error occurred in the agent:\n\n${e.message}\n\`\`\``;
+    chrome.tabs.sendMessage(tabId, { type: 'agentResponse', reply: errorMessage, context });
+  }
+}
+
+
+// --- LISTENER PRINCIPAL (AGORA UM ROTEADOR SIMPLES) ---
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.type === 'invokeAgent') {
+    if (!sender.tab?.id) {
+      console.error("Cannot process request without sender tab ID.");
+      return;
+    }
+
+    const { query } = request;
+
+    if (query.startsWith('/')) {
+      const toolName = query.substring(1).trim();
+      executeToolCommand(toolName, request.context, sender);
+    } else {
+      invokeAgentGraph(request, sender); // <- Chamada da função "callback"
+    }
+
+    return true; // Indica que a resposta será assíncrona
+  }
+
+  if (request.type === 'changePersona') {
+    console.log("Persona change request received for:", request.context.protocolNumber);
   }
 });
-
-console.log('Omni Max Service Worker has started.');

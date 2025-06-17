@@ -6,7 +6,7 @@ import type {
   RawSession,
   RawMessage,
   ApiResponse,
-  ApiResponseMessages,
+  ListMessagesApiResponse,
 } from '../types/ascsac';
 
 export class AscSacApiService {
@@ -40,14 +40,14 @@ export class AscSacApiService {
     }
   }
 
-  /**
+   /**
    * Fetches all messages for a specific service session ID.
    * @param {string} sessionId The ID of the service session (cod_atendimento).
    * @param {string} baseUrl The base origin of the platform.
    * @returns {Promise<RawMessage[]>} A promise resolving to an array of raw messages.
    */
   public async getMessagesBySessionId(sessionId: string, baseUrl: string): Promise<RawMessage[]> {
-    const apiUrl = `${baseUrl}/Painel/chat/getMensagens/cod_atendimento/${sessionId}`;
+    const apiUrl = `${baseUrl}/Painel/atendimento/listar-mensagens-por-atendimento`;
     try {
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -55,15 +55,29 @@ export class AscSacApiService {
           'Accept': 'application/json, text/javascript, */*; q=0.01',
           'Content-Type': 'application/x-www-form-urlencoded',
         },
+        // O log mostra "rows=25", podemos aumentar para garantir que pegamos tudo em uma página
+        body: new URLSearchParams({ cod_atendimento: sessionId, page: '1', rows: '100' }) 
       });
+
       if (!response.ok) {
         console.error(`AscSacApiService: HTTP error ${response.status} for session ${sessionId}`);
         return [];
       }
-      const apiResponse: ApiResponseMessages = await response.json();
-      return (apiResponse.success === 1 && apiResponse.data?.msgs) ? apiResponse.data.msgs : [];
+
+      // CORREÇÃO: Ler como texto e fazer o parse manual devido ao Content-Type "text/html"
+      const responseText = await response.text();
+      const apiResponse: ListMessagesApiResponse = JSON.parse(responseText);
+
+      // CORREÇÃO: Acessar a chave `lstMsgs` e verificar se é um array
+      if (apiResponse && Array.isArray(apiResponse.lstMsgs)) {
+        return apiResponse.lstMsgs;
+      } else {
+        console.warn(`AscSacApiService: No 'lstMsgs' array found in the response for session ${sessionId}. Response:`, responseText);
+        return [];
+      }
+
     } catch (error) {
-      console.error(`AscSacApiService: Network error for session ${sessionId}:`, error);
+      console.error(`AscSacApiService: Network error or JSON parse error for session ${sessionId}:`, error);
       return [];
     }
   }

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { BaseMessage } from "@langchain/core/messages";
-import { addMessages, type Messages } from "@langchain/langgraph";
+import { addMessages, type Messages } from "@langchain/langgraph/web";
 import "@langchain/langgraph/zod";
 
 export const AgentStateSchema = z.object({
@@ -59,6 +59,30 @@ export const AgentStateSchema = z.object({
    * It is updated by the agent after processing new context.
    */
   last_processed_client_message_timestamp: z.number().nullable().default(null),
+
+  /**
+   * The ID of the selected AI provider (e.g., "groq", "openai").
+   * Injected at the start of the graph's execution.
+   */
+  provider: z.string(),
+
+  /**
+   * The specific model selected for the chosen provider.
+   * Injected at the start.
+   */
+  model: z.string(),
+
+  /**
+   * The API key for the selected provider.
+   * Injected securely at the start. Optional for providers that don't use it.
+   */
+  api_key: z.string().optional(),
+
+  /**
+   * The base URL for providers like Ollama.
+   * Injected at the start. Optional for most providers.
+   */
+  llm_base_url: z.string().url().optional(),
 });
 
 export type AgentState = z.infer<typeof AgentStateSchema>;

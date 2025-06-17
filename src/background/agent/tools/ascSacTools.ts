@@ -15,6 +15,7 @@ const entireProtocolSchema = z.object({
 
 export const getEntireProtocolHistoryTool = tool(
   async ({ contactId, protocolNumber, baseUrl }: z.infer<typeof entireProtocolSchema>): Promise<string> => {
+    console.log(`[Tool] Fetching entire protocol history for contactId: ${contactId}, protocolNumber: ${protocolNumber}, baseUrl: ${baseUrl}`);
     try {
       const rawSessions = await ascSacApi.getSessionsByContact(contactId, baseUrl);
       const relevantSessions = rawSessions.filter(s => String(s.num_protocolo) === protocolNumber);
@@ -71,3 +72,4 @@ export const getLatestMessagesFromSessionTool = tool(
     schema: latestMessagesSchema,
   }
 );
+
