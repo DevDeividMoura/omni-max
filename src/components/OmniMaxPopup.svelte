@@ -30,6 +30,8 @@
     type ProviderMetadata,
   } from "../ai/providerMetadata";
 
+  import { AVAILABLE_TOOLS_METADATA } from "../background/agent/tools/toolMetadata";
+
   import { AIServiceManager } from "../ai/AIServiceManager";
 
   import {
@@ -46,7 +48,7 @@
     shortcutKeysStore,
     type ShortcutKeysConfig,
     personasStore, // <-- Import the new persona store
-    type Persona,   // <-- Import the Persona type
+    type Persona, // <-- Import the Persona type
   } from "../storage";
 
   import { availableModules, type Module } from "../modules";
@@ -61,13 +63,13 @@
   // --- Persona Management State ---
   let showPersonaModal = false;
   // Draft for creating/editing a persona to avoid modifying the store directly
-  let personaDraft: Omit<Persona, 'id'> & { id: string | null } = {
-      id: null,
-      name: '',
-      description: '',
-      prompt: '',
+  let personaDraft: Omit<Persona, "id"> & { id: string | null } = {
+    id: null,
+    name: "",
+    description: "",
+    prompt: "",
+    tool_names: [], // <-- INCLUIR NO DRAFT
   };
-
 
   // --- Local Copies of Stored Settings ---
   let localGlobalEnabled: boolean = get(globalExtensionEnabledStore);
@@ -102,20 +104,20 @@
   let initialOpenSections: CollapsibleSectionsState;
   let initialShortcutKeys: ShortcutKeysConfig;
 
-  const releasedModules = availableModules.filter(m => m.released !== false);
+  const releasedModules = availableModules.filter((m) => m.released !== false);
 
   const generalModules: Module[] = releasedModules.filter(
-    (m) => m.category === 'general'
+    (m) => m.category === "general",
   );
 
   const shortcutModules: Module[] = releasedModules.filter(
-    (m) => m.category === 'shortcut'
+    (m) => m.category === "shortcut",
   );
 
   const aiModules: Module[] = releasedModules.filter(
-    (m) => m.category === 'ai'
+    (m) => m.category === "ai",
   );
-  
+
   let promotableAiModules: Module[];
   $: promotableAiModules = aiModules.filter(
     (m) => m.promptSettings && m.released !== false,
@@ -129,7 +131,13 @@
    * Resets the draft and opens the modal for creating a new persona.
    */
   function addNewPersona() {
-    personaDraft = { id: null, name: '', description: '', prompt: '' };
+    personaDraft = {
+      id: null,
+      name: "",
+      description: "",
+      prompt: "",
+      tool_names: [],
+    };
     showPersonaModal = true;
   }
 
@@ -146,32 +154,35 @@
    * Saves a new or edited persona to the store.
    */
   function savePersona() {
-  // 1. Validate that required fields are not empty
-  if (!personaDraft.name.trim() || !personaDraft.prompt.trim()) {
-    alert($_('popup.personas.validation_error'));
-    return;
-  }
+    // 1. Validate that required fields are not empty
+    if (!personaDraft.name.trim() || !personaDraft.prompt.trim()) {
+      alert($_("popup.personas.validation_error"));
+      return;
+    }
 
-  if (personaDraft.id) {
-    // 2. LOGIC FOR EDITING: The ID already exists, so we just update the data.
-    personasStore.update(personas =>
-      personas.map(p => (p.id === personaDraft.id ? { ...personaDraft, id: p.id } : p))
-    );
-  } else {
-    // 3. LOGIC FOR ADDING: The ID is null, so we create a new persona.
-    const newPersona: Persona = {
-      // Generate a unique ID using the standard crypto API
-      id: crypto.randomUUID(),
-      name: personaDraft.name,
-      description: personaDraft.description,
-      prompt: personaDraft.prompt,
-    };
-    personasStore.update(personas => [...personas, newPersona]);
-  }
+    if (personaDraft.id) {
+      // 2. LOGIC FOR EDITING: The ID already exists, so we just update the data.
+      personasStore.update((personas) =>
+        personas.map((p) =>
+          p.id === personaDraft.id ? { ...personaDraft, id: p.id } : p,
+        ),
+      );
+    } else {
+      // 3. LOGIC FOR ADDING: The ID is null, so we create a new persona.
+      const newPersona: Persona = {
+        // Generate a unique ID using the standard crypto API
+        id: crypto.randomUUID(),
+        name: personaDraft.name,
+        description: personaDraft.description,
+        prompt: personaDraft.prompt,
+        tool_names: personaDraft.tool_names || [], // Ensure tool_names is always an array
+      };
+      personasStore.update((personas) => [...personas, newPersona]);
+    }
 
-  // 4. Close the modal and mark that changes are pending to be saved.
-  showPersonaModal = false;
-  markChanged();
+    // 4. Close the modal and mark that changes are pending to be saved.
+    showPersonaModal = false;
+    markChanged();
   }
 
   /**
@@ -179,19 +190,20 @@
    * @param {string} personaId The ID of the persona to delete.
    */
   function deletePersona(personaId: string) {
-    const personaToDelete = get(personasStore).find(p => p.id === personaId);
+    const personaToDelete = get(personasStore).find((p) => p.id === personaId);
     if (!personaToDelete) return;
 
     const confirmationMessage = $_("popup.personas.confirm_delete_message", {
-        values: { name: personaToDelete.name }
+      values: { name: personaToDelete.name },
     });
 
     if (window.confirm(confirmationMessage)) {
-        personasStore.update(personas => personas.filter(p => p.id !== personaId));
-        markChanged();
+      personasStore.update((personas) =>
+        personas.filter((p) => p.id !== personaId),
+      );
+      markChanged();
     }
   }
-
 
   /**
    * Fetches the list of available AI models from the selected provider.
@@ -242,28 +254,71 @@
     const unsubs: (() => void)[] = [];
 
     // Subscribe to all stores and mark changes
-    unsubs.push(globalExtensionEnabledStore.subscribe(v => { localGlobalEnabled = v; if (!isLoading) markChanged(); }));
-    unsubs.push(moduleStatesStore.subscribe(v => { localModuleStates = JSON.parse(JSON.stringify(v)); if (!isLoading) markChanged(); }));
-    unsubs.push(shortcutsOverallEnabledStore.subscribe(v => { localShortcutsOverallEnabled = v; if (!isLoading) markChanged(); }));
-    unsubs.push(personasStore.subscribe(() => { if (!isLoading) markChanged(); })); // Listen for persona changes
-    unsubs.push(aiFeaturesEnabledStore.subscribe(v => {
+    unsubs.push(
+      globalExtensionEnabledStore.subscribe((v) => {
+        localGlobalEnabled = v;
+        if (!isLoading) markChanged();
+      }),
+    );
+    unsubs.push(
+      moduleStatesStore.subscribe((v) => {
+        localModuleStates = JSON.parse(JSON.stringify(v));
+        if (!isLoading) markChanged();
+      }),
+    );
+    unsubs.push(
+      shortcutsOverallEnabledStore.subscribe((v) => {
+        localShortcutsOverallEnabled = v;
+        if (!isLoading) markChanged();
+      }),
+    );
+    unsubs.push(
+      personasStore.subscribe(() => {
+        if (!isLoading) markChanged();
+      }),
+    ); // Listen for persona changes
+    unsubs.push(
+      aiFeaturesEnabledStore.subscribe((v) => {
         const prevAiFeaturesEnabled = localAiFeaturesEnabled;
         localAiFeaturesEnabled = v;
         if (!isLoading && prevAiFeaturesEnabled !== localAiFeaturesEnabled) {
-            markChanged();
-            if (localAiFeaturesEnabled && localGlobalEnabled) {
-                refreshModelList();
-            } else {
-                modelList = [];
-                modelError = localGlobalEnabled ? $_("popup.errors.ai.features_disabled") : $_("popup.errors.ai.extension_disabled");
-                if (localAiProviderConfig.model) localAiProviderConfig.model = "";
-            }
+          markChanged();
+          if (localAiFeaturesEnabled && localGlobalEnabled) {
+            refreshModelList();
+          } else {
+            modelList = [];
+            modelError = localGlobalEnabled
+              ? $_("popup.errors.ai.features_disabled")
+              : $_("popup.errors.ai.extension_disabled");
+            if (localAiProviderConfig.model) localAiProviderConfig.model = "";
+          }
         }
-    }));
-    unsubs.push(aiCredentialsStore.subscribe(v => { localAiCredentials = JSON.parse(JSON.stringify(v)); if (!isLoading) markChanged(); }));
-    unsubs.push(aiProviderConfigStore.subscribe(v => { localAiProviderConfig = JSON.parse(JSON.stringify(v)); if (!isLoading) markChanged(); }));
-    unsubs.push(collapsibleSectionsStateStore.subscribe(v => { localOpenSections = JSON.parse(JSON.stringify(v)); if (!isLoading) markChanged(); }));
-    unsubs.push(shortcutKeysStore.subscribe(v => { localShortcutKeys = JSON.parse(JSON.stringify(v)); if (!isLoading) markChanged(); }));
+      }),
+    );
+    unsubs.push(
+      aiCredentialsStore.subscribe((v) => {
+        localAiCredentials = JSON.parse(JSON.stringify(v));
+        if (!isLoading) markChanged();
+      }),
+    );
+    unsubs.push(
+      aiProviderConfigStore.subscribe((v) => {
+        localAiProviderConfig = JSON.parse(JSON.stringify(v));
+        if (!isLoading) markChanged();
+      }),
+    );
+    unsubs.push(
+      collapsibleSectionsStateStore.subscribe((v) => {
+        localOpenSections = JSON.parse(JSON.stringify(v));
+        if (!isLoading) markChanged();
+      }),
+    );
+    unsubs.push(
+      shortcutKeysStore.subscribe((v) => {
+        localShortcutKeys = JSON.parse(JSON.stringify(v));
+        if (!isLoading) markChanged();
+      }),
+    );
 
     // Wait for stores to load from chrome.storage
     setTimeout(() => {
@@ -272,7 +327,9 @@
       initialShortcutsOverallEnabled = localShortcutsOverallEnabled;
       initialAiFeaturesEnabled = localAiFeaturesEnabled;
       initialAiCredentials = JSON.parse(JSON.stringify(localAiCredentials));
-      initialAiProviderConfig = JSON.parse(JSON.stringify(localAiProviderConfig));
+      initialAiProviderConfig = JSON.parse(
+        JSON.stringify(localAiProviderConfig),
+      );
       initialOpenSections = JSON.parse(JSON.stringify(localOpenSections));
       initialShortcutKeys = JSON.parse(JSON.stringify(localShortcutKeys));
 
@@ -312,7 +369,7 @@
         ai: false,
         personas: false,
         prompts: false,
-        [sectionKeyToToggle]: !isCurrentlyOpen // Toggle the clicked one
+        [sectionKeyToToggle]: !isCurrentlyOpen, // Toggle the clicked one
       };
       markChanged();
     }
@@ -339,18 +396,17 @@
 
     // Save all stores, including the personasStore
     await Promise.all([
-        globalExtensionEnabledStore.set(localGlobalEnabled),
-        moduleStatesStore.set({ ...localModuleStates }),
-        shortcutsOverallEnabledStore.set(localShortcutsOverallEnabled),
-        shortcutKeysStore.set({ ...localShortcutKeys }),
-        aiFeaturesEnabledStore.set(localAiFeaturesEnabled),
-        aiCredentialsStore.set({ ...localAiCredentials }),
-        aiProviderConfigStore.set({ ...localAiProviderConfig }),
-        collapsibleSectionsStateStore.set({ ...localOpenSections }),
-        // personasStore is already updated via its own functions,
-        // and persistentStore will save it automatically. No need for direct set here.
+      globalExtensionEnabledStore.set(localGlobalEnabled),
+      moduleStatesStore.set({ ...localModuleStates }),
+      shortcutsOverallEnabledStore.set(localShortcutsOverallEnabled),
+      shortcutKeysStore.set({ ...localShortcutKeys }),
+      aiFeaturesEnabledStore.set(localAiFeaturesEnabled),
+      aiCredentialsStore.set({ ...localAiCredentials }),
+      aiProviderConfigStore.set({ ...localAiProviderConfig }),
+      collapsibleSectionsStateStore.set({ ...localOpenSections }),
+      // personasStore is already updated via its own functions,
+      // and persistentStore will save it automatically. No need for direct set here.
     ]);
-
 
     // Reset initial states to current states
     initialGlobalEnabled = localGlobalEnabled;
@@ -377,8 +433,12 @@
     shortcutsOverallEnabledStore.set(initialShortcutsOverallEnabled);
     aiFeaturesEnabledStore.set(initialAiFeaturesEnabled);
     aiCredentialsStore.set(JSON.parse(JSON.stringify(initialAiCredentials)));
-    aiProviderConfigStore.set(JSON.parse(JSON.stringify(initialAiProviderConfig)));
-    collapsibleSectionsStateStore.set(JSON.parse(JSON.stringify(initialOpenSections)));
+    aiProviderConfigStore.set(
+      JSON.parse(JSON.stringify(initialAiProviderConfig)),
+    );
+    collapsibleSectionsStateStore.set(
+      JSON.parse(JSON.stringify(initialOpenSections)),
+    );
     shortcutKeysStore.set(JSON.parse(JSON.stringify(initialShortcutKeys)));
 
     // For personas, a true "discard" would require storing the initial state on mount too.
@@ -410,15 +470,15 @@
 
   function handleCancelCredentialsModal() {
     if (selectedProviderMetadata && initialAiCredentials) {
-        if (selectedProviderMetadata.apiKeySettings?.credentialKey) {
-            const key = selectedProviderMetadata.apiKeySettings.credentialKey;
-            (localAiCredentials as any)[key] = initialAiCredentials[key];
-        }
-        if (selectedProviderMetadata.baseUrlSettings?.credentialKey) {
-            const key = selectedProviderMetadata.baseUrlSettings.credentialKey;
-            (localAiCredentials as any)[key] = initialAiCredentials[key];
-        }
-        localAiCredentials = { ...localAiCredentials };
+      if (selectedProviderMetadata.apiKeySettings?.credentialKey) {
+        const key = selectedProviderMetadata.apiKeySettings.credentialKey;
+        (localAiCredentials as any)[key] = initialAiCredentials[key];
+      }
+      if (selectedProviderMetadata.baseUrlSettings?.credentialKey) {
+        const key = selectedProviderMetadata.baseUrlSettings.credentialKey;
+        (localAiCredentials as any)[key] = initialAiCredentials[key];
+      }
+      localAiCredentials = { ...localAiCredentials };
     }
     showCredentialsModal = false;
   }
@@ -775,16 +835,16 @@
       >
         <div class="section-item-space">
           <button class="add-item-button" on:click={addNewPersona}>
-              <PlusCircle size={16} />
-              <span>{$_("popup.personas.add_button")}</span>
+            <PlusCircle size={16} />
+            <span>{$_("popup.personas.add_button")}</span>
           </button>
 
           <hr class="sub-separator" />
 
           {#if $personasStore.length === 0}
             <p class="placeholder-text">
-                <Info size={16} class="placeholder-icon" />
-                {$_("popup.personas.no_personas_yet")}
+              <Info size={16} class="placeholder-icon" />
+              {$_("popup.personas.no_personas_yet")}
             </p>
           {:else}
             {#each $personasStore as persona (persona.id)}
@@ -796,10 +856,18 @@
                   </p>
                 </div>
                 <div class="persona-actions">
-                  <button class="button-icon" on:click={() => editPersona(persona)} title={$_('popup.personas.edit_button_title')}>
+                  <button
+                    class="button-icon"
+                    on:click={() => editPersona(persona)}
+                    title={$_("popup.personas.edit_button_title")}
+                  >
                     <Pencil size={16} />
                   </button>
-                  <button class="button-icon-danger" on:click={() => deletePersona(persona.id)} title={$_('popup.personas.delete_button_title')}>
+                  <button
+                    class="button-icon-danger"
+                    on:click={() => deletePersona(persona.id)}
+                    title={$_("popup.personas.delete_button_title")}
+                  >
                     <Trash2 size={16} />
                   </button>
                 </div>
@@ -943,32 +1011,87 @@
   {#if showPersonaModal}
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div class="modal-overlay" on:click={() => showPersonaModal = false}>
+    <div class="modal-overlay" on:click={() => (showPersonaModal = false)}>
       <div class="modal-content" on:click|stopPropagation>
         <div class="modal-header">
           <h3>
-            {$_(personaDraft.id ? 'popup.personas.modal_title_edit' : 'popup.personas.modal_title_add')}
+            {$_(
+              personaDraft.id
+                ? "popup.personas.modal_title_edit"
+                : "popup.personas.modal_title_add",
+            )}
           </h3>
-          <button class="close-button" on:click={() => showPersonaModal = false}>
-            <XCircle size={22}/>
+          <button
+            class="close-button"
+            on:click={() => (showPersonaModal = false)}
+          >
+            <XCircle size={22} />
           </button>
         </div>
         <div class="modal-body">
-            <div class="input-group">
-                <label for="personaName">{$_("popup.personas.name_label")}</label>
-                <input type="text" id="personaName" class="input-field" placeholder={$_("popup.personas.name_placeholder")} bind:value={personaDraft.name} />
+          <div class="input-group">
+            <label for="personaName">{$_("popup.personas.name_label")}</label>
+            <input
+              type="text"
+              id="personaName"
+              class="input-field"
+              placeholder={$_("popup.personas.name_placeholder")}
+              bind:value={personaDraft.name}
+            />
+          </div>
+          <div class="input-group">
+            <label for="personaDescription"
+              >{$_("popup.personas.description_label")}</label
+            >
+            <input
+              type="text"
+              id="personaDescription"
+              class="input-field"
+              placeholder={$_("popup.personas.description_placeholder")}
+              bind:value={personaDraft.description}
+            />
+          </div>
+          <div class="input-group">
+            <label for="personaPrompt"
+              >{$_("popup.personas.prompt_label")}</label
+            >
+            <textarea
+              id="personaPrompt"
+              class="textarea-field"
+              rows="6"
+              placeholder={$_("popup.personas.prompt_placeholder")}
+              bind:value={personaDraft.prompt}
+            ></textarea>
+          </div>
+          <div class="input-group">
+            <!-- svelte-ignore a11y_label_has_associated_control -->
+            <label class="form-label">{$_("popup.personas.tools_label")}</label>
+
+            <div
+              class="checkbox-group"
+              style="max-height: 120px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; border-radius: 6px;"
+            >
+              {#each AVAILABLE_TOOLS_METADATA as tool (tool.id)}
+                <label
+                  class="checkbox-label"
+                  title={$_(tool.description_i18n_key)}
+                >
+                  <input
+                    type="checkbox"
+                    bind:group={personaDraft.tool_names}
+                    value={tool.id}
+                  />
+                  {$_(tool.name_i18n_key)}
+                </label>
+              {/each}
             </div>
-            <div class="input-group">
-                <label for="personaDescription">{$_("popup.personas.description_label")}</label>
-                <input type="text" id="personaDescription" class="input-field" placeholder={$_("popup.personas.description_placeholder")} bind:value={personaDraft.description} />
-            </div>
-            <div class="input-group">
-                <label for="personaPrompt">{$_("popup.personas.prompt_label")}</label>
-                <textarea id="personaPrompt" class="textarea-field" rows="6" placeholder={$_("popup.personas.prompt_placeholder")} bind:value={personaDraft.prompt}></textarea>
-            </div>
+          </div>
         </div>
         <div class="modal-footer">
-          <button class="button-secondary" on:click={() => showPersonaModal = false}>
+          <button
+            class="button-secondary"
+            on:click={() => (showPersonaModal = false)}
+          >
             {$_("popup.buttons.cancel")}
           </button>
           <button class="button-primary" on:click={savePersona}>
@@ -1411,7 +1534,9 @@
     border: 1px dashed #d1d5db; /* gray-300 */
     border-radius: 0.375rem;
     cursor: pointer;
-    transition: background-color 0.2s, border-color 0.2s;
+    transition:
+      background-color 0.2s,
+      border-color 0.2s;
   }
   .add-item-button:hover {
     background-color: #f3f4f6; /* gray-100 */
@@ -1459,7 +1584,8 @@
     flex-shrink: 0;
   }
 
-  .button-icon, .button-icon-danger {
+  .button-icon,
+  .button-icon-danger {
     padding: 4px;
     background: none;
     border: none;
@@ -1469,7 +1595,9 @@
     align-items: center;
     justify-content: center;
     color: #6b7280; /* gray-500 */
-    transition: background-color 0.2s, color 0.2s;
+    transition:
+      background-color 0.2s,
+      color 0.2s;
   }
   .button-icon:hover {
     background-color: #e5e7eb; /* gray-200 */

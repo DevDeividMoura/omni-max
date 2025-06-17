@@ -85,33 +85,33 @@ export const AiProviderConfigDefaults: AiProviderConfig = {
   model: PROVIDER_METADATA_LIST.length > 0 ? (PROVIDER_METADATA_LIST[0].defaultModel || '') : '',
 };
 
-/**
- * @interface Persona
- * @description Defines the structure for a user-configurable agent persona.
- */
 export interface Persona {
   id: string;
   name: string;
   description: string;
   prompt: string;
+  /**
+   * A list of tool names (IDs) that this persona is allowed to use.
+   * Corresponds to the IDs in toolMetadata.ts and keys in masterToolRegistry.
+   */
+  tool_names: string[]; // <-- NOSSO NOVO CAMPO
 }
 
-/**
- * @const {Persona[]} PersonasDefaults
- * @description Default personas to initialize the extension with.
- */
+// Também devemos atualizar o valor padrão
 export const PersonasDefaults: Persona[] = [
   {
-    id: '1718544000000-support', // Example timestamp-based ID
+    id: '1718544000000-support',
     name: 'Suporte Padrão',
     description: 'Assistente geral para resolução de problemas comuns.',
-    prompt: 'You are a helpful support assistant. Your goal is to understand the user\'s issue and provide a clear, step-by-step solution. Be polite and empathetic.'
+    prompt: '...',
+    tool_names: ['get_entire_protocol_history', 'get_latest_messages_from_session'], // <-- Exemplo preenchido
   },
   {
     id: '1718544000001-sales',
     name: 'Vendas Consultivas',
     description: 'Assistente focado em identificar oportunidades e apresentar produtos.',
-    prompt: 'You are a persuasive sales consultant. Your main objective is to identify customer needs and recommend products that solve their problems. Highlight benefits and create a sense of urgency.'
+    prompt: '...',
+    tool_names: ['get_latest_messages_from_session'], // <-- Vendas talvez só precise das msgs recentes
   }
 ];
 
