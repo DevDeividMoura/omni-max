@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { BaseMessage } from "@langchain/core/messages";
+import { type BaseMessage, type StoredMessage } from "@langchain/core/messages";
 import { addMessages, type Messages } from "@langchain/langgraph/web";
 import "@langchain/langgraph/zod";
 
@@ -50,7 +50,7 @@ export const AgentStateSchema = z.object({
    * The base URL of the ASC SAC platform.
    * Required by API service tools to construct endpoint URLs.
    */
-  base_url: z.string().url(),
+  base_url: z.string().url().optional(),
 
   // --- Checkpoint for Client Conversation ---
   /**
@@ -83,6 +83,19 @@ export const AgentStateSchema = z.object({
    * Injected at the start. Optional for most providers.
    */
   llm_base_url: z.string().url().optional(),
+  /**
+   * The ID of the currently active persona.
+   * Used to detect when the user switches personas in the UI.
+   */
+  persona_id: z.string(),
 });
+
+/**
+ * Representa a forma do nosso estado quando está serializado no storage.
+ * É idêntico ao AgentState, mas a propriedade 'messages' é um array de StoredMessage.
+ */
+export type StoredAgentState = Omit<AgentState, "messages"> & {
+  messages: StoredMessage[];
+};
 
 export type AgentState = z.infer<typeof AgentStateSchema>;

@@ -20,6 +20,7 @@ export class AscSacApiService {
   public async getSessionsByContact(contactId: string, baseUrl: string): Promise<RawSession[]> {
     const apiUrl = `${baseUrl}/Painel/atendimento/get-atendimentos/cod_contato/${contactId}`;
     try {
+      console.log(`AscSacApiService: Fetching sessions for contact ${contactId} from ${apiUrl}`);
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
@@ -49,6 +50,7 @@ export class AscSacApiService {
   public async getMessagesBySessionId(sessionId: string, baseUrl: string): Promise<RawMessage[]> {
     const apiUrl = `${baseUrl}/Painel/atendimento/listar-mensagens-por-atendimento`;
     try {
+      console.log(`AscSacApiService: Fetching messages for session ${sessionId} from ${apiUrl}`);
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {

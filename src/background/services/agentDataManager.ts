@@ -1,14 +1,15 @@
 import { localstorageAdapter } from '../../storage/ChromeStorageLocalAdapter';
+import type { StoredAgentState } from '../agent/state';
 
 /**
  * @interface AgentSessionState
  * @description Defines the data structure for a single agent session to be persisted.
  */
 export interface AgentSessionState {
-  /** The complete state of the LangGraph agent's conversation. */
-  agentGraphState: any; // Using `any` for now, will be replaced by LangGraph's state type.
+  /** O estado completo do grafo do agente, em formato serializado. */
+  agentGraphState: StoredAgentState; // <-- CORREÇÃO: Usar o tipo de armazenamento
 
-  /** The timestamp of the last client message processed by the agent. */
+  /** O timestamp da última mensagem do cliente processada pelo agente. */
   lastProcessedClientMessageTimestamp: number | null;
 }
 

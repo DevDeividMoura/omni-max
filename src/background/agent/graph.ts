@@ -1,7 +1,7 @@
 import { type ToolCall } from "@langchain/core/messages/tool";
 import { ToolNode } from "@langchain/langgraph/prebuilt";
 import { StateGraph, END, Command, START } from "@langchain/langgraph/web";
-import { AIMessage, BaseMessage, HumanMessage } from "@langchain/core/messages";
+import { AIMessage, BaseMessage, SystemMessage } from "@langchain/core/messages";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import type { AgentState } from "./state";
 
@@ -83,17 +83,41 @@ async function intentRouterNode(state: AgentState): Promise<Partial<AgentState> 
 /**
  * @node agentNode
  * @description O cérebro principal do agente (ciclo ReAct). Decide se responde ao
- * usuário ou se chama uma ferramenta.
+ * usuário ou se chama uma ferramenta, agora com pleno conhecimento do contexto.
  */
 async function agentNode(state: AgentState): Promise<Partial<AgentState>> {
   console.log("[Graph] Executing Main Agent Node");
+
+  // 1. Criamos a instância do LLM como antes
   const llm = createLlmInstance(state);
   const tools = Object.values(masterToolRegistry);
   const llmWithTools = llm.bindTools!(tools);
+
+  // 2. Construímos a mensagem de sistema com o contexto completo
+  const systemMessageWithContext = new SystemMessage({
+    content: `
+      # Persona
+      ${state.system_prompt}
+
+      # Contextual Information
+      - Current Date/Time: ${new Date().toISOString()}
+      - Customer Service Protocol Number: ${state.protocol_number}
+      - Current Attendance ID: ${state.attendance_id}
+      - Customer Contact ID: ${state.contact_id}
+      - Platform Base URL: ${state.base_url}
+
+      # Instructions
+      Based on your persona and the contextual information provided, analyze the user's request from the message history.
+      You have access to a set of tools to gather more information if needed.
+      Decide whether to call one or more tools or to respond directly to the user.
+    `,
+  });
+
+  // 3. Montamos o payload final para o LLM
+  const messagesForLlm = [systemMessageWithContext, ...state.messages];
   
-  // O prompt do sistema da persona já está no estado, mas LangGraph o pega de lá.
-  // Para garantir, podemos adicionar a system message aqui se necessário.
-  const ai_response = await llmWithTools.invoke(state.messages);
+  // 4. Invocamos o LLM com o contexto injetado
+  const ai_response = await llmWithTools.invoke(messagesForLlm);
 
   return { messages: [ai_response] };
 }
