@@ -38,6 +38,7 @@
     messages[messages.length - 1].isThinking === true;
 
   // --- Component's Internal State ---
+  let streamingContent = '';
   let inputValue = "";
   let isMCPPopupOpen = false;
   let selectedPersonaId: string | undefined;
@@ -124,66 +125,103 @@
 
   // --- Event Handlers ---
   async function handleBackgroundMessage(message: any) {
-    if (
-      message.type === "agentResponse" &&
-      message.context?.protocolNumber === protocolNumber &&
-      protocolNumber
-    ) {
-      const formattedHtml = await marked.parse(message.reply);
-      agentChatStore.updateLastAiMessage(protocolNumber, formattedHtml);
-      scrollToBottom();
+    if (message.context?.protocolNumber !== protocolNumber) return;
+    // if (!message.type || !['agentChunk', 'agentStreamEnd', 'agentError'].includes(message.type)) return;
+    if (!protocolNumber) return;
+        
+    switch (message.type) {
+      case 'agentTokenChunk':
+        // Acumula o conteúdo recebido
+        streamingContent += message.token;
+        const formattedStream = await marked.parse(streamingContent);
+        console.log("Received token chunk:", message.token);
+        // Atualiza a UI com o conteúdo acumulado
+        agentChatStore.updateLastAiMessage(protocolNumber, formattedStream, message.messageId); 
+        console.log("Updated AI message with streaming content.");
+        scrollToBottom();
+        break;
+
+      case 'agentToolEnd':
+        // Limpa o acumulador de streaming para a próxima resposta do LLM
+        streamingContent = ''; 
+        const toolResultContent = `*Ferramenta ${message.toolName} retornou:* \n \`\`\`\n${message.toolOutput}\n\`\`\``;
+        console.log("Tool result content:", toolResultContent);
+        const formattedToolResult = await marked.parse(toolResultContent);
+        // Atualiza a bolha da IA com o resultado da ferramenta e adiciona um novo placeholder
+        agentChatStore.updateLastAiMessage(protocolNumber, formattedToolResult);
+        console.log("Updated AI message with tool result.");
+        agentChatStore.addEmptyAiMessage(protocolNumber);
+        console.log("Added new placeholder for next AI message.");
+        scrollToBottom();
+        break;
+      
+      case 'agentStreamEnd':
+        // Finaliza a última mensagem e limpa o acumulador
+        streamingContent = ''; 
+        agentChatStore.finalizeLastAiMessage(protocolNumber);
+        console.log("Agent stream finished.");
+        break;
+
+      case 'agentError':
+        // ... (tratamento de erro) ...
+        streamingContent = ''; 
+        agentChatStore.finalizeLastAiMessage(protocolNumber);
+        console.error("Agent error:", message.error);
+        break;
     }
   }
 
-  async function handleSendMessage(query: string) {
-    if (!query.trim() || !context || !protocolNumber || !selectedPersonaId)
-      return;
-
-    inputValue = ""; // Clear input immediately
-    if (textareaEl) {
-      textareaEl.style.height = "auto";
+ /**
+   * NOVA FUNÇÃO CENTRALIZADORA
+   * Esta função agora contém toda a lógica de chamar o agente e tratar a resposta.
+   * @param agentQuery O prompt/query que será enviado para o backend.
+   * @param displayMessage A mensagem que será exibida na UI para o usuário.
+   */
+  async function _invokeAgentAndHandleResponse(agentQuery: string, displayMessage: string) {
+    if (!agentQuery.trim() || !context || !protocolNumber) return;
+    if (!selectedPersonaId) {
+      console.warn("Nenhuma persona selecionada. Usando a padrão.");
+      selectedPersonaId = availablePersonas[0]?.id; // Usa a primeira persona disponível
     }
 
-    agentChatStore.addMessage(protocolNumber, query);
+    // Limpa o acumulador de streaming antes de uma nova invocação
+    streamingContent = '';
+
+    const formattedDisplay = await marked.parse(displayMessage);
+    agentChatStore.addUserMessage(protocolNumber, formattedDisplay);
+    agentChatStore.addEmptyAiMessage(protocolNumber);
     scrollToBottom();
-
-    try {
-      await agentService.invoke({
-        context,
-        query,
-        personaId: selectedPersonaId,
-      });
-    } catch (error) {
-      console.error("Error invoking agent:", error);
-      const errorMessage = await t("assistant.errors.invoke_failed", {
-        values: { message: (error as Error).message },
-      });
-      agentChatStore.updateLastAiMessage(protocolNumber, errorMessage);
-    }
+    
+    agentService.invoke({
+      context,
+      query: agentQuery,
+      personaId: selectedPersonaId,
+    });
+  }
+  /**
+   * FUNÇÃO REATORADA: Agora ela apenas delega para a função central.
+   */
+  async function handleSendMessage(query: string) {
+    // Limpa a UI
+    inputValue = "";
+    if (textareaEl) textareaEl.style.height = "auto";
+    
+    // A query digitada é tanto o que o agente recebe quanto o que o usuário vê.
+    await _invokeAgentAndHandleResponse(query, query);
   }
 
+  /**
+   * FUNÇÃO REATORADA: Agora ela também apenas delega para a função central.
+   */
   async function handleSuggestionClick(suggestion: (typeof suggestions)[0]) {
     if (!context || !protocolNumber || !selectedPersonaId) return;
 
-    const hiddenPrompt = await t(suggestion.promptKey);
-    const userFacingMessage = await t(suggestion.titleKey);
+    // Prepara as duas versões da mensagem
+    const hiddenPrompt = await t(suggestion.promptKey); // Para o agente
+    const userFacingMessage = await t(suggestion.titleKey); // Para a UI
 
-    agentChatStore.addMessage(protocolNumber, userFacingMessage);
-    scrollToBottom();
-
-    try {
-      await agentService.invoke({
-        context,
-        query: hiddenPrompt,
-        personaId: selectedPersonaId,
-      });
-    } catch (error) {
-      console.error("Error invoking agent from suggestion:", error);
-      const errorMessage = await t("assistant.errors.invoke_failed", {
-        values: { message: (error as Error).message },
-      });
-      agentChatStore.updateLastAiMessage(protocolNumber, errorMessage);
-    }
+    // Chama a função central com os parâmetros corretos
+    await _invokeAgentAndHandleResponse(hiddenPrompt, userFacingMessage);
   }
 
   function handlePersonaSelect(selectedId: string) {

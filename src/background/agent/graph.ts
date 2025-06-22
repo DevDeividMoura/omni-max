@@ -1,11 +1,14 @@
 import { type ToolCall } from "@langchain/core/messages/tool";
 import { ToolNode } from "@langchain/langgraph/prebuilt";
-import { StateGraph, END, Command, START } from "@langchain/langgraph/web";
+import { StateGraph, START, END } from "@langchain/langgraph/web";
 import { AIMessage, BaseMessage, SystemMessage } from "@langchain/core/messages";
+import type { RunnableConfig } from "@langchain/core/runnables";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import type { AgentState } from "./state";
 
 import { masterToolRegistry } from "./tools";
+import { getEntireProtocolHistoryTool, getLatestMessagesFromSessionTool } from './tools/ascSacTools';
+
 import { AgentStateSchema } from "./state";
 
 // Importa todas as classes de LLM que suportamos
@@ -15,7 +18,9 @@ import { ChatOllama } from "@langchain/ollama";
 import { ChatAnthropic } from "@langchain/anthropic";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 
-const INTENT = "intent_router" as const;
+import { IndexedDBCheckpointer } from '../services/indexedDBCheckpointer';
+
+const CONTEXT_INJECTOR = "contextInjector" as const;
 const AGENT  = "agent" as const;
 const TOOLS  = "tools" as const;
 
@@ -49,35 +54,61 @@ function createLlmInstance(state: AgentState): BaseChatModel {
 // Nós do Grafo
 
 /**
- * @node intentRouterNode
- * @description O ponto de entrada do grafo. Classifica a intenção do usuário para
- * rotear o fluxo de trabalho de forma eficiente.
+ * @node contextInjectorNode
+ * @description Este nó é o novo ponto de entrada. Ele verifica se é a primeira
+ * interação e injeta o contexto apropriado (histórico completo ou apenas novas mensagens)
+ * no estado do grafo antes de passar para o agente principal.
  */
-async function intentRouterNode(state: AgentState): Promise<Partial<AgentState> & Command> {
-  console.log("[Graph] Executing Intent Router Node");
-  const { messages } = state;
-  const userQuery = messages[messages.length - 1].content as string;
+async function contextInjectorNode(state: AgentState, config?: RunnableConfig): Promise<Partial<AgentState>> {
+  // A primeira mensagem do usuário já estará no estado. Se houver apenas uma, é a primeira interação.
+  const isFirstInteraction = state.messages.length === 1;
 
-  const routingPrompt = `
-    Given the user query, classify its primary intent into one of the following categories:
-    - "summarize": If the user is asking for a summary, overview, or recap of the customer conversation.
-    - "contextual_qa": If the user is asking a specific question about the customer conversation that likely requires reading the chat history (e.g., "What is the customer's document number?", "What was the last thing the customer said?").
-    - "general_instruction": For any other instruction, like asking for response ideas, general knowledge, or performing an action not directly related to the chat history.
+  // As informações de contexto agora vêm do 'configurable' no config.
+  const context = {
+    contactId: config?.configurable?.contactId,
+    protocolNumber: config?.configurable?.protocolNumber,
+    attendanceId: config?.configurable?.attendanceId,
+    baseUrl: config?.configurable?.baseUrl,
+  };
 
-    User query: "${userQuery}"
+  if (!context.attendanceId) {
+      throw new Error("ID do Atendimento (attendanceId) não encontrado na configuração.");
+  }
+  
+  if (isFirstInteraction) {
+    console.log(`[Context Injector] Primeira interação. Buscando histórico completo...`);
+    const history = await getEntireProtocolHistoryTool.invoke({
+        contactId: context.contactId,
+        protocolNumber: context.protocolNumber,
+        baseUrl: context.baseUrl
+    });
+    
+    const contextMessage = new SystemMessage({
+        content: `CONTEXTO: O histórico completo da conversa até este ponto é fornecido abaixo:\n\n---\n${history}\n---`,
+    });
+    console.log(`[Context Injector] Histórico completo injetado.`);
+    return { messages: [contextMessage] };
 
-    Respond with only one of the category names: "summarize", "contextual_qa", or "general_instruction".`;
+  } else {
+    console.log(`[Context Injector] Interação subsequente. Buscando novas mensagens...`);
+    const newMessages = await getLatestMessagesFromSessionTool.invoke({
+        sessionId: context.attendanceId,
+        baseUrl: context.baseUrl,
+        since_timestamp: state.last_processed_client_message_timestamp ?? undefined
+    });
 
-  const llm = createLlmInstance(state);
-  const response = await llm.invoke(routingPrompt);
-  const intent = response.content.toString().trim().replace(/"/g, "");
-
-  console.log(`[Graph] Intent classified as: ${intent}`);
-
-  // Por enquanto, todas as intenções acionam o agente principal.
-  // No futuro, podemos ter nós especializados para cada intenção.
-  // A ação aqui é retornar um "Command" para ir para o próximo nó.
-  return new Command({ goto: "agent" });
+    if (newMessages && !newMessages.startsWith("No new messages")) {
+        const contextMessage = new SystemMessage({
+            content: `ATUALIZAÇÃO DE CONTEXTO: Novas mensagens desde sua última interação são fornecidas abaixo:\n\n---\n${newMessages}\n---`,
+        });
+        console.log(`[Context Injector] Novas mensagens injetadas.`);
+        return { messages: [contextMessage] };
+    } else {
+        console.log(`[Context Injector] Nenhuma nova mensagem para injetar.`);
+        // Retorna um objeto vazio pois não há alteração no estado
+        return {};
+    }
+  }
 }
 
 /**
@@ -85,15 +116,20 @@ async function intentRouterNode(state: AgentState): Promise<Partial<AgentState> 
  * @description O cérebro principal do agente (ciclo ReAct). Decide se responde ao
  * usuário ou se chama uma ferramenta, agora com pleno conhecimento do contexto.
  */
-async function agentNode(state: AgentState): Promise<Partial<AgentState>> {
+async function agentNode(
+  state: AgentState, 
+  config?: RunnableConfig // ADICIONADO: Recebe a configuração do grafo
+): Promise<Partial<AgentState>> {
   console.log("[Graph] Executing Main Agent Node");
 
-  // 1. Criamos a instância do LLM como antes
   const llm = createLlmInstance(state);
-  const tools = Object.values(masterToolRegistry);
-  const llmWithTools = llm.bindTools!(tools);
+  // Filtra as ferramentas disponíveis com base na persona
+  const availableTools = state.available_tool_names
+    .map(toolName => masterToolRegistry[toolName])
+    .filter(Boolean);
 
-  // 2. Construímos a mensagem de sistema com o contexto completo
+  const llmWithTools = llm.bindTools!(availableTools);
+
   const systemMessageWithContext = new SystemMessage({
     content: `
       # Persona
@@ -107,17 +143,17 @@ async function agentNode(state: AgentState): Promise<Partial<AgentState>> {
       - Platform Base URL: ${state.base_url}
 
       # Instructions
-      Based on your persona and the contextual information provided, analyze the user's request from the message history.
-      You have access to a set of tools to gather more information if needed.
-      Decide whether to call one or more tools or to respond directly to the user.
+      The relevant conversation history has been provided to you in a ToolMessage.
+      Your primary goal is to use your persona and this provided context to answer the user's latest query.
+      You can still use your available tools if you need to fetch NEW or DIFFERENT information that is not present in the provided history.
+      Decide whether to call a tool or to respond directly to the user.
     `,
   });
-
-  // 3. Montamos o payload final para o LLM
+  
   const messagesForLlm = [systemMessageWithContext, ...state.messages];
   
-  // 4. Invocamos o LLM com o contexto injetado
-  const ai_response = await llmWithTools.invoke(messagesForLlm);
+  // ALTERADO: Passa o objeto `config` para a chamada do LLM
+  const ai_response = await llmWithTools.invoke(messagesForLlm, config);
 
   return { messages: [ai_response] };
 }
@@ -168,13 +204,13 @@ console.log("[Graph] Defining workflow...");
 const workflow = new StateGraph(AgentStateSchema);
 
 // 1. Adicionar os Nós
-workflow.addNode(INTENT, intentRouterNode);
+workflow.addNode(CONTEXT_INJECTOR, contextInjectorNode);
 workflow.addNode(AGENT, agentNode);
 workflow.addNode(TOOLS, toolNode);
 
 // 2. Definir as Conexões (Edges)
-(workflow as any).addEdge(START, INTENT);
-(workflow as any).addEdge(INTENT, AGENT);
+(workflow as any).addEdge(START, CONTEXT_INJECTOR); 
+(workflow as any).addEdge(CONTEXT_INJECTOR, AGENT);
 (workflow as any).addEdge(TOOLS, AGENT);
 
 // A borda condicional controla o loop do agente principal
@@ -184,5 +220,6 @@ workflow.addNode(TOOLS, toolNode);
 });
 
 console.log("[Graph] Compiling graph...");
-export const app = workflow.compile();
+const checkpointer = new IndexedDBCheckpointer();
+export const app = workflow.compile({ checkpointer });
 console.log("[Graph] Graph compiled successfully!");

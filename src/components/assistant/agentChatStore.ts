@@ -1,10 +1,14 @@
+// agentChatStore.ts - VERSÃO REVISADA E CORRIGIDA
+
 import { writable } from 'svelte/store';
+import type { AgentState } from '../../background/agent/state';
 
 export type ChatMessage = {
   id: string;
   type: "user" | "ai";
-  content: string;
+  content: string; // Sempre será HTML renderizado
   isThinking?: boolean;
+  finalState?: AgentState; 
 };
 
 export interface SessionChatState {
@@ -13,66 +17,80 @@ export interface SessionChatState {
 
 const { subscribe, update } = writable<Record<string, SessionChatState>>({});
 
-function getOrCreateSession(sessionId: string): SessionChatState {
-    let session: SessionChatState | undefined;
-    update(store => {
-        if (!store[sessionId]) {
-            store[sessionId] = { messages: [] };
-        }
-        session = store[sessionId];
-        return store;
-    });
-    return session!;
+function getOrCreateSession(store: Record<string, SessionChatState>, sessionId: string): SessionChatState {
+  if (!store[sessionId]) {
+    store[sessionId] = { messages: [] };
+  }
+  return store[sessionId];
 }
 
 export const agentChatStore = {
   subscribe,
   
-  // CORREÇÃO: A função agora aceita apenas o 'content' da mensagem do usuário como string.
-  addMessage: (sessionId: string, userMessageContent: string) => {
+  addUserMessage: (sessionId: string, userMessageContent: string) => {
     update(store => {
-      const session = getOrCreateSession(sessionId);
-      
-      // Adiciona a mensagem do usuário usando o content recebido.
+      const session = getOrCreateSession(store, sessionId);
       session.messages.push({
         id: crypto.randomUUID(),
         type: 'user',
-        content: userMessageContent 
+        content: userMessageContent,
+        isThinking: false,
       });
-      
-      // Adiciona o placeholder "pensando" da IA.
-      session.messages.push({
-        id: crypto.randomUUID(),
-        type: 'ai',
-        content: '',
-        isThinking: true
-      });
-
       return { ...store, [sessionId]: session };
     });
   },
 
-  updateLastAiMessage: (sessionId: string, finalContent: string) => {
+  addEmptyAiMessage: (sessionId: string) => {
     update(store => {
-        const session = store[sessionId];
-        if (!session || session.messages.length === 0) return store;
-        
-        const lastMessageIndex = session.messages.length - 1;
-        const lastMessage = session.messages[lastMessageIndex];
+      const session = getOrCreateSession(store, sessionId);
+      session.messages.push({
+        id: `temp-${crypto.randomUUID()}`, // ID sempre temporário
+        type: 'ai',
+        content: '', // Conteúdo começa vazio
+        isThinking: true,
+      });
+      return { ...store, [sessionId]: session };
+    });
+  },
+  
+  // Esta função agora é a ÚNICA que atualiza o conteúdo de uma mensagem de IA
+  updateLastAiMessage: (sessionId: string, newContent: string, messageId?: string) => {
+    update(store => {
+      const session = store[sessionId];
+      if (!session || session.messages.length === 0) return store;
+      
+      const lastMessage = session.messages[session.messages.length - 1];
 
-        if (lastMessage && lastMessage.type === 'ai') {
-            lastMessage.content = finalContent;
+      if (lastMessage && lastMessage.type === 'ai') {
+        // Na primeira atualização, remove o "pensando" e define o conteúdo
+        if (lastMessage.isThinking) {
             lastMessage.isThinking = false;
         }
-        
-        return { ...store, [sessionId]: session };
+        lastMessage.content = newContent; // Substitui completamente o conteúdo com a versão mais recente
+        if (messageId && lastMessage.id.startsWith('temp-')) {
+          lastMessage.id = messageId; // Atualiza para o ID real
+        }
+      }
+      return { ...store, [sessionId]: session };
     });
   },
 
+  finalizeLastAiMessage: (sessionId: string) => {
+     update(store => {
+        const session = store[sessionId];
+        if (!session || session.messages.length === 0) return store;
+        const lastMessage = session.messages[session.messages.length - 1];
+        if (lastMessage && lastMessage.type === 'ai') {
+           lastMessage.isThinking = false;
+        }
+        return { ...store, [sessionId]: session };
+     });
+  },
+  
   clearSession: (sessionId: string) => {
     update(store => {
       delete store[sessionId];
-      return store;
+      return { ...store };
     });
     console.log(`AgentChatStore: Cleared session for ${sessionId}`);
   }
