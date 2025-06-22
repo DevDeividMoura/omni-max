@@ -1,62 +1,142 @@
+// src/background/index.ts
+
 import { get } from 'svelte/store';
-import {  
-  HumanMessage, 
-  SystemMessage, 
-} from "@langchain/core/messages";
-import {
-  personasStore,
-  aiProviderConfigStore,
-  aiCredentialsStore,
-  type Persona
-} from '../storage/stores';
-import { PROVIDER_METADATA_MAP } from '../ai/providerMetadata';
-import { masterToolRegistry } from './agent/tools';
-
-import type { AgentState } from './agent/state';
-
-import { IndexedDBCheckpointer } from './services/indexedDBCheckpointer';
-import { app as agentGraph } from './agent/graph';
+import { HumanMessage, SystemMessage, AIMessageChunk, type BaseMessage } from "@langchain/core/messages";
 import type { RunnableConfig } from "@langchain/core/runnables";
 
-import type { AIMessageChunk } from "@langchain/core/messages";
+import { personasStore, aiProviderConfigStore, aiCredentialsStore, type Persona } from '../storage/stores';
+import { PROVIDER_METADATA_MAP } from '../ai/providerMetadata';
+import { masterToolRegistry } from './agent/tools';
+import { app as agentGraph } from './agent/graph';
+import type { AgentState, StoredAgentState } from './agent/state';
+import { IndexedDBCheckpointer } from './services/indexedDBCheckpointer';
+
+// --- Inicialização e Configuração Global ---
 
 const checkpointer = new IndexedDBCheckpointer();
 
-// Carrega as personas
-let availablePersonas: Persona[] = get(personasStore);
+// Configuração do LangSmith para tracing
+setupLangSmith();
+
+// Carrega e observa as personas da store do Svelte
+let availablePersonas: Persona[] = [];
 personasStore.subscribe(updatedPersonas => {
   availablePersonas = updatedPersonas;
+  console.log('[Background] Personas updated:', availablePersonas.map(p => p.name));
 });
 
-// Listener principal
+// --- Tipos de Handlers para Mensagens ---
+
+/**
+ * @type MessageHandler
+ * @description Define a assinatura para todas as funções que manipulam mensagens recebidas.
+ */
+type MessageHandler = (
+  request: any,
+  sender: chrome.runtime.MessageSender,
+  sendResponse: (response?: any) => void
+) => void | Promise<void>;
+
+// --- Registro de Handlers ---
+
+/**
+ * @const {Map<string, MessageHandler>} messageHandlers
+ * @description Um registro central que mapeia tipos de requisição para suas funções manipuladoras.
+ * Este é o coração do nosso padrão de design desacoplado.
+ */
+const messageHandlers = new Map<string, MessageHandler>([
+  ['getAgentState', handleGetAgentState],
+  ['invokeAgent', handleInvokeAgent],
+  ['changePersona', handleChangePersona],
+]);
+
+// --- Listener Principal (Dispatcher) ---
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.type === 'invokeAgent') {
-    if (!sender.tab?.id) {
-      sendResponse({ success: false, error: "Cannot process request without sender tab ID."  });
-      return false; // Retorna false para indicar que não haverá resposta assíncrona
-    }
+  console.log(`[Background] Message received: ${request.type}`);
 
-    const { query } = request;
+  const handler = messageHandlers.get(request.type);
 
-    if (query.startsWith('/')) {
-      const toolName = query.substring(1).trim();
-      executeToolCommand(toolName, request.context, sender, sendResponse);
-    } else {
-      invokeStatefulAgent(request, sender); // <- Chamada da função "callback"
-    }
-    return true; // Indica que a resposta será assíncrona
+  if (handler) {
+    // Encontrou um handler, executa-o.
+    // O `return true` é essencial para indicar ao Chrome que a `sendResponse`
+    // será chamada de forma assíncrona.
+    Promise.resolve(handler(request, sender, sendResponse)).catch(error => {
+      console.error(`[Background] Error in handler for "${request.type}":`, error);
+      sendResponse({ success: false, error: error.message });
+    });
+    return true;
   }
 
-  if (request.type === 'changePersona') {
-    console.log("Persona change request received for:", request.context.protocolNumber);
-  }
-  return false;
+  // Se nenhum handler for encontrado, opcionalmente loga um aviso.
+  console.warn(`[Background] No handler found for message type: "${request.type}"`);
+  return false; // Indica que não haverá resposta assíncrona.
 });
 
-// CORREÇÃO #1: Adotando sua sugestão de type casting para o invoke da ferramenta.
+// ======================================================================
+// --- Funções Manipuladoras (Handlers) ---
+// Cada função agora é autônoma e registrada no mapa `messageHandlers`.
+// ======================================================================
+
+/**
+ * @handler handleGetAgentState
+ * @description Busca o estado salvo de uma sessão de chat no IndexedDB e o retorna para a UI.
+ * É essencial para restaurar o chat ao recarregar a página.
+ */
+async function handleGetAgentState(request: any, sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) {
+  if (!sender.tab?.id) return;
+
+  const config: RunnableConfig = {
+    configurable: { thread_id: request.context.attendanceId },
+  };
+
+  const tuple = await checkpointer.getTuple(config);
+
+  if (tuple) {
+    // O `getTuple` já retorna o checkpoint com `channel_values` pronto para uso.
+    // A única coisa a garantir é que as mensagens dentro de channel_values estejam no formato correto para a UI.
+    const messages = tuple.checkpoint.channel_values.messages as BaseMessage[];
+ 
+    const stateForUi: Partial<StoredAgentState> = {
+      ...tuple.checkpoint.channel_values,
+      messages: messages.map((msg: BaseMessage) => msg.toDict()),
+    };
+    sendResponse({ success: true, state: stateForUi });
+  } else {
+    sendResponse({ success: false, state: null });
+  }
+}
+
+/**
+ * @handler handleInvokeAgent
+ * @description Ponto de entrada para invocar o agente. Roteia para um comando de ferramenta (slash command)
+ * ou para a lógica principal do agente de conversação.
+ */
+async function handleInvokeAgent(request: any, sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) {
+  const { query } = request;
+  if (query.startsWith('/')) {
+    const toolName = query.substring(1).trim();
+    return executeToolCommand(toolName, request.context, sender, sendResponse);
+  } else {
+    return invokeStatefulAgent(request, sender);
+  }
+}
+
+/**
+ * @handler handleChangePersona
+ * @description Manipula a mudança de persona (atualmente apenas loga a ação).
+ */
+function handleChangePersona(request: any) {
+  console.log(`[Background] Persona change request received for protocol: ${request.context.protocolNumber}. New persona ID: ${request.newPersonaId}`);
+  // Aqui você pode adicionar lógica para atualizar o estado do agente com a nova persona, se necessário.
+}
+
+/**
+ * @function executeToolCommand
+ * @description Executa uma ferramenta diretamente via um slash command (ex: /get_history) e envia o resultado de volta para a UI.
+ */
 async function executeToolCommand(toolName: string, context: any, sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) {
-  console.log(`[Background] Slash command for tool: ${toolName}`);
-  const tabId = sender.tab!.id!;
+  console.log(`[Background] Executing slash command for tool: ${toolName}`);
   const toolToExecute = masterToolRegistry[toolName];
   let reply: string;
 
@@ -67,127 +147,87 @@ async function executeToolCommand(toolName: string, context: any, sender: chrome
   } else {
     try {
       const baseUrl = new URL(sender.tab.url).origin;
-      let result: any;
-      
-      // Usando o type casting que você sugeriu para resolver o erro de tipo
-      if (toolName === 'get_entire_protocol_history') {
-        result = await (toolToExecute as any).invoke({ contactId: context.contactId, protocolNumber: context.protocolNumber, baseUrl });
-      } else if (toolName === 'get_latest_messages_from_session') {
-        result = await (toolToExecute as any).invoke({ sessionId: context.attendanceId, baseUrl });
-      } else {
-        throw new Error(`No handler for tool: ${toolName}`);
-      }
-
+      const result = await (toolToExecute as any).invoke({ ...context, baseUrl });
       reply = '```json\n' + JSON.stringify(result, null, 2) + '\n```';
     } catch (error: any) {
       reply = `\`\`\`\n❌ Error executing tool "${toolName}":\n\n${error.message}\n\`\`\``;
     }
   }
-  sendResponse({ success: true, reply: reply });
+  sendResponse({ success: true, reply }); // Retorna a resposta diretamente para a UI.
 }
 
+/**
+ * @function invokeStatefulAgent
+ * @description Lida com a lógica principal de invocar o grafo LangGraph, gerenciando o estado e o streaming.
+ */
 async function invokeStatefulAgent(request: any, sender: chrome.runtime.MessageSender) {
   const { context, query, personaId } = request;
   const tabId = sender.tab!.id!;
   const baseUrl = new URL(sender.tab!.url!).origin;
 
   try {
-    // 1. Crie o objeto de configuração. Ele é a chave para a memória.
     const config: RunnableConfig = {
       configurable: {
         thread_id: context.attendanceId,
-        // Passamos todo o contexto aqui para que os nós possam usá-lo
         protocolNumber: context.protocolNumber,
         attendanceId: context.attendanceId,
         contactId: context.contactId,
         baseUrl: baseUrl,
       },
     };
-    
-    // 2. Verifique se é a primeira vez para injetar o estado inicial.
-    // Usamos o próprio checkpointer para isso.
-    const threadState = await checkpointer.get(config);
 
+    const thread = await checkpointer.get(config);
     let inputs: Partial<AgentState>;
 
-    if (!threadState) {
-      console.log(`[Background] Criando novo estado para attendance ${context.attendanceId}.`);
-      const firstPersona = availablePersonas.find(p => p.id === personaId) ?? availablePersonas[0];
-      if (!firstPersona) throw new Error("Nenhuma persona configurada.");
-      
-      // Na primeira vez, passamos o estado inicial completo.
-      inputs = createInitialState(firstPersona, context, sender);
-      inputs.messages = [new HumanMessage(query)]; // Adiciona a primeira query
+    if (!thread) {
+      console.log(`[Agent] Creating new state for attendance ${context.attendanceId}.`);
+      const persona = availablePersonas.find(p => p.id === personaId) ?? availablePersonas[0];
+      if (!persona) throw new Error("No persona configured.");
+      inputs = createInitialState(persona, context, sender);
+      inputs.messages = [new HumanMessage(query)];
     } else {
-      console.log(`[Background] Estado existente encontrado para attendance ${context.attendanceId}.`);
-      // Nas vezes seguintes, passamos APENAS a nova mensagem.
-      inputs = {
-        messages: [new HumanMessage(query)],
-      };
+      console.log(`[Agent] Existing state found for attendance ${context.attendanceId}.`);
+      inputs = { messages: [new HumanMessage(query)] };
     }
-    
-    // 3. Use .stream() para uma UI reativa!
-    console.log("[Background] Invoking agent stream...");
-    const eventStream = await agentGraph.streamEvents(inputs, { ...config, version: "v2" });
+
+    console.log("[Agent] Invoking agent stream...");
+    const eventStream = agentGraph.streamEvents(inputs, { ...config, version: "v2" });
 
     for await (const event of eventStream) {
-      // Filtramos pelos eventos que nos interessam
       switch (event.event) {
         case "on_llm_stream": {
           const chunk = event.data.chunk as AIMessageChunk;
           if (typeof chunk.content === "string" && chunk.content.length > 0) {
-            // Envia cada token para a UI
-            chrome.tabs.sendMessage(tabId, {
-              type: 'agentTokenChunk',
-              token: chunk.content,
-              messageId: chunk.id, // Envia o ID para consistência
-              context
-            });
+            chrome.tabs.sendMessage(tabId, { type: "agentTokenChunk", token: chunk.content, messageId: chunk.id, context });
           }
           break;
         }
         case "on_tool_end": {
-            // Informa a UI sobre o resultado da ferramenta
-            chrome.tabs.sendMessage(tabId, {
-                type: 'agentToolEnd',
-                toolOutput: event.data.output,
-                toolName: event.name,
-                context
-            });
-            break;
+          chrome.tabs.sendMessage(tabId, { type: "agentToolEnd", toolOutput: event.data.output, toolName: event.name, context });
+          break;
         }
       }
     }
 
-    // Envia o sinal de fim para a UI
-    chrome.tabs.sendMessage(tabId, {
-      type: 'agentStreamEnd',
-      context
-    });
-
+    chrome.tabs.sendMessage(tabId, { type: "agentStreamEnd", context });
   } catch (e: any) {
-    chrome.tabs.sendMessage(tabId, {
-      type: 'agentError',
-      error: e.message,
-      context
-    });
+    chrome.tabs.sendMessage(tabId, { type: "agentError", error: e.message, context });
   }
 }
 
-/**
- * Cria o estado inicial para uma nova sessão de chat.
- */
+// --- Funções Auxiliares (sem alterações) ---
+
 function createInitialState(persona: Persona, context: any, sender: chrome.runtime.MessageSender): AgentState {
   const providerConfig = get(aiProviderConfigStore);
   const credentials = get(aiCredentialsStore);
   const providerMeta = PROVIDER_METADATA_MAP.get(providerConfig.provider)!;
-  
+
   let apiKey: string | undefined, baseUrl: string | undefined;
   if (providerMeta.apiKeySettings?.credentialKey) apiKey = credentials[providerMeta.apiKeySettings.credentialKey];
   if (providerMeta.baseUrlSettings?.credentialKey) baseUrl = credentials[providerMeta.baseUrlSettings.credentialKey];
 
   return {
-    messages: [], // Começa vazio, a primeira mensagem será adicionada depois
+    messages: [],
     system_prompt: persona.prompt,
     available_tool_names: persona.tool_names,
     protocol_number: context.protocolNumber,
@@ -203,47 +243,18 @@ function createInitialState(persona: Persona, context: any, sender: chrome.runti
   };
 }
 
-/**
- * Atualiza um estado existente com uma nova persona.
- */
-function updatePersonaInState(currentState: AgentState, newPersona: Persona): AgentState {
-  const systemMessage = new SystemMessage(
-    `Persona updated. You will now act as: "${newPersona.name}". New instructions: ${newPersona.prompt}`
-  );
-
-  return {
-    ...currentState,
-    messages: [...currentState.messages, systemMessage], // Adiciona a notificação de mudança
-    system_prompt: newPersona.prompt,
-    available_tool_names: newPersona.tool_names,
-    persona_id: newPersona.id,
-  };
-}
-
-// ======================================================================
-// NOVO: Configuração do LangSmith
-// ======================================================================
-
 function setupLangSmith() {
-  // ATENÇÃO: Método inseguro para demonstração.
-  // Nunca suba chaves de API diretamente no código para um repositório.
-  const LANGSMITH_API_KEY = "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"; // <--- COLE SUA CHAVE AQUI
+  const LANGSMITH_API_KEY = "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";
   const LANGSMITH_PROJECT = "omni-max-assistant";
-  const LANGSMITH_ENDPOINT="https://api.smith.langchain.com"
+  const LANGSMITH_ENDPOINT = "https://api.smith.langchain.com";
 
-  // LangChain busca essas variáveis no escopo global (process.env)
-  // Mesmo em um service worker, podemos definir essas propriedades para que a biblioteca as encontre.
   if (typeof globalThis.process === 'undefined') {
     (globalThis as any).process = { env: {} };
   }
-  
-  globalThis.process.env.LANGCHAIN_TRACING = "true";
+  globalThis.process.env.LANGCHAIN_TRACING_V2 = "true"; // Correção para V2
   globalThis.process.env.LANGCHAIN_ENDPOINT = LANGSMITH_ENDPOINT;
   globalThis.process.env.LANGCHAIN_API_KEY = LANGSMITH_API_KEY;
   globalThis.process.env.LANGCHAIN_PROJECT = LANGSMITH_PROJECT;
 
   console.log(`[LangSmith] Tracing is configured for project: "${LANGSMITH_PROJECT}"`);
 }
-
-// Chame a configuração ANTES de qualquer outra coisa
-setupLangSmith();
