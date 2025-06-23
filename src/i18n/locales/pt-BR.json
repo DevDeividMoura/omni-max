@@ -144,6 +144,10 @@
       "get_latest_messages_from_session": {
         "name": "Buscar Mensagens Recentes da Sessão",
         "description": "Recupera as mensagens mais recentes do chat ativo para obter contexto em tempo real."
+      },
+      "knowledge_base_search": {
+        "name": "Buscar na Base de Conhecimento",
+        "description": "Procura por informações em documentos e notas salvas localmente para responder perguntas."
       }
     }
   },

@@ -135,6 +135,20 @@
         "placeholder": "Ej: Revisa la siguiente respuesta para un cliente, haciéndola más clara, empática y profesional.",
         "default": "Revisa la siguiente respuesta para un cliente, haciéndola más clara, empática y profesional, manteniendo el significado original:"
       }
+    },
+    "tools": {
+      "get_entire_protocol_history": {
+        "name": "Buscar Historial Completo del Protocolo",
+        "description": "Recupera todas las interacciones de un número de protocolo para resúmenes y análisis completos."
+      },
+      "get_latest_messages_from_session": {
+        "name": "Buscar Mensajes Recientes de la Sesión",
+        "description": "Recupera los mensajes más recientes del chat activo para obtener contexto en tiempo real."
+      },
+      "knowledge_base_search": {
+        "name": "Buscar en Base de Conocimiento",
+        "description": "Busca información en documentos y notas guardadas localmente para responder preguntas."
+      }
     }
   },
   "content": {

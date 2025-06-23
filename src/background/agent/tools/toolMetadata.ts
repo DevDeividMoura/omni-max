@@ -1,4 +1,5 @@
 import { type Tool } from "@langchain/core/tools";
+import { knowledgeBaseSearchTool } from './knowledgeBaseTool';
 // Importe aqui todas as ferramentas que o AGENTE pode usar
 
 /**
@@ -20,7 +21,12 @@ export interface AgentToolMetadata {
  */
 export const AGENT_TOOLS_METADATA: AgentToolMetadata[] = [
   // Ferramentas internas como 'get_entire_protocol_history' foram REMOVIDAS daqui.
-  
+  {
+    id: 'knowledge_base_search',
+    tool: knowledgeBaseSearchTool as unknown as Tool,
+    name_i18n_key: 'tools.knowledge_base_search.name',
+    description_i18n_key: 'tools.knowledge_base_search.description',
+  }
 
   // Adicione aqui outras ferramentas do agente no futuro...
 ];

@@ -135,6 +135,20 @@
         "placeholder": "Ex: Review the following response to a customer, making it clearer, more empathetic, and professional.",
         "default": "Review the following response to a customer, making it clearer, more empathetic, and professional, while maintaining the original meaning:"
       }
+    },
+    "tools": {
+      "get_entire_protocol_history": {
+        "name": "Fetch Complete Protocol History",
+        "description": "Retrieves all interactions from a protocol number for complete summaries and analyses."
+      },
+      "get_latest_messages_from_session": {
+        "name": "Fetch Recent Session Messages",
+        "description": "Retrieves the most recent messages from the active chat to get real-time context."
+      },
+      "knowledge_base_search": {
+        "name": "Search Knowledge Base",
+        "description": "Searches for information in locally saved documents and notes to answer questions."
+      }
     }
   },
   "content": {
