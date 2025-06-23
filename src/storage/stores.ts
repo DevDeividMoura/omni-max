@@ -110,14 +110,14 @@ export const PersonasDefaults: Persona[] = [
     name: 'Suporte Padrão',
     description: 'Assistente geral para resolução de problemas comuns.',
     prompt: '...',
-    tool_names: ['get_entire_protocol_history', 'get_latest_messages_from_session'], // <-- Exemplo preenchido
+    tool_names: ['knowledge_base_search'], // <-- Exemplo preenchido
   },
   {
     id: '1718544000001-sales',
     name: 'Vendas Consultivas',
     description: 'Assistente focado em identificar oportunidades e apresentar produtos.',
     prompt: '...',
-    tool_names: ['get_latest_messages_from_session'], // <-- Vendas talvez só precise das msgs recentes
+    tool_names: ['knowledge_base_search'], // <-- Vendas talvez só precise das msgs recentes
   }
 ];
 
