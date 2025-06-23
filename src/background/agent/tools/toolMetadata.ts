@@ -1,41 +1,26 @@
-// File: src/background/agent/tools/toolMetadata.ts
+import { type Tool } from "@langchain/core/tools";
+// Importe aqui todas as ferramentas que o AGENTE pode usar
 
 /**
- * @interface ToolMetadata
- * @description Describes the metadata for a tool, using i18n keys for display strings.
+ * @interface AgentToolMetadata
+ * @description Descreve uma ferramenta do agente, incluindo sua implementação e metadados para a UI.
  */
-export interface ToolMetadata {
-  /**
-   * The unique identifier for the tool. Must match the tool's name in the masterToolRegistry.
-   */
-  id: string;
-
-  /**
-   * The i18n key for the tool's user-friendly name.
-   * Example: "modules.tools.get_entire_protocol_history.name"
-   */
-  name_i18n_key: string; // <-- CORRIGIDO
-
-  /**
-   * The i18n key for the tool's description, used for tooltips.
-   * Example: "modules.tools.get_entire_protocol_history.description"
-   */
-  description_i18n_key: string; // <-- CORRIGIDO
+export interface AgentToolMetadata {
+  id: string; // Deve ser igual ao `tool.name`
+  tool: Tool; // O objeto da ferramenta real
+  name_i18n_key: string; // Chave para o nome na UI
+  description_i18n_key: string; // Chave para a descrição na UI
 }
 
 /**
- * @const {ToolMetadata[]} AVAILABLE_TOOLS_METADATA
- * @description A list of metadata for all available tools in the system.
+ * @const AGENT_TOOLS_METADATA
+ * @description A lista definitiva de TODAS as ferramentas disponíveis para o AGENTE.
+ * Esta é a ÚNICA lista que você precisa manter.
+ * A UI de configuração de personas usará esta lista para renderizar os checkboxes.
  */
-export const AVAILABLE_TOOLS_METADATA: ToolMetadata[] = [
-  {
-    id: 'get_entire_protocol_history',
-    name_i18n_key: 'modules.tools.get_entire_protocol_history.name',
-    description_i18n_key: 'modules.tools.get_entire_protocol_history.description'
-  },
-  {
-    id: 'get_latest_messages_from_session',
-    name_i18n_key: 'modules.tools.get_latest_messages_from_session.name',
-    description_i18n_key: 'modules.tools.get_latest_messages_from_session.description'
-  },
+export const AGENT_TOOLS_METADATA: AgentToolMetadata[] = [
+  // Ferramentas internas como 'get_entire_protocol_history' foram REMOVIDAS daqui.
+  
+
+  // Adicione aqui outras ferramentas do agente no futuro...
 ];

@@ -30,7 +30,8 @@
     type ProviderMetadata,
   } from "../ai/providerMetadata";
 
-  import { AVAILABLE_TOOLS_METADATA } from "../background/agent/tools/toolMetadata";
+  import { AGENT_TOOLS_METADATA } from "../background/agent/tools/toolMetadata";
+  // ...
 
   import { AIServiceManager } from "../ai/AIServiceManager";
 
@@ -1071,7 +1072,7 @@
               class="checkbox-group"
               style="max-height: 120px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; border-radius: 6px;"
             >
-              {#each AVAILABLE_TOOLS_METADATA as tool (tool.id)}
+              {#each AGENT_TOOLS_METADATA as tool (tool.id)}
                 <label
                   class="checkbox-label"
                   title={$_(tool.description_i18n_key)}

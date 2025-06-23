@@ -6,7 +6,7 @@ import type { RunnableConfig } from "@langchain/core/runnables";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import type { AgentState } from "./state";
 
-import { masterToolRegistry } from "./tools";
+import { agentTools, contextTools } from "./tools";
 import { getEntireProtocolHistoryTool, getLatestMessagesFromSessionTool } from './tools/ascSacTools';
 
 import { AgentStateSchema } from "./state";
@@ -125,7 +125,7 @@ async function agentNode(
   const llm = createLlmInstance(state);
   // Filtra as ferramentas disponíveis com base na persona
   const availableTools = state.available_tool_names
-    .map(toolName => masterToolRegistry[toolName])
+    .map(toolName => agentTools[toolName]) // <<< MUDANÇA AQUI
     .filter(Boolean);
 
   const llmWithTools = llm.bindTools!(availableTools);
@@ -162,7 +162,8 @@ async function agentNode(
  * @node toolNode
  * @description O executor de ferramentas ("as mãos" do agente).
  */
-const toolNode = new ToolNode(Object.values(masterToolRegistry));
+
+const toolNode = new ToolNode(Object.values(agentTools));
 
 const hasToolCalls = (
   message: BaseMessage,

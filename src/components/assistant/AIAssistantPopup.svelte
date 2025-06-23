@@ -1,18 +1,18 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
+  import { onMount, onDestroy, tick } from "svelte";
   import { marked } from "marked";
   import { ChevronDown, X, ArrowUp, Plug } from "lucide-svelte";
 
   import { assistantPopupStore } from "./assistantPopupStore";
   import PersonaSelectorPopup from "./PersonaSelectorPopup.svelte";
-  import { agentChatStore } from "./agentChatStore";
+  import { agentChatStore, type ChatMessage } from "./agentChatStore"; // Importar ChatMessage
   import { personasStore, type Persona } from "../../storage/stores";
 
   import MCPServersPopup from "./MCPServersPopup.svelte";
   import type { Translator } from "../../i18n/translator.content";
   import type { AgentService } from "../../content/services/AgentService";
 
-  // --- Props (Serviços injetados pelo AssistantUiService) ---
+  // --- Props ---
   export let translator: Translator;
   export let agentService: AgentService;
 
@@ -21,24 +21,22 @@
   $: allChats = $agentChatStore;
   $: availablePersonas = $personasStore;
 
-  // --- Reactive Variables (CORRECTED) ---
+  // --- Reactive Variables ---
   $: isVisible = assistantState.isVisible;
   $: context = assistantState.context;
-  $: protocolNumber = context?.protocolNumber ?? null;
+  $: sessionId = context?.attendanceId ?? null;
 
-  $: currentChat = protocolNumber
-    ? allChats[protocolNumber] || { messages: [] }
+  $: currentChat = sessionId
+    ? allChats[sessionId] || { messages: [] }
     : { messages: [] };
   $: messages = currentChat.messages;
 
-  // NEW LOGIC: Determine if the agent is thinking by inspecting the LAST message.
   $: isAgentThinking =
     messages.length > 0 &&
     messages[messages.length - 1].type === "ai" &&
     messages[messages.length - 1].isThinking === true;
 
-  // --- Component's Internal State ---
-  let streamingContent = '';
+  // --- Internal State ---
   let inputValue = "";
   let isMCPPopupOpen = false;
   let selectedPersonaId: string | undefined;
@@ -51,11 +49,6 @@
     chooseOrType: "...",
   };
   let extensionIconUrl = "";
-  let t: (key: string, options?: any) => Promise<string>;
-  let contentAreaEl: HTMLElement;
-  let textareaEl: HTMLTextAreaElement;
-  let isPersonaPopupOpen = false;
-
   const suggestions = [
     {
       id: "summarize",
@@ -72,178 +65,207 @@
       promptKey: "assistant.suggestions.extract_actions_prompt_text",
     },
   ];
+  let t: (key: string, options?: any) => Promise<string>;
+  let contentAreaEl: HTMLElement;
+  let textareaEl: HTMLTextAreaElement;
+  let isPersonaPopupOpen = false;
+
+  let wasStateRequestedForSession: string | null = null;
 
   // --- Lifecycle and Listeners ---
   onMount(async () => {
     extensionIconUrl = chrome.runtime.getURL("src/assets/icons/icon-48.png");
     t = (key, options) => translator.t(key, options);
 
-    translations.title = await t("assistant.title");
-    translations.thinking = await t("assistant.thinking");
-    translations.assistantName = await t("assistant.assistant_name");
-    translations.typeYourQuery = await t("assistant.type_your_query");
-    translations.howCanIHelp = await t("assistant.how_can_i_help");
-    translations.chooseOrType = await t("assistant.choose_or_type");
+    Object.assign(translations, {
+      title: await t("assistant.title"),
+      thinking: await t("assistant.thinking"),
+      assistantName: await t("assistant.assistant_name"),
+      typeYourQuery: await t("assistant.type_your_query"),
+      howCanIHelp: await t("assistant.how_can_i_help"),
+      chooseOrType: await t("assistant.choose_or_type"),
+    });
 
     if (availablePersonas.length > 0) {
       selectedPersonaId = availablePersonas[0].id;
     }
 
     chrome.runtime.onMessage.addListener(handleBackgroundMessage);
-  });
 
-  $: if (typeof document !== "undefined") {
-    if (isVisible) {
-      document.body.style.overflow = "hidden";
-      scrollToBottom(); // Scroll to bottom when popup opens
-    } else {
-      document.body.style.overflow = ""; // Restaura o padrão
-    }
-  }
+    console.log("[UI] AIAssistantPopup mounted");
+  });
 
   onDestroy(() => {
     if (typeof document !== "undefined") {
       document.body.style.overflow = "";
     }
-    cleanup(); // Sua função de cleanup existente
+    chrome.runtime.onMessage.removeListener(handleBackgroundMessage);
   });
 
-  function cleanup() {
-    chrome.runtime.onMessage.removeListener(handleBackgroundMessage);
+  $: if (typeof document !== "undefined") {
+    document.body.style.overflow = isVisible ? "hidden" : "";
+    if (isVisible) scrollToBottom();
   }
 
-  /**
-   * Waits for the next DOM update and then scrolls the chat area to the bottom.
-   */
+  // --- Logic Functions ---
+
   function scrollToBottom() {
-    requestAnimationFrame(() => {
+    tick().then(() => {
       if (contentAreaEl) {
         contentAreaEl.scrollTop = contentAreaEl.scrollHeight;
       }
     });
   }
 
-  // --- Event Handlers ---
-  async function handleBackgroundMessage(message: any) {
-    if (message.context?.protocolNumber !== protocolNumber) return;
-    // if (!message.type || !['agentChunk', 'agentStreamEnd', 'agentError'].includes(message.type)) return;
-    if (!protocolNumber) return;
-        
+  $: {
+    console.log(
+      `[UI] Reactive block fired. SessionId: ${sessionId}, Visible: ${isVisible}`,
+    );
+    // A condição agora é: O popup está visível, temos um sessionId, e ainda não buscamos o estado PARA ESTA SESSÃO.
+    if (isVisible && sessionId && wasStateRequestedForSession !== sessionId) {
+      console.log(
+        `[UI] CONTEXTO PRONTO. Solicitando estado para a sessão: ${sessionId}`,
+      );
+
+      // Marca que já pedimos o estado para esta sessão para evitar repetições.
+      wasStateRequestedForSession = sessionId;
+
+      chrome.runtime.sendMessage(
+        { type: "getAgentState", context },
+        (response) => {
+          if (
+            response?.success &&
+            response.state &&
+            response.state.messages.length > 0
+          ) {
+            console.log(
+              `[UI] Estado recebido com ${response.state.messages.length} mensagens. Hidratando a store.`,
+            );
+            agentChatStore.setInitialState(sessionId, response.state);
+          } else {
+            console.log(
+              `[UI] Nenhum estado existente encontrado para a sessão ${sessionId}.`,
+            );
+          }
+          scrollToBottom();
+        },
+      );
+    }
+  }
+
+  /**
+   * @handler handleBackgroundMessage
+   * @description Manipula mensagens vindas do background script para atualizar a UI.
+   */
+  function handleBackgroundMessage(message: any) {
+    if (message.context?.attendanceId !== sessionId || !sessionId) return;
+
     switch (message.type) {
-      case 'agentTokenChunk':
-        // Acumula o conteúdo recebido
-        streamingContent += message.token;
-        const formattedStream = await marked.parse(streamingContent);
-        console.log("Received token chunk:", message.token);
-        // Atualiza a UI com o conteúdo acumulado
-        agentChatStore.updateLastAiMessage(protocolNumber, formattedStream, message.messageId); 
-        console.log("Updated AI message with streaming content.");
+      case "slashCommandResult":
+        console.log(`[UI] Received slash command result for session ${sessionId}.`);
+        // O `reply` já vem formatado como markdown pelo background.
+        // Usamos `appendTokenToLastAiMessage` para substituir o conteúdo do balão "pensando".
+        agentChatStore.appendTokenToLastAiMessage(sessionId, message.reply, "");
+        // Imediatamente finalizamos, pois não haverá mais tokens.
+        agentChatStore.finalizeLastAiMessage(sessionId);
         scrollToBottom();
         break;
 
-      case 'agentToolEnd':
-        // Limpa o acumulador de streaming para a próxima resposta do LLM
-        streamingContent = ''; 
-        const toolResultContent = `*Ferramenta ${message.toolName} retornou:* \n \`\`\`\n${message.toolOutput}\n\`\`\``;
-        console.log("Tool result content:", toolResultContent);
-        const formattedToolResult = await marked.parse(toolResultContent);
-        // Atualiza a bolha da IA com o resultado da ferramenta e adiciona um novo placeholder
-        agentChatStore.updateLastAiMessage(protocolNumber, formattedToolResult);
-        console.log("Updated AI message with tool result.");
-        agentChatStore.addEmptyAiMessage(protocolNumber);
-        console.log("Added new placeholder for next AI message.");
-        scrollToBottom();
-        break;
-      
-      case 'agentStreamEnd':
-        // Finaliza a última mensagem e limpa o acumulador
-        streamingContent = ''; 
-        agentChatStore.finalizeLastAiMessage(protocolNumber);
-        console.log("Agent stream finished.");
+      case "agentChatCleared":
+        console.log(
+          `[UI] Received confirmation to clear session: ${sessionId}`,
+        );
+        agentChatStore.clearSession(sessionId);
+        // A UI irá reativamente voltar ao estado de boas-vindas.
         break;
 
-      case 'agentError':
-        // ... (tratamento de erro) ...
-        streamingContent = ''; 
-        agentChatStore.finalizeLastAiMessage(protocolNumber);
-        console.error("Agent error:", message.error);
+      case "agentTokenChunk":
+        console.log(
+          `[UI] Received token chunk for session ${sessionId}: ${message.token}`,
+        );
+        // CORREÇÃO: Apenas anexa o token de texto bruto. A renderização acontece no template.
+        agentChatStore.appendTokenToLastAiMessage(
+          sessionId,
+          message.token, // Passa o token bruto
+          message.messageId,
+        );
+        scrollToBottom();
+        break;
+
+      case "agentToolEnd":
+        console.log(
+          `[UI] Tool execution completed for session ${sessionId}: ${message.toolName}`,
+        );
+        // Aqui, como é um evento discreto, podemos formatar e anexar.
+        const toolResultContent = `*Ferramenta ${message.toolName} executada.*\n`;
+        agentChatStore.appendTokenToLastAiMessage(
+          sessionId,
+          toolResultContent,
+          "",
+        );
+        agentChatStore.addEmptyAiMessage(sessionId); // Prepara para a próxima resposta da IA.
+        scrollToBottom();
+        break;
+
+      case "agentStreamEnd":
+        console.log(`[UI] Agent response completed for session ${sessionId}`);
+        agentChatStore.finalizeLastAiMessage(sessionId);
+        break;
+
+      case "agentError":
+        console.error(
+          `[UI] Error from agent for session ${sessionId}: ${message.error}`,
+        );
+        const errorContent = `<p style="color: red; font-family: monospace;"><b>Error:</b> ${message.error}</p>`;
+        agentChatStore.appendTokenToLastAiMessage(sessionId, errorContent, "");
+        agentChatStore.finalizeLastAiMessage(sessionId);
         break;
     }
   }
 
- /**
-   * NOVA FUNÇÃO CENTRALIZADORA
-   * Esta função agora contém toda a lógica de chamar o agente e tratar a resposta.
-   * @param agentQuery O prompt/query que será enviado para o backend.
-   * @param displayMessage A mensagem que será exibida na UI para o usuário.
-   */
-  async function _invokeAgentAndHandleResponse(agentQuery: string, displayMessage: string) {
-    if (!agentQuery.trim() || !context || !protocolNumber) return;
-    if (!selectedPersonaId) {
-      console.warn("Nenhuma persona selecionada. Usando a padrão.");
-      selectedPersonaId = availablePersonas[0]?.id; // Usa a primeira persona disponível
-    }
+  async function _invokeAgentAndHandleResponse(
+    agentQuery: string,
+    displayMessage: string,
+  ) {
+    if (!agentQuery.trim() || !context || !sessionId) return;
+    if (!selectedPersonaId) selectedPersonaId = availablePersonas[0]?.id;
 
-    // Limpa o acumulador de streaming antes de uma nova invocação
-    streamingContent = '';
-
-    const formattedDisplay = await marked.parse(displayMessage);
-    agentChatStore.addUserMessage(protocolNumber, formattedDisplay);
-    agentChatStore.addEmptyAiMessage(protocolNumber);
+    // A mensagem do usuário é adicionada à store como texto bruto.
+    agentChatStore.addUserMessage(sessionId, displayMessage);
+    agentChatStore.addEmptyAiMessage(sessionId);
+    await tick();
     scrollToBottom();
-    
+
+    console.log(`[UI] Current context: ${JSON.stringify(context)}`);
+
     agentService.invoke({
       context,
       query: agentQuery,
       personaId: selectedPersonaId,
     });
   }
-  /**
-   * FUNÇÃO REATORADA: Agora ela apenas delega para a função central.
-   */
+
   async function handleSendMessage(query: string) {
-    // Limpa a UI
     inputValue = "";
     if (textareaEl) textareaEl.style.height = "auto";
-    
-    // A query digitada é tanto o que o agente recebe quanto o que o usuário vê.
     await _invokeAgentAndHandleResponse(query, query);
   }
 
-  /**
-   * FUNÇÃO REATORADA: Agora ela também apenas delega para a função central.
-   */
-  async function handleSuggestionClick(suggestion: (typeof suggestions)[0]) {
-    if (!context || !protocolNumber || !selectedPersonaId) return;
-
-    // Prepara as duas versões da mensagem
-    const hiddenPrompt = await t(suggestion.promptKey); // Para o agente
-    const userFacingMessage = await t(suggestion.titleKey); // Para a UI
-
-    // Chama a função central com os parâmetros corretos
+  async function handleSuggestionClick(suggestion: any) {
+    if (!context || !sessionId || !selectedPersonaId) return;
+    const hiddenPrompt = await t(suggestion.promptKey);
+    const userFacingMessage = await t(suggestion.titleKey);
     await _invokeAgentAndHandleResponse(hiddenPrompt, userFacingMessage);
   }
 
   function handlePersonaSelect(selectedId: string) {
-    selectedPersonaId = selectedId; // Atualiza o ID
-    isPersonaPopupOpen = false; // Fecha o popup
-    handlePersonaChange(); // Notifica o agente da mudança (função que já existe)
-  }
-
-  async function handlePersonaChange() {
-    if (!selectedPersonaId || !context) return;
-    await agentService.changePersona({
-      context,
-      newPersonaId: selectedPersonaId,
-    });
-  }
-
-  function hide() {
-    assistantPopupStore.hide();
+    selectedPersonaId = selectedId;
+    isPersonaPopupOpen = false;
+    // Lógica para notificar mudança de persona, se necessário
   }
 
   const handleEscapeKey = (event: KeyboardEvent) => {
-    if (event.key === "Escape" && isVisible) hide();
+    if (event.key === "Escape" && isVisible) assistantPopupStore.hide();
   };
 
   const handleTextareaKeyDown = (e: KeyboardEvent) => {
@@ -253,14 +275,9 @@
     }
   };
 
-  /**
-   * Ajusta a altura da textarea dinamicamente com base no seu conteúdo.
-   */
   function autoResizeTextarea(event: Event) {
     const textarea = event.target as HTMLTextAreaElement;
-    // Reseta a altura para o browser recalcular o scrollHeight
     textarea.style.height = "auto";
-    // Define a altura para o tamanho total do conteúdo
     textarea.style.height = `${textarea.scrollHeight}px`;
   }
 </script>
@@ -268,16 +285,22 @@
 <svelte:window on:keydown={handleEscapeKey} />
 
 {#if isVisible}
-  <div class="popup-overlay" on:click={hide} role="presentation">
+  <div
+    class="popup-overlay"
+    on:click={assistantPopupStore.hide}
+    role="presentation"
+  >
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div class="popup-wrapper" on:click|stopPropagation>
       <div class="popup-header">
         <span class="header-title">
-          {#if protocolNumber}{translations.title}: {protocolNumber}{:else}{translations.title}{/if}
+          {#if sessionId}{translations.title}: {sessionId}{:else}{translations.title}{/if}
         </span>
         <div class="header-controls">
-          <button on:click={hide} title="Fechar"><X size={16} /></button>
+          <button on:click={assistantPopupStore.hide} title="Fechar"
+            ><X size={16} /></button
+          >
         </div>
       </div>
 
@@ -338,7 +361,9 @@
                       </div>
                     </div>
                   {:else}
-                    {@html message.content}
+                    {#await marked.parse(message.content || "") then html}
+                      {@html html}
+                    {/await}
                   {/if}
                 </div>
               </div>

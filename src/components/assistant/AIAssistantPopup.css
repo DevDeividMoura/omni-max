@@ -265,7 +265,6 @@
   max-width: 80%;
   border-radius: var(--border-radius-xl);
   padding: 16px;
-  white-space: pre-wrap;
   word-wrap: break-word;
   color: var(--color-text-primary);
   font-size: 15px;
@@ -279,6 +278,35 @@
 .message-content.ai {
   background-color: var(--color-surface-default);
   border: 1px solid var(--color-border-subtle);
+}
+
+/*
+  Targeting <pre> elements inside any message bubble to style them
+  as distinct code blocks.
+*/
+.message-content pre {
+  background-color: #1e293b; /* Um cinza-azulado escuro, como em IDEs */
+  color: #e2e8f0; /* Um cinza claro para o texto, bom contraste */
+  padding: 16px;
+  border-radius: var(--border-radius-lg); /* Usa a variável de raio que já definimos */
+  overflow-x: auto; /* Adiciona uma barra de rolagem horizontal se o conteúdo ainda for muito largo */
+  
+  /* CORREÇÃO #1: A MÁGICA DA QUEBRA DE LINHA
+    - white-space: pre-wrap; -> Preserva os espaços e quebras de linha do JSON, mas quebra a linha se necessário.
+    - word-break: break-all; -> Força a quebra de palavras muito longas (como chaves de API ou PIX).
+  */
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/*
+  Styling the <code> tag itself to ensure a proper monospaced font,
+  o que é essencial para a legibilidade do código.
+*/
+.message-content pre code {
+  font-family: var(--font-family-mono); /* Usa a variável de fonte monoespaçada */
+  font-size: 14px;
+  line-height: 1.7;
 }
 
 .ai-header {
@@ -376,6 +404,7 @@
   border: none;
   background-color: transparent;
   box-sizing: border-box;
+  font-family: var(--font-family-sans);
   font-size: 16px;
   color: var(--color-text-primary);
   overflow-y: auto;
@@ -410,6 +439,7 @@
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--border-radius-md);
   padding: 6px 10px;
+  font-family: var(--font-family-sans);
   font-size: 13px;
   font-weight: 500;
   color: var(--color-text-secondary);

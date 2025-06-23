@@ -115,4 +115,48 @@ export class IndexedDBCheckpointer extends BaseCheckpointSaver {
   async putWrites(config: RunnableConfig, writes: Array<[string, any]>, taskId: string): Promise<void> {
     // Implementação de escrita parcial (se necessário)
   }
+
+  /**
+   * NOVO: Exclui todos os checkpoints para um determinado thread_id.
+   * @param config A configuração do runnable que contém o thread_id a ser limpo.
+   * @returns Uma promessa que resolve quando a exclusão é concluída.
+   */
+  public async delete(config: RunnableConfig): Promise<void> {
+    const thread_id = config.configurable?.thread_id;
+    if (!thread_id) {
+      console.warn("[Checkpointer] Delete chamado sem thread_id.");
+      return;
+    }
+
+    console.log(`[Checkpointer] Deleting all checkpoints for thread_id: ${thread_id}`);
+
+    const db = await this.dbPromise;
+    const transaction = db.transaction(STORE_NAME, "readwrite");
+    const store = transaction.objectStore(STORE_NAME);
+
+    // Cria um range para selecionar todas as chaves que começam com o thread_id
+    const keyRange = IDBKeyRange.bound([thread_id, ""], [thread_id, "\uffff"]);
+
+    const request = store.openCursor(keyRange);
+
+    return new Promise((resolve, reject) => {
+      request.onsuccess = (event) => {
+        const cursor = (event.target as IDBRequest).result as IDBCursorWithValue | null;
+        if (cursor) {
+          cursor.delete(); // Exclui o registro atual
+          cursor.continue(); // Move para o próximo
+        }
+      };
+
+      transaction.oncomplete = () => {
+        console.log(`[Checkpointer] Successfully deleted checkpoints for thread_id: ${thread_id}`);
+        resolve();
+      };
+
+      transaction.onerror = () => {
+        console.error(`[Checkpointer] Error deleting checkpoints for thread_id: ${thread_id}`);
+        reject(transaction.error);
+      };
+    });
+  }
 }
