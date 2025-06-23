@@ -6,7 +6,7 @@ import type { RunnableConfig } from "@langchain/core/runnables";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import type { AgentState } from "./state";
 
-import { agentTools, contextTools } from "./tools";
+import { agentTools } from "./tools";
 import { getEntireProtocolHistoryTool, getLatestMessagesFromSessionTool } from './tools/ascSacTools';
 
 import { AgentStateSchema } from "./state";
@@ -20,7 +20,7 @@ import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 
 import { IndexedDBCheckpointer } from '../services/indexedDBCheckpointer';
 
-const CONTEXT_INJECTOR = "contextInjector" as const;
+const CONTEXT_INJECTOR = "context_injector" as const;
 const AGENT  = "agent" as const;
 const TOOLS  = "tools" as const;
 

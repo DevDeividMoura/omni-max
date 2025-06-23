@@ -28,13 +28,10 @@
     PROVIDER_METADATA_LIST,
     PROVIDER_METADATA_MAP,
     type ProviderMetadata,
-  } from "../ai/providerMetadata";
+  } from "../shared/providerMetadata";
 
   import { AGENT_TOOLS_METADATA } from "../background/agent/tools/toolMetadata";
-  // ...
-
-  import { AIServiceManager } from "../ai/AIServiceManager";
-
+ 
   import {
     globalExtensionEnabledStore,
     moduleStatesStore,
@@ -118,8 +115,6 @@
   const aiModules: Module[] = releasedModules.filter(
     (m) => m.category === "ai",
   );
-
-  const aiManager = new AIServiceManager();
 
   // --- Persona Management Functions ---
 
@@ -206,41 +201,34 @@
    */
   async function refreshModelList() {
     modelError = null;
-    let newModelList: string[] = [];
     loadingModels = true;
-
     const previouslySelectedModel = localAiProviderConfig.model;
-
+    
     try {
-      await aiProviderConfigStore.set(localAiProviderConfig);
-      await aiCredentialsStore.set(localAiCredentials);
+      const response = await chrome.runtime.sendMessage({
+        type: 'listAvailableModels',
+        provider: localAiProviderConfig.provider,
+        credentials: localAiCredentials
+      });
 
-      newModelList = await aiManager.listModels();
-      modelList = newModelList;
-
-      if (modelList.length === 0) {
-        modelError = $_("popup.errors.ai.no_models_found_provider");
-        if (previouslySelectedModel) {
+      if (response && response.success) {
+        modelList = response.models;
+        if (modelList.length === 0) {
+          modelError = $_("popup.errors.ai.no_models_found_provider");
+        }
+        if (previouslySelectedModel && !modelList.includes(previouslySelectedModel)) {
           localAiProviderConfig.model = "";
           markChanged();
         }
       } else {
-        if (
-          previouslySelectedModel &&
-          !modelList.includes(previouslySelectedModel)
-        ) {
-          localAiProviderConfig.model = "";
-          markChanged();
-        }
+        throw new Error(response.error || 'Unknown error from background script');
       }
     } catch (err: any) {
       modelError = err.message
-        ? $_("popup.errors.ai.load_failed_specific", {
-            values: { message: err.message },
-          })
+        ? $_("popup.errors.ai.load_failed_specific", { values: { message: err.message } })
         : $_("popup.errors.ai.load_failed_generic");
       modelList = [];
-      console.error("refreshModelList: Error caught from aiManager:", err);
+      console.error("refreshModelList: Error caught from background:", err);
     } finally {
       loadingModels = false;
     }
@@ -295,7 +283,7 @@
       aiCredentialsStore.subscribe((v) => {
         localAiCredentials = JSON.parse(JSON.stringify(v));
         if (!isLoading) markChanged();
-      }),
+      }), 
     );
     unsubs.push(
       aiProviderConfigStore.subscribe((v) => {
@@ -364,7 +352,6 @@
         shortcuts: false,
         ai: false,
         personas: false,
-        prompts: false,
         [sectionKeyToToggle]: !isCurrentlyOpen, // Toggle the clicked one
       };
       markChanged();

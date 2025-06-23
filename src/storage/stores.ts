@@ -6,7 +6,7 @@
  */
 import { persistentStore } from './persistentStore';
 import { getInitialModuleStates } from '../modules';
-import { PROVIDER_METADATA_LIST } from '../ai/providerMetadata';
+import { PROVIDER_METADATA_LIST } from '../shared/providerMetadata';
 
 // --- Default Values ---
 
@@ -128,8 +128,7 @@ export interface CollapsibleSectionsState {
   ai: boolean;
   /** @property {boolean} personas - State for the agent personas configuration section. True if open, false if closed. */
   personas: boolean;
-  /** @property {boolean} prompts - State for the AI prompts configuration section. True if open, false if closed. */
-  prompts: boolean;
+
 }
 /**
  * @const {CollapsibleSectionsState} CollapsibleSectionsStateDefaults
@@ -140,7 +139,6 @@ export const CollapsibleSectionsStateDefaults: CollapsibleSectionsState = {
   shortcuts: false,
   personas: false,
   ai: false,
-  prompts: false,
 };
 
 /**

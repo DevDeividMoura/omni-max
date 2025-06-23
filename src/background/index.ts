@@ -5,12 +5,14 @@ import { HumanMessage, AIMessageChunk, type BaseMessage } from "@langchain/core/
 import type { RunnableConfig } from "@langchain/core/runnables";
 import type { Runnable } from "@langchain/core/runnables";
 
-import { personasStore, aiProviderConfigStore, aiCredentialsStore, type Persona } from '../storage/stores';
-import { PROVIDER_METADATA_MAP } from '../ai/providerMetadata';
+import { personasStore, aiProviderConfigStore, aiCredentialsStore, type Persona, type AiCredentials } from '../storage/stores';
+import { PROVIDER_METADATA_MAP } from '../shared/providerMetadata';
 import { agentTools, contextTools } from './agent/tools';
 import { app as agentGraph } from './agent/graph';
 import type { AgentState, StoredAgentState } from './agent/state';
 import { IndexedDBCheckpointer } from './services/indexedDBCheckpointer';
+import { listAvailableModels } from './services/model-lister';
+
 
 // --- Inicialização e Configuração Global ---
 
@@ -49,6 +51,7 @@ const messageHandlers = new Map<string, MessageHandler>([
   ['getAgentState', handleGetAgentState],
   ['invokeAgent', handleInvokeAgent],
   ['changePersona', handleChangePersona],
+  ['listAvailableModels', handleListAvailableModels],
 ]);
 
 // --- Listener Principal (Dispatcher) ---
@@ -99,7 +102,7 @@ async function handleGetAgentState(request: any, sender: chrome.runtime.MessageS
     // O `getTuple` já retorna o checkpoint com `channel_values` pronto para uso.
     // A única coisa a garantir é que as mensagens dentro de channel_values estejam no formato correto para a UI.
     const messages = tuple.checkpoint.channel_values.messages as BaseMessage[];
- 
+
     const stateForUi: Partial<StoredAgentState> = {
       ...tuple.checkpoint.channel_values,
       messages: messages.map((msg: BaseMessage) => msg.toDict()),
@@ -119,49 +122,49 @@ async function handleGetAgentState(request: any, sender: chrome.runtime.MessageS
 async function handleInvokeAgent(request: any, sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) {
   const { query } = request;
   if (query.startsWith('/')) {
-        const command = query.substring(1).trim();
-        if (command === 'clear') {
-            return handleClearChatCommand(request.context, sender, sendResponse);
-        } else {
-            // Roteia para outros comandos de barra (slash commands)
-            executeToolCommand(command, request.context, sender);
-            sendResponse({ success: true, message: "Slash command invoked." });
-            return;
-        }
+    const command = query.substring(1).trim();
+    if (command === 'clear') {
+      return handleClearChatCommand(request.context, sender, sendResponse);
     } else {
-        return invokeStatefulAgent(request, sender);
+      // Roteia para outros comandos de barra (slash commands)
+      executeToolCommand(command, request.context, sender);
+      sendResponse({ success: true, message: "Slash command invoked." });
+      return;
     }
+  } else {
+    return invokeStatefulAgent(request, sender);
+  }
 }
 
 /**
  * NOVO: Manipula o comando para limpar o histórico do chat.
  */
 async function handleClearChatCommand(context: any, sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) {
-    const tabId = sender.tab?.id;
-    if (!tabId) return;
+  const tabId = sender.tab?.id;
+  if (!tabId) return;
 
-    console.log(`[Background] Received /clear command for session: ${context.attendanceId}`);
-    const config: RunnableConfig = {
-        configurable: { thread_id: context.attendanceId },
-    };
+  console.log(`[Background] Received /clear command for session: ${context.attendanceId}`);
+  const config: RunnableConfig = {
+    configurable: { thread_id: context.attendanceId },
+  };
 
-    try {
-        await checkpointer.delete(config);
-        
-        // Em vez de usar sendResponse, enviamos uma mensagem para a UI,
-        // o que se encaixa melhor no nosso padrão de eventos.
-        chrome.tabs.sendMessage(tabId, {
-            type: 'agentChatCleared',
-            context: context
-        });
-        
-        // Respondemos à chamada original para que ela não fique pendente.
-        sendResponse({ success: true, message: "Chat history cleared." });
+  try {
+    await checkpointer.delete(config);
 
-    } catch (error: any) {
-        console.error("Failed to clear chat history:", error);
-        sendResponse({ success: false, error: error.message });
-    }
+    // Em vez de usar sendResponse, enviamos uma mensagem para a UI,
+    // o que se encaixa melhor no nosso padrão de eventos.
+    chrome.tabs.sendMessage(tabId, {
+      type: 'agentChatCleared',
+      context: context
+    });
+
+    // Respondemos à chamada original para que ela não fique pendente.
+    sendResponse({ success: true, message: "Chat history cleared." });
+
+  } catch (error: any) {
+    console.error("Failed to clear chat history:", error);
+    sendResponse({ success: false, error: error.message });
+  }
 }
 
 /**
@@ -178,36 +181,36 @@ function handleChangePersona(request: any) {
  * @description Executa uma ferramenta diretamente via um slash command e envia o resultado de volta para a UI.
  */
 async function executeToolCommand(toolName: string, context: any, sender: chrome.runtime.MessageSender) {
-    const tabId = sender.tab?.id;
-    if (!tabId) return;
+  const tabId = sender.tab?.id;
+  if (!tabId) return;
 
-    console.log(`[Background] Executing slash command for tool: ${toolName}`);
+  console.log(`[Background] Executing slash command for tool: ${toolName}`);
 
-    // CORREÇÃO: Criamos um registro combinado de todas as ferramentas disponíveis para depuração.
-   const allAvailableTools: Record<string, Runnable> = { ...agentTools, ...contextTools };
-    const toolToExecute = allAvailableTools[toolName];
-    
-    let reply: string;
+  // CORREÇÃO: Criamos um registro combinado de todas as ferramentas disponíveis para depuração.
+  const allAvailableTools: Record<string, Runnable> = { ...agentTools, ...contextTools };
+  const toolToExecute = allAvailableTools[toolName];
 
-    if (!sender.tab?.url) {
-        reply = "```\nError: Could not determine origin URL.\n```";
-    } else if (!toolToExecute) {
-        reply = `\`\`\`\nError: Tool "${toolName}" not found.\n\`\`\``;
-    } else {
-        try {
-            const baseUrl = new URL(sender.tab.url).origin;
-            const result = await (toolToExecute as any).invoke({ ...context, baseUrl });
-            reply = '```text\n' + result + '\n```';
-        } catch (error: any) {
-            reply = `\`\`\`\n❌ Error executing tool "${toolName}":\n\n${error.message}\n\`\`\``;
-        }
+  let reply: string;
+
+  if (!sender.tab?.url) {
+    reply = "```\nError: Could not determine origin URL.\n```";
+  } else if (!toolToExecute) {
+    reply = `\`\`\`\nError: Tool "${toolName}" not found.\n\`\`\``;
+  } else {
+    try {
+      const baseUrl = new URL(sender.tab.url).origin;
+      const result = await (toolToExecute as any).invoke({ ...context, baseUrl });
+      reply = '```text\n' + result + '\n```';
+    } catch (error: any) {
+      reply = `\`\`\`\n❌ Error executing tool "${toolName}":\n\n${error.message}\n\`\`\``;
     }
-    
-    chrome.tabs.sendMessage(tabId, {
-        type: 'slashCommandResult',
-        context: context,
-        reply: reply
-    });
+  }
+
+  chrome.tabs.sendMessage(tabId, {
+    type: 'slashCommandResult',
+    context: context,
+    reply: reply
+  });
 }
 
 
@@ -310,4 +313,15 @@ function setupLangSmith() {
   globalThis.process.env.LANGCHAIN_PROJECT = LANGSMITH_PROJECT;
 
   console.log(`[LangSmith] Tracing is configured for project: "${LANGSMITH_PROJECT}"`);
+}
+
+/**
+ * @handler handleListAvailableModels
+ * @description Delegates the model listing logic to our dedicated service.
+ */
+function handleListAvailableModels(request: any, sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) {
+  const { provider, credentials } = request as { provider: string, credentials: AiCredentials };
+  listAvailableModels(provider, credentials)
+    .then(models => sendResponse({ success: true, models }))
+    .catch(error => sendResponse({ success: false, error: error.message }));
 }
