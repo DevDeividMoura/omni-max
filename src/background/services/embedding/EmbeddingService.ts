@@ -10,7 +10,7 @@ import { aiCredentialsStore, aiProviderConfigStore } from '../../../storage/stor
 import type { IEmbeddingProvider, EmbeddingProviderOptions } from './IEmbeddingProvider';
 
 // --- Placeholder Imports (we will create these files next) ---
-// import { openaiEmbeddingsProvider } from './providers/openaiEmbeddings';
+import { openaiEmbeddingsProvider } from './providers/openaiEmbeddings';
 // import { ollamaEmbeddingsProvider } from './providers/ollamaEmbeddings';
 
 /**
@@ -19,7 +19,7 @@ import type { IEmbeddingProvider, EmbeddingProviderOptions } from './IEmbeddingP
  * This is the "rolodex" of available specialists. We will populate this as we create each provider.
  */
 const providerRegistry: Record<string, IEmbeddingProvider> = {
-  // 'openai': openaiEmbeddingsProvider, // <-- Will be added in the next step
+  'openai': openaiEmbeddingsProvider, // <-- Will be added in the next step
   // 'ollama': ollamaEmbeddingsProvider, // <-- Will be added later
 };
 
@@ -42,7 +42,7 @@ export class EmbeddingService {
     const options = await this.buildOptions(provider);
 
     console.log(`[EmbeddingService] Creating embeddings with provider "${options.provider}" and model "${options.model}".`);
-    return provider.createEmbeddings(texts, options);
+    return provider.embedDocuments(texts, options);
   }
 
   /**

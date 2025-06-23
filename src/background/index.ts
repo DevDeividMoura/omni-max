@@ -11,7 +11,7 @@ import { agentTools, contextTools } from './agent/tools';
 import { app as agentGraph } from './agent/graph';
 import type { AgentState, StoredAgentState } from './agent/state';
 import { IndexedDBCheckpointer } from './services/indexedDBCheckpointer';
-import { listAvailableModels } from './services/model-lister';
+import { listAvailableModels } from './services/model_lister';
 
 
 // --- Inicialização e Configuração Global ---
