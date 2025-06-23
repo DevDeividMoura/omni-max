@@ -11,6 +11,23 @@
     "footer": {
       "made_with_love": "Feito com ❤️ por"
     },
+    "personas": {
+      "title": "Gerenciamento de Personas",
+      "add_button": "Adicionar Nova Persona",
+      "edit_button_title": "Editar Persona",
+      "delete_button_title": "Excluir Persona",
+      "modal_title_add": "Adicionar Nova Persona",
+      "modal_title_edit": "Editar Persona",
+      "name_label": "Nome da Persona",
+      "name_placeholder": "Ex: Suporte Técnico Nível 2",
+      "description_label": "Descrição Curta",
+      "description_placeholder": "Ex: Especialista em problemas técnicos avançados.",
+      "prompt_label": "Prompt do Sistema",
+      "prompt_placeholder": "Você é um especialista em...",
+      "confirm_delete_message": "Tem certeza que deseja excluir a persona \"{name}\"?",
+      "validation_error": "O nome e o prompt da persona não podem estar vazios.",
+      "no_personas_yet": "Nenhuma persona criada. Clique abaixo para adicionar uma."
+    },
     "placeholders": {
       "loading": "Carregando configurações...",
       "no_general_modules": "Nenhum módulo geral configurado.",
@@ -43,7 +60,8 @@
       "manage_credentials": "Gerenciar Credenciais",
       "manage_credentials_for": "Gerenciar Credenciais ({providerName})",
       "cancel": "Cancelar",
-      "ok": "OK"
+      "ok": "OK",
+      "save": "Salvar"
     },
     "modal": {
       "credentials_title": "Credenciais: {providerName}",
@@ -117,6 +135,16 @@
         "placeholder": "Ex: Revise a seguinte resposta para um cliente, tornando-a mais clara, empática e profissional.",
         "default": "Revise a seguinte resposta para um cliente, tornando-a mais clara, empática e profissional, mantendo o significado original:"
       }
+    },
+    "tools": {
+      "get_entire_protocol_history": {
+        "name": "Buscar Histórico Completo do Protocolo",
+        "description": "Recupera todas as interações de um número de protocolo para resumos e análises completas."
+      },
+      "get_latest_messages_from_session": {
+        "name": "Buscar Mensagens Recentes da Sessão",
+        "description": "Recupera as mensagens mais recentes do chat ativo para obter contexto em tempo real."
+      }
     }
   },
   "content": {
@@ -173,6 +201,7 @@
     "suggestions": {
       "summarize": "Resumir este atendimento",
       "summarize_desc": "Obtenha os pontos principais da conversa",
+      "summarize_prompt_text": "Resuma esta conversa de atendimento ao cliente de forma concisa, destacando o problema principal a principal causa e a resolução.",
       "extract_actions": "Extrair ações necessárias",
       "extract_actions_desc": "Identifique tarefas e próximos passos"
     },
@@ -196,6 +225,8 @@
       "empty_list_message": "Nenhum MCP conectado ainda.",
       "reload_button_title": "Recarregar",
       "delete_button_title": "Excluir",
+      "command_label": "Comando",
+      "url_label": "URL",
       "tools_label": "Ferramentas"
     }
   }

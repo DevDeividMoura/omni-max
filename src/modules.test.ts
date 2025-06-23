@@ -57,19 +57,6 @@ describe('availableModules', () => {
       expect(module).toHaveProperty('defaultEnabled');
       expect(typeof module.defaultEnabled).toBe('boolean');
 
-      if (module.promptSettings) {
-        expect(module.promptSettings).toHaveProperty('label');
-        expect(typeof module.promptSettings.label).toBe('string');
-        expect(module.promptSettings.label).not.toBe('');
-
-        expect(module.promptSettings).toHaveProperty('configKey');
-        expect(typeof module.promptSettings.configKey).toBe('string');
-        expect(module.promptSettings.configKey).not.toBe('');
-
-        expect(module.promptSettings).toHaveProperty('placeholder');
-        expect(typeof module.promptSettings.placeholder).toBe('string');
-        // Placeholder can potentially be an empty string, so no not.toBe('') check here.
-      }
     });
   });
 

@@ -6,7 +6,7 @@
  */
 import { persistentStore } from './persistentStore';
 import { getInitialModuleStates } from '../modules';
-import { PROVIDER_METADATA_LIST } from '../ai/providerMetadata';
+import { PROVIDER_METADATA_LIST } from '../shared/providerMetadata';
 
 // --- Default Values ---
 
@@ -85,26 +85,35 @@ export const AiProviderConfigDefaults: AiProviderConfig = {
   model: PROVIDER_METADATA_LIST.length > 0 ? (PROVIDER_METADATA_LIST[0].defaultModel || '') : '',
 };
 
-/**
- * @interface PromptsConfig
- * @description Defines the structure for configurable AI prompts.
- * Note: Default prompt texts are in Portuguese as they are user-facing.
- */
-export interface PromptsConfig {
-  /** @property {string} summaryPrompt - The template prompt used for generating conversation summaries. */
-  summaryPrompt: string;
-  /** @property {string} improvementPrompt - The template prompt used for suggesting improvements to text. */
-  improvementPrompt: string;
+export interface Persona {
+  id: string;
+  name: string;
+  description: string;
+  prompt: string;
+  /**
+   * A list of tool names (IDs) that this persona is allowed to use.
+   * Corresponds to the IDs in toolMetadata.ts and keys in masterToolRegistry.
+   */
+  tool_names: string[]; // <-- NOSSO NOVO CAMPO
 }
-/**
- * @const {PromptsConfig} PromptsConfigDefaults
- * @description Default values for AI prompts.
- * These user-facing default prompts are provided in Portuguese.
- */
-export const PromptsConfigDefaults: PromptsConfig = {
-  summaryPrompt: 'Resuma esta conversa de atendimento ao cliente de forma concisa, destacando o problema principal a principal causa e a resolução.', // UI-facing: PT-BR
-  improvementPrompt: 'Revise a seguinte resposta para um cliente, tornando-a mais clara, empática e profissional, mantendo o significado original:', // UI-facing: PT-BR
-};
+
+// Também devemos atualizar o valor padrão
+export const PersonasDefaults: Persona[] = [
+  {
+    id: '1718544000000-support',
+    name: 'Suporte Padrão',
+    description: 'Assistente geral para resolução de problemas comuns.',
+    prompt: '...',
+    tool_names: ['get_entire_protocol_history', 'get_latest_messages_from_session'], // <-- Exemplo preenchido
+  },
+  {
+    id: '1718544000001-sales',
+    name: 'Vendas Consultivas',
+    description: 'Assistente focado em identificar oportunidades e apresentar produtos.',
+    prompt: '...',
+    tool_names: ['get_latest_messages_from_session'], // <-- Vendas talvez só precise das msgs recentes
+  }
+];
 
 /**
  * @interface CollapsibleSectionsState
@@ -117,8 +126,9 @@ export interface CollapsibleSectionsState {
   shortcuts: boolean;
   /** @property {boolean} ai - State for the AI configuration section. True if open, false if closed. */
   ai: boolean;
-  /** @property {boolean} prompts - State for the AI prompts configuration section. True if open, false if closed. */
-  prompts: boolean;
+  /** @property {boolean} personas - State for the agent personas configuration section. True if open, false if closed. */
+  personas: boolean;
+
 }
 /**
  * @const {CollapsibleSectionsState} CollapsibleSectionsStateDefaults
@@ -127,8 +137,8 @@ export interface CollapsibleSectionsState {
 export const CollapsibleSectionsStateDefaults: CollapsibleSectionsState = {
   modules: false,
   shortcuts: false,
+  personas: false,
   ai: false,
-  prompts: false,
 };
 
 /**
@@ -192,14 +202,6 @@ export const aiProviderConfigStore =
   persistentStore<AiProviderConfig>('omniMaxAiProviderConfig', AiProviderConfigDefaults);
 
 /**
- * @const {Writable<PromptsConfig>} promptsStore
- * @description Persistent Svelte store for configurable AI prompts.
- * Default prompt texts are in Portuguese.
- */
-export const promptsStore =
-  persistentStore<PromptsConfig>('omniMaxPrompts', PromptsConfigDefaults);
-
-/**
  * @const {Writable<CollapsibleSectionsState>} collapsibleSectionsStateStore
  * @description Persistent Svelte store for the open/closed state of UI collapsible sections.
  */
@@ -220,3 +222,9 @@ export const shortcutKeysStore =
  */
 export const selectedLocaleStore = 
   persistentStore<string>('omniMaxSelectedLocale', '');
+
+/**
+ * @const {Writable<Persona[]>} personasStore
+ * @description Persistent Svelte store for managing the list of user-defined agent personas.
+ */
+export const personasStore = persistentStore<Persona[]>('omniMaxPersonas', PersonasDefaults);

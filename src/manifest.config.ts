@@ -45,6 +45,10 @@ export default defineManifest(async () => {
       "48": "src/assets/icons/icon-48.png",
       "128": "src/assets/icons/icon-128.png",
     },
+    background: {
+      service_worker: 'src/background/index.ts',
+      type: 'module',
+    },
     action: {
       default_popup: "src/popup/popup.html",
       default_icon: {

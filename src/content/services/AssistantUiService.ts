@@ -5,8 +5,7 @@ import type { Translator } from '../../i18n/translator.content';
 import { assistantPopupStore } from '../../components/assistant/assistantPopupStore';
 import popupStyles from '../../components/assistant/AIAssistantPopup.css?inline';
 import AIAssistantPopup from '../../components/assistant/AIAssistantPopup.svelte';
-import type { AIServiceManager } from '../../ai/AIServiceManager';
-import type { MatrixApiService } from './MatrixApiService';
+import { AgentService } from './AgentService'; // <-- Importando o novo serviço
 
 export const ASSISTANT_BUTTON_CLASS = 'omni-max-assistant-button';
 const ASSISTANT_POPUP_HOST_ID = 'omni-max-assistant-popup-host';
@@ -21,22 +20,19 @@ const ASSISTANT_ICON_SVG = `
 
 export class AssistantUiService {
   private t: (key: string, options?: { values: Record<string, any> }) => Promise<string>;
+  private agentService: AgentService; // <-- Armazena a instância do AgentService
 
   constructor(
     private domService: DomService,
-    private translator: Translator,
-    private aiManager: AIServiceManager,
-    private matrixApiService: MatrixApiService,
+    private translator: Translator
   ) {
     this.t = this.translator.t.bind(this.translator);
+    this.agentService = new AgentService(); // <-- Instancia o serviço aqui
     this.initialize();
   }
 
   /**
    * Creates a host element and mounts the AIAssistantPopup component into it ONCE.
-   * The component itself will now handle its visibility based on the store.
-   * This is a more robust approach.
-   * @private
    */
   private initialize(): void {
     if (this.domService.query(`#${ASSISTANT_POPUP_HOST_ID}`)) return;
@@ -52,21 +48,18 @@ export class AssistantUiService {
     styleEl.textContent = popupStyles;
     shadowRoot.appendChild(styleEl);
 
-    // Mount the component once and let it live. It will show/hide itself.
+    // Mount the component once, passing the correct dependencies
     mount(AIAssistantPopup, {
       target: shadowRoot,
       props: {
         translator: this.translator,
-        aiManager: this.aiManager,
-        matrixApiService: this.matrixApiService
+        agentService: this.agentService, // <-- Passa o AgentService para o componente
       }
     });
   }
 
   /**
    * Injects the Assistant button into the specified container on the page.
-   * @param {HTMLElement} targetContainer The container for the button.
-   * @param {ActiveChatContext} context The full context of the active chat.
    */
   public async injectAssistantButton(targetContainer: HTMLElement, context: ActiveChatContext): Promise<void> {
     if (targetContainer.querySelector(`.${ASSISTANT_BUTTON_CLASS}`) || targetContainer.dataset.omniMaxAssistantButtonInjected === 'true') {
@@ -92,15 +85,12 @@ export class AssistantUiService {
     assistantButton.addEventListener('click', (event) => {
       event.preventDefault();
       event.stopPropagation();
-
-      // FIX: Captura a posição do botão clicado
+      
       const buttonRect = (event.currentTarget as HTMLElement).getBoundingClientRect();
 
-      // FIX: Passa o objeto de dados completo para o store,
-      // incluindo o retângulo do botão e o contactId.
+      // Passa o objeto de contexto completo para a store
       assistantPopupStore.show({
-        protocolNumber: context.protocolNumber,
-        contactId: context.contactId,
+        context: context, // Passa o objeto context inteiro
         triggerButtonRect: buttonRect
       });
     });

@@ -11,6 +11,23 @@
     "footer": {
       "made_with_love": "Feito com ❤️ por"
     },
+    "personas": {
+      "title": "Gestão de Personas",
+      "add_button": "Adicionar Nova Persona",
+      "edit_button_title": "Editar Persona",
+      "delete_button_title": "Eliminar Persona",
+      "modal_title_add": "Adicionar Nova Persona",
+      "modal_title_edit": "Editar Persona",
+      "name_label": "Nome da Persona",
+      "name_placeholder": "Ex: Suporte Técnico Nível 2",
+      "description_label": "Descrição Curta",
+      "description_placeholder": "Ex: Especialista em problemas técnicos avançados.",
+      "prompt_label": "Prompt do Sistema",
+      "prompt_placeholder": "És um especialista em...",
+      "confirm_delete_message": "Tem a certeza que deseja eliminar a persona \"{name}\"?",
+      "validation_error": "O nome e o prompt da persona não podem estar vazios.",
+      "no_personas_yet": "Nenhuma persona criada. Clique abaixo para adicionar uma."
+    },
     "placeholders": {
       "loading": "A carregar configurações...",
       "no_general_modules": "Nenhum módulo geral configurado.",
@@ -43,7 +60,8 @@
       "manage_credentials": "Gerir Credenciais",
       "manage_credentials_for": "Gerir Credenciais ({providerName})",
       "cancel": "Cancelar",
-      "ok": "OK"
+      "ok": "OK",
+      "save": "Guardar"
     },
     "modal": {
       "credentials_title": "Credenciais: {providerName}",
@@ -173,6 +191,7 @@
     "suggestions": {
       "summarize": "Resumir este atendimento",
       "summarize_desc": "Obtenha os pontos principais da conversa",
+      "summarize_prompt_text": "Resuma esta conversa de atendimento ao cliente de forma concisa, destacando o problema principal a principal causa e a resolução.",
       "extract_actions": "Extrair acções necessárias",
       "extract_actions_desc": "Identifique tarefas e próximos passos"
     },
@@ -196,6 +215,8 @@
       "empty_list_message": "Nenhum MCP conectado ainda.",
       "reload_button_title": "Recarregar",
       "delete_button_title": "Excluir",
+      "command_label": "Comando",
+      "url_label": "URL",
       "tools_label": "Ferramentas"
     }
   }
