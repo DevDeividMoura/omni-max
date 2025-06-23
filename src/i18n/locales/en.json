@@ -46,6 +46,7 @@
       "add_credentials_to_list_models": "To list models, add credentials in the modal below and save."
     },
     "labels": {
+      "embedding_model": "Embedding Model",
       "toggle_module": "Enable/Disable {moduleName}",
       "all_ai_features": "All AI Features",
       "ai_provider": "AI Provider",
@@ -149,6 +150,17 @@
         "name": "Search Knowledge Base",
         "description": "Searches for information in locally saved documents and notes to answer questions."
       }
+    },
+    "knowledge_base": {
+      "title": "Knowledge Base (RAG)",
+      "add_document_title": "Add New Document",
+      "content_label": "Document Content",
+      "content_placeholder": "Paste here the text, article or information you want to add...",
+      "source_label": "Source (Optional)",
+      "source_placeholder": "Ex: Article URL, PDF name, etc.",
+      "add_button": "Add to Knowledge Base",
+      "existing_documents_title": "Documents in Base",
+      "no_documents_yet": "No documents in the knowledge base yet. Add one above."
     }
   },
   "content": {

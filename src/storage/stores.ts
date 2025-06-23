@@ -134,6 +134,8 @@ export interface CollapsibleSectionsState {
   ai: boolean;
   /** @property {boolean} personas - State for the agent personas configuration section. True if open, false if closed. */
   personas: boolean;
+  /** @property {boolean} knowledgeBase - State for the knowledge base section. True if open, false if closed. */
+  knowledgeBase: boolean;
 
 }
 /**
@@ -143,8 +145,9 @@ export interface CollapsibleSectionsState {
 export const CollapsibleSectionsStateDefaults: CollapsibleSectionsState = {
   modules: false,
   shortcuts: false,
-  personas: false,
   ai: false,
+  personas: false,
+  knowledgeBase: false,
 };
 
 /**

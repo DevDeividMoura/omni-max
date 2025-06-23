@@ -19,6 +19,7 @@
     PlusCircle,
     Info,
     Users,
+    Database,
     Pencil,
     Trash2,
     XCircle,
@@ -31,7 +32,7 @@
   } from "../shared/providerMetadata";
 
   import { AGENT_TOOLS_METADATA } from "../background/agent/tools/toolMetadata";
- 
+
   import {
     globalExtensionEnabledStore,
     moduleStatesStore,
@@ -88,6 +89,11 @@
   let localShortcutKeys: ShortcutKeysConfig = JSON.parse(
     JSON.stringify(get(shortcutKeysStore)),
   );
+
+  // --- Knowledge Base State ---
+  let newDocumentContent = "";
+  let newDocumentSource = "";
+  let knowledgeBaseDocuments: any[] = [];
 
   let modelList: string[] = [];
   let loadingModels = false;
@@ -203,12 +209,12 @@
     modelError = null;
     loadingModels = true;
     const previouslySelectedModel = localAiProviderConfig.model;
-    
+
     try {
       const response = await chrome.runtime.sendMessage({
-        type: 'listAvailableModels',
+        type: "listAvailableModels",
         provider: localAiProviderConfig.provider,
-        credentials: localAiCredentials
+        credentials: localAiCredentials,
       });
 
       if (response && response.success) {
@@ -216,21 +222,85 @@
         if (modelList.length === 0) {
           modelError = $_("popup.errors.ai.no_models_found_provider");
         }
-        if (previouslySelectedModel && !modelList.includes(previouslySelectedModel)) {
+        if (
+          previouslySelectedModel &&
+          !modelList.includes(previouslySelectedModel)
+        ) {
           localAiProviderConfig.model = "";
           markChanged();
         }
       } else {
-        throw new Error(response.error || 'Unknown error from background script');
+        throw new Error(
+          response.error || "Unknown error from background script",
+        );
       }
     } catch (err: any) {
       modelError = err.message
-        ? $_("popup.errors.ai.load_failed_specific", { values: { message: err.message } })
+        ? $_("popup.errors.ai.load_failed_specific", {
+            values: { message: err.message },
+          })
         : $_("popup.errors.ai.load_failed_generic");
       modelList = [];
       console.error("refreshModelList: Error caught from background:", err);
     } finally {
       loadingModels = false;
+    }
+  }
+
+  async function loadKnowledgeBaseDocuments() {
+    console.log("Requesting documents from knowledge base...");
+    // TODO: Implementar o handler 'getKnowledgeBaseDocuments' no background.ts
+    const response = await chrome.runtime.sendMessage({
+      type: "getKnowledgeBaseDocuments",
+    });
+    if (response && response.success) {
+      knowledgeBaseDocuments = response.documents;
+    } else {
+      console.error("Failed to load documents from knowledge base.");
+      knowledgeBaseDocuments = [];
+    }
+  }
+
+  async function handleAddDocument() {
+    if (!newDocumentContent.trim()) return;
+    const document = {
+      pageContent: newDocumentContent,
+      metadata: {
+        source:
+          newDocumentSource.trim() ||
+          `manual_entry_${new Date().toISOString()}`,
+        addedAt: Date.now(),
+      },
+    };
+    console.log("Adding document:", document);
+    // TODO: Implementar o handler 'addDocumentToKnowledgeBase' no background.ts
+    const response = await chrome.runtime.sendMessage({
+      type: "addDocumentToKnowledgeBase",
+      document,
+    });
+    if (response && response.success) {
+      newDocumentContent = "";
+      newDocumentSource = "";
+      await loadKnowledgeBaseDocuments(); // Recarrega a lista
+    } else {
+      alert("Failed to add document: " + (response.error || "Unknown error"));
+    }
+  }
+
+  async function handleDeleteDocument(documentId: number) {
+    if (!confirm("Tem certeza que deseja excluir este documento?")) return;
+    console.log("Deleting document with ID:", documentId);
+    // TODO: Implementar o handler 'deleteDocumentFromKnowledgeBase' no background.ts
+    const response = await chrome.runtime.sendMessage({
+      type: "deleteDocumentFromKnowledgeBase",
+      documentId,
+    });
+    if (response && response.success) {
+      await loadKnowledgeBaseDocuments(); // Recarrega a lista
+    } else {
+      alert(
+        "Failed to delete document: " + (response.error || "Unknown error"),
+      );
     }
   }
 
@@ -283,7 +353,7 @@
       aiCredentialsStore.subscribe((v) => {
         localAiCredentials = JSON.parse(JSON.stringify(v));
         if (!isLoading) markChanged();
-      }), 
+      }),
     );
     unsubs.push(
       aiProviderConfigStore.subscribe((v) => {
@@ -303,6 +373,8 @@
         if (!isLoading) markChanged();
       }),
     );
+
+    loadKnowledgeBaseDocuments();
 
     // Wait for stores to load from chrome.storage
     setTimeout(() => {
@@ -348,10 +420,7 @@
       const isCurrentlyOpen = localOpenSections[sectionKeyToToggle];
       // Accordion-style collapse
       localOpenSections = {
-        modules: false,
-        shortcuts: false,
-        ai: false,
-        personas: false,
+        ...localOpenSections,
         [sectionKeyToToggle]: !isCurrentlyOpen, // Toggle the clicked one
       };
       markChanged();
@@ -857,6 +926,105 @@
               </div>
             {/each}
           {/if}
+        </div>
+      </CollapsibleSection>
+      <CollapsibleSection
+        title={$_("modules.knowledge_base.title")}
+        icon={Database}
+        isOpen={localOpenSections?.knowledgeBase}
+        onToggle={() => toggleSectionCollapse("knowledgeBase")}
+      >
+        <div class="section-item-space">
+          <div class="input-group">
+            <label for="embeddingModel"
+              >{$_("popup.labels.embedding_model")}</label
+            >
+            <select
+              id="embeddingModel"
+              class="select-field"
+              bind:value={localAiProviderConfig.embeddingModel}
+              on:change={() => markChanged()}
+              disabled={!localAiFeaturesEnabled || !localGlobalEnabled}
+            >
+              <option value="text-embedding-3-small"
+                >text-embedding-3-small (OpenAI)</option
+              >
+              <option value="text-embedding-3-large"
+                >text-embedding-3-large (OpenAI)</option
+              >
+              <option value="text-embedding-004"
+                >text-embedding-004 (Google)</option
+              >
+            </select>
+          </div>
+
+          <hr class="sub-separator" />
+
+          <h4 class="section-subtitle">
+            {$_("modules.knowledge_base.add_document_title")}
+          </h4>
+          <div class="input-group">
+            <label for="newDocContent"
+              >{$_("modules.knowledge_base.content_label")}</label
+            >
+            <textarea
+              id="newDocContent"
+              class="textarea-field"
+              rows="4"
+              placeholder={$_("modules.knowledge_base.content_placeholder")}
+              bind:value={newDocumentContent}
+            ></textarea>
+          </div>
+          <div class="input-group">
+            <label for="newDocSource"
+              >{$_("modules.knowledge_base.source_label")}</label
+            >
+            <input
+              id="newDocSource"
+              class="input-field"
+              placeholder={$_("modules.knowledge_base.source_placeholder")}
+              bind:value={newDocumentSource}
+            />
+          </div>
+          <button
+            class="button-primary full-width"
+            on:click={handleAddDocument}
+            disabled={!newDocumentContent.trim()}
+          >
+            {$_("modules.knowledge_base.add_button")}
+          </button>
+
+          <hr class="sub-separator" />
+
+          <h4 class="section-subtitle">
+            {$_("modules.knowledge_base.existing_documents_title")}
+          </h4>
+          <div class="knowledge-base-list">
+            {#if knowledgeBaseDocuments.length === 0}
+              <p class="placeholder-text">
+                {$_("modules.knowledge_base.no_documents_yet")}
+              </p>
+            {:else}
+              {#each knowledgeBaseDocuments as doc (doc.id)}
+                <div class="document-item">
+                  <div class="document-info">
+                    <strong class="document-source"
+                      >{doc.metadata.source || "Sem fonte"}</strong
+                    >
+                    <p class="document-content">{doc.content}</p>
+                  </div>
+                  <div class="document-actions">
+                    <button
+                      class="button-icon-danger"
+                      on:click={() => handleDeleteDocument(doc.id)}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </div>
+              {/each}
+            {/if}
+          </div>
         </div>
       </CollapsibleSection>
     {/if}

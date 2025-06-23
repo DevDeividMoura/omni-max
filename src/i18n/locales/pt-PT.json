@@ -46,6 +46,7 @@
       "add_credentials_to_list_models": "Para listar modelos, adicione as credenciais no modal abaixo e guarde."
     },
     "labels": {
+      "embedding_model": "Modelo de Embedding",
       "toggle_module": "Activar/Desactivar {moduleName}",
       "all_ai_features": "Todas as Funções de IA",
       "ai_provider": "Fornecedor de IA",
@@ -149,6 +150,17 @@
         "name": "Buscar na Base de Conhecimento",
         "description": "Procura por informações em documentos e notas guardadas localmente para responder a perguntas."
       }
+    },
+    "knowledge_base": {
+      "title": "Base de Conhecimento (RAG)",
+      "add_document_title": "Adicionar Novo Documento",
+      "content_label": "Conteúdo do Documento",
+      "content_placeholder": "Cole aqui o texto, artigo ou informação que deseja adicionar...",
+      "source_label": "Fonte (Opcional)",
+      "source_placeholder": "Ex: URL do artigo, nome do PDF, etc.",
+      "add_button": "Adicionar à Base de Conhecimento",
+      "existing_documents_title": "Documentos na Base",
+      "no_documents_yet": "Nenhum documento na base de conhecimento. Adicione um acima."
     }
   },
   "content": {

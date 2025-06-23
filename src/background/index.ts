@@ -13,6 +13,11 @@ import type { AgentState, StoredAgentState } from './agent/state';
 import { IndexedDBCheckpointer } from './services/indexedDBCheckpointer';
 import { listAvailableModels } from './services/model_lister';
 
+import Dexie from 'dexie';
+import { Document } from '@langchain/core/documents';
+import { OpenAIEmbeddings } from '@langchain/openai';
+import { IndexedDBVectorStore } from './services/vector_storage/IndexedDBVectorStore';
+
 
 // --- Inicialização e Configuração Global ---
 
@@ -52,6 +57,9 @@ const messageHandlers = new Map<string, MessageHandler>([
   ['invokeAgent', handleInvokeAgent],
   ['changePersona', handleChangePersona],
   ['listAvailableModels', handleListAvailableModels],
+  ['getKnowledgeBaseDocuments', handleGetKnowledgeBaseDocuments],
+  ['addDocumentToKnowledgeBase', handleAddDocumentToKnowledgeBase],
+  ['deleteDocumentFromKnowledgeBase', handleDeleteDocumentFromKnowledgeBase]
 ]);
 
 // --- Listener Principal (Dispatcher) ---
@@ -81,6 +89,85 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 // --- Funções Manipuladoras (Handlers) ---
 // Cada função agora é autônoma e registrada no mapa `messageHandlers`.
 // ======================================================================
+
+// ======================================================================
+// --- HANDLERS DA BASE DE CONHECIMENTO (KNOWLEDGE BASE) ---
+// ======================================================================
+
+/**
+ * @handler handleGetKnowledgeBaseDocuments
+ * @description Busca todos os documentos salvos no IndexedDB e os retorna para a UI.
+ */
+async function handleGetKnowledgeBaseDocuments(request: any, sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) {
+  try {
+    // Para uma simples leitura, podemos usar Dexie diretamente.
+    const db = new Dexie('omnimax-rag-db');
+    db.version(1).stores({ vectors: '++id, content' });
+    const documents = await (db as any).vectors.toArray();
+    sendResponse({ success: true, documents });
+  } catch (error: any) {
+    console.error('[Background] Error getting documents:', error);
+    sendResponse({ success: false, error: error.message });
+  }
+}
+
+/**
+ * @handler handleAddDocumentToKnowledgeBase
+ * @description Recebe um novo documento da UI, gera seu embedding e o salva no VectorStore.
+ */
+async function handleAddDocumentToKnowledgeBase(request: any, sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) {
+  try {
+    const { document } = request; // document: { pageContent, metadata }
+
+    // Pega as configurações atuais para instanciar os serviços necessários.
+    const providerConfig = get(aiProviderConfigStore);
+    const credentials = get(aiCredentialsStore);
+    const openAIApiKey = credentials.openaiApiKey;
+
+    if (!openAIApiKey) {
+      throw new Error("OpenAI API Key não configurada.");
+    }
+
+    // Instancia o modelo de embedding e nosso VectorStore.
+    const embeddings = new OpenAIEmbeddings({
+      openAIApiKey,
+      modelName: providerConfig.embeddingModel,
+    });
+    const vectorStore = new IndexedDBVectorStore(embeddings, { dbName: 'omnimax-rag-db' });
+
+    // Adiciona o documento. A classe já lida com a geração do embedding.
+    await vectorStore.addDocuments([new Document(document)]);
+    
+    sendResponse({ success: true });
+  } catch (error: any) {
+    console.error('[Background] Error adding document:', error);
+    sendResponse({ success: false, error: error.message });
+  }
+}
+
+/**
+ * @handler handleDeleteDocumentFromKnowledgeBase
+ * @description Recebe um ID de documento e o remove do IndexedDB.
+ */
+async function handleDeleteDocumentFromKnowledgeBase(request: any, sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) {
+  try {
+    const { documentId } = request;
+    if (typeof documentId !== 'number') {
+      throw new Error("ID do documento inválido.");
+    }
+    
+    // Para uma exclusão simples, Dexie direto é mais eficiente.
+    const db = new Dexie('omnimax-rag-db');
+    db.version(1).stores({ vectors: '++id, content' });
+    await (db as any).vectors.delete(documentId);
+
+    sendResponse({ success: true });
+  } catch (error: any) {
+    console.error('[Background] Error deleting document:', error);
+    sendResponse({ success: false, error: error.message });
+  }
+}
+
 
 /**
  * @handler handleGetAgentState
