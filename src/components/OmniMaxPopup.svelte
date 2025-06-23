@@ -119,11 +119,6 @@
     (m) => m.category === "ai",
   );
 
-  let promotableAiModules: Module[];
-  $: promotableAiModules = aiModules.filter(
-    (m) => m.promptSettings && m.released !== false,
-  );
-
   const aiManager = new AIServiceManager();
 
   // --- Persona Management Functions ---

@@ -4,8 +4,6 @@
  * and helper functions to retrieve their initial states.
  */
 
-import type { PromptsConfig } from './storage/stores';
-
 /**
  * @type ModuleCategory
  * @description Defines the valid categories a module can belong to. This is used for grouping in the UI.
@@ -47,24 +45,6 @@ export interface Module {
    * Defaults to true if undefined.
    */
   released?: boolean;
-
-  /**
-   * @property {object} [promptSettings] - Configuration for prompts associated with AI modules.
-   */
-  promptSettings?: {
-    /**
-     * @property {string} label - Label for the prompt input field in the UI.
-     */
-    label: string;
-    /**
-     * @property {keyof PromptsConfig} configKey - Key in the PromptsConfig store where this prompt's value is stored.
-     */
-    configKey: keyof PromptsConfig;
-    /**
-     * @property {string} placeholder - Placeholder text for the textarea.
-     */
-    placeholder: string;
-  };
 }
 
 /**

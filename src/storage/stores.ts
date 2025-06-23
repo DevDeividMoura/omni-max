@@ -116,27 +116,6 @@ export const PersonasDefaults: Persona[] = [
 ];
 
 /**
- * @interface PromptsConfig
- * @description Defines the structure for configurable AI prompts.
- * Note: Default prompt texts are in Portuguese as they are user-facing.
- */
-export interface PromptsConfig {
-  /** @property {string} summaryPrompt - The template prompt used for generating conversation summaries. */
-  summaryPrompt: string;
-  /** @property {string} improvementPrompt - The template prompt used for suggesting improvements to text. */
-  improvementPrompt: string;
-}
-/**
- * @const {PromptsConfig} PromptsConfigDefaults
- * @description Default values for AI prompts.
- * These user-facing default prompts are provided in Portuguese.
- */
-export const PromptsConfigDefaults: PromptsConfig = {
-  summaryPrompt: 'Resuma esta conversa de atendimento ao cliente de forma concisa, destacando o problema principal a principal causa e a resolução.', // UI-facing: PT-BR
-  improvementPrompt: 'Revise a seguinte resposta para um cliente, tornando-a mais clara, empática e profissional, mantendo o significado original:', // UI-facing: PT-BR
-};
-
-/**
  * @interface CollapsibleSectionsState
  * @description Defines the structure for the open/closed state of collapsible sections in the UI.
  */
@@ -223,14 +202,6 @@ export const aiCredentialsStore =
  */
 export const aiProviderConfigStore =
   persistentStore<AiProviderConfig>('omniMaxAiProviderConfig', AiProviderConfigDefaults);
-
-/**
- * @const {Writable<PromptsConfig>} promptsStore
- * @description Persistent Svelte store for configurable AI prompts.
- * Default prompt texts are in Portuguese.
- */
-export const promptsStore =
-  persistentStore<PromptsConfig>('omniMaxPrompts', PromptsConfigDefaults);
 
 /**
  * @const {Writable<CollapsibleSectionsState>} collapsibleSectionsStateStore
