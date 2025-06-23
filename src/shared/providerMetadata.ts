@@ -66,6 +66,10 @@ export interface ProviderMetadata {
    * @property {string} [defaultModel] - Optional suggested default model for this provider.
    */
   defaultModel?: string;
+  /**
+   * @property {string} [defaultEmbeddingModel] - Optional suggested default model for EMBEDDING tasks.
+   */
+  defaultEmbeddingModel?: string;
 }
 
 /**
@@ -86,6 +90,7 @@ export const PROVIDER_METADATA_LIST: ProviderMetadata[] = [
     },
     documentationLink: 'https://platform.openai.com/api-keys',
     defaultModel: 'gpt-4o-mini',
+    defaultEmbeddingModel: 'text-embedding-3-small',
   },
   {
     id: 'gemini',
@@ -99,6 +104,7 @@ export const PROVIDER_METADATA_LIST: ProviderMetadata[] = [
     },
     documentationLink: 'https://ai.google.dev/gemini-api/docs/api-key',
     defaultModel: 'gemini-1.5-flash-latest',
+    defaultEmbeddingModel: 'gemini-embedding-exp-03-07',
   },
   {
     id: 'anthropic',
@@ -112,6 +118,7 @@ export const PROVIDER_METADATA_LIST: ProviderMetadata[] = [
     },
     documentationLink: 'https://console.anthropic.com/settings/keys',
     defaultModel: 'claude-3-haiku-20240307',
+    defaultEmbeddingModel: 'voyage-3.5-lite'
   },
   {
     id: 'ollama',

@@ -72,6 +72,11 @@ export interface AiProviderConfig {
   provider: string;
   /** @property {string} model - The specific model selected for the chosen provider. */
   model: string;
+  /**
+   * @property {string} embeddingModel - The specific embedding model selected.
+   * This can be from the same provider or a different one, depending on future implementation.
+   */
+  embeddingModel: string;
 }
 /**
  * @const {AiProviderConfig} AiProviderConfigDefaults
@@ -83,6 +88,7 @@ export const AiProviderConfigDefaults: AiProviderConfig = {
   // Uses the ID of the first provider in the metadata list as default, or a fallback.
   provider: PROVIDER_METADATA_LIST.length > 0 ? PROVIDER_METADATA_LIST[0].id : 'openai',
   model: PROVIDER_METADATA_LIST.length > 0 ? (PROVIDER_METADATA_LIST[0].defaultModel || '') : '',
+  embeddingModel: PROVIDER_METADATA_LIST.find(p => p.defaultEmbeddingModel)?.defaultEmbeddingModel || '',
 };
 
 export interface Persona {
