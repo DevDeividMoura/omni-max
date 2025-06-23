@@ -21,8 +21,8 @@ import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { IndexedDBCheckpointer } from '../services/indexedDBCheckpointer';
 
 const CONTEXT_INJECTOR = "context_injector" as const;
-const AGENT  = "agent" as const;
-const TOOLS  = "tools" as const;
+const AGENT = "agent" as const;
+const TOOLS = "tools" as const;
 
 /**
  * Registry de fábricas de LLM.
@@ -72,41 +72,47 @@ async function contextInjectorNode(state: AgentState, config?: RunnableConfig): 
   };
 
   if (!context.attendanceId) {
-      throw new Error("ID do Atendimento (attendanceId) não encontrado na configuração.");
+    throw new Error("ID do Atendimento (attendanceId) não encontrado na configuração.");
   }
-  
+
   if (isFirstInteraction) {
     console.log(`[Context Injector] Primeira interação. Buscando histórico completo...`);
     const history = await getEntireProtocolHistoryTool.invoke({
-        contactId: context.contactId,
-        protocolNumber: context.protocolNumber,
-        baseUrl: context.baseUrl
+      contactId: context.contactId,
+      protocolNumber: context.protocolNumber,
+      baseUrl: context.baseUrl
     });
-    
-    const contextMessage = new SystemMessage({
-        content: `CONTEXTO: O histórico completo da conversa até este ponto é fornecido abaixo:\n\n---\n${history}\n---`,
+
+    const historyContextMessage = new SystemMessage({
+      content: `[CONTEXT] The complete transcript of the conversation between the HUMAN ATTENDANT and the CLIENT is provided below. Your primary function is to assist the attendant based on this dialogue.
+---
+${history}
+---`,
     });
     console.log(`[Context Injector] Histórico completo injetado.`);
-    return { messages: [contextMessage] };
+    return { messages: [historyContextMessage] };
 
   } else {
     console.log(`[Context Injector] Interação subsequente. Buscando novas mensagens...`);
     const newMessages = await getLatestMessagesFromSessionTool.invoke({
-        sessionId: context.attendanceId,
-        baseUrl: context.baseUrl,
-        since_timestamp: state.last_processed_client_message_timestamp ?? undefined
+      sessionId: context.attendanceId,
+      baseUrl: context.baseUrl,
+      since_timestamp: state.last_processed_client_message_timestamp ?? undefined
     });
 
     if (newMessages && !newMessages.startsWith("No new messages")) {
-        const contextMessage = new SystemMessage({
-            content: `ATUALIZAÇÃO DE CONTEXTO: Novas mensagens desde sua última interação são fornecidas abaixo:\n\n---\n${newMessages}\n---`,
-        });
-        console.log(`[Context Injector] Novas mensagens injetadas.`);
-        return { messages: [contextMessage] };
+      const updateContextMessage = new SystemMessage({
+        content: `[CONTEXT UPDATE] New messages exchanged between the HUMAN ATTENDANT and the CLIENT since your last interaction are provided below.
+---
+${newMessages}
+---`,
+      });
+      console.log(`[Context Injector] Novas mensagens injetadas.`);
+      return { messages: [updateContextMessage] };
     } else {
-        console.log(`[Context Injector] Nenhuma nova mensagem para injetar.`);
-        // Retorna um objeto vazio pois não há alteração no estado
-        return {};
+      console.log(`[Context Injector] Nenhuma nova mensagem para injetar.`);
+      // Retorna um objeto vazio pois não há alteração no estado
+      return {};
     }
   }
 }
@@ -117,7 +123,7 @@ async function contextInjectorNode(state: AgentState, config?: RunnableConfig): 
  * usuário ou se chama uma ferramenta, agora com pleno conhecimento do contexto.
  */
 async function agentNode(
-  state: AgentState, 
+  state: AgentState,
   config?: RunnableConfig // ADICIONADO: Recebe a configuração do grafo
 ): Promise<Partial<AgentState>> {
   console.log("[Graph] Executing Main Agent Node");
@@ -132,26 +138,56 @@ async function agentNode(
 
   const systemMessageWithContext = new SystemMessage({
     content: `
-      # Persona
-      ${state.system_prompt}
+# ROLE AND GOAL
+You are Omni Max, an expert AI assistant for a human customer service attendant.
+Your primary goal is to empower the human attendant to provide faster, more accurate, and more empathetic service to the end client.
+You are a co-pilot. The human attendant is your user, and you must direct all your responses to them.
 
-      # Contextual Information
-      - Current Date/Time: ${new Date().toISOString()}
-      - Customer Service Protocol Number: ${state.protocol_number}
-      - Current Attendance ID: ${state.attendance_id}
-      - Customer Contact ID: ${state.contact_id}
-      - Platform Base URL: ${state.base_url}
+# PERSONA AND SPECIALIZATION
+You must adopt the following persona and specialization for this interaction. This is your primary directive and overrides general behavior.
+---
+${state.system_prompt}
+---
 
-      # Instructions
-      The relevant conversation history has been provided to you in a ToolMessage.
-      Your primary goal is to use your persona and this provided context to answer the user's latest query.
-      You can still use your available tools if you need to fetch NEW or DIFFERENT information that is not present in the provided history.
-      Decide whether to call a tool or to respond directly to the user.
-    `,
+# KEY RESPONSIBILITIES
+1.  **Analyze the Conversation:** Carefully read the conversation transcript between the attendant and the client provided in previous system messages.
+2.  **Answer the Attendant's Questions:** The attendant will ask you for information, clarifications, or suggestions. Provide concise and accurate answers.
+3.  **Suggest Responses:** Proactively suggest well-formulated responses that the attendant can send to the client. Clearly label these suggestions, for example: "Here is a suggested response for the client:".
+4.  **Execute Actions via Tools:** When the attendant asks you to perform a specific action (e.g., "get the invoice," "generate a Pix key"), use your available tools to accomplish the task.
+
+# RESPONSE SUGGESTION RULES
+Before crafting a response suggestion for the attendant, you MUST analyze the conversation history to determine the context.
+
+1.  **Greeting Rule (Salutations):**
+    -   **INCLUDE a greeting** (e.g., "Hello, how are you?", "Good morning!") ONLY IF the conversation is clearly at the beginning. This applies if:
+        - The attendant has not sent any messages yet.
+        - The entire conversation has fewer than 3 messages.
+        - The attendant explicitly asks for an "opening message" or "greeting".
+    -   **DO NOT INCLUDE a greeting** if the conversation is already in progress (3 or more messages have been exchanged). In this case, your suggestion must be a direct continuation of the dialogue. Jump straight to the point.
+
+2.  **Clarity and Labeling:**
+    -   Always label your suggestion clearly with: "Here is a suggested response for the client:".
+
+
+# HOW TO INTERACT
+-   **Your audience is the ATTENDANT, not the end client.** Never address the client directly.
+-   **Be concise and clear.** The attendant is likely multitasking.
+-   **Be proactive.** If you identify an opportunity to help based on the conversation, offer a suggestion.
+
+# CONTEXT AND TOOLS
+-   **Conversation History:** The transcript of the dialogue between the attendant and the client is provided in preceding System Messages marked with [CONTEXT].
+-   **Available Tools:** You have a set of tools to fetch information and perform actions. Use them when necessary to fulfill the attendant's requests.
+-   **Static Information:**
+    -   Current Date/Time: ${new Date().toISOString()}
+    -   Customer Service Protocol Number: ${state.protocol_number}
+    -   Current Attendance ID: ${state.attendance_id}
+    -   Customer Contact ID: ${state.contact_id}
+    -   Platform Base URL: ${state.base_url}
+`,
   });
-  
+
   const messagesForLlm = [systemMessageWithContext, ...state.messages];
-  
+
   // ALTERADO: Passa o objeto `config` para a chamada do LLM
   const ai_response = await llmWithTools.invoke(messagesForLlm, config);
 
@@ -187,16 +223,16 @@ function shouldContinue(state: AgentState): "tools" | typeof END {
   const lastMessage = messages[messages.length - 1];
 
   if (hasToolCalls(lastMessage)) {
-      // Check if any tool call is the "Done" tool
-      if (lastMessage.tool_calls.some((toolCall) => toolCall.name === "Done")) {
+    // Check if any tool call is the "Done" tool
+    if (lastMessage.tool_calls.some((toolCall) => toolCall.name === "Done")) {
       console.log("[Graph] Routing from Agent to: END (Done tool called)");
-        return END;
-      }
-      console.log("[Graph] Routing from Agent to: Tools");
-      return "tools";
+      return END;
     }
-    console.log("[Graph] Routing from Agent to: END");
-    return END;
+    console.log("[Graph] Routing from Agent to: Tools");
+    return "tools";
+  }
+  console.log("[Graph] Routing from Agent to: END");
+  return END;
 }
 
 // --- Definição e Compilação do Grafo ---
@@ -210,7 +246,7 @@ workflow.addNode(AGENT, agentNode);
 workflow.addNode(TOOLS, toolNode);
 
 // 2. Definir as Conexões (Edges)
-(workflow as any).addEdge(START, CONTEXT_INJECTOR); 
+(workflow as any).addEdge(START, CONTEXT_INJECTOR);
 (workflow as any).addEdge(CONTEXT_INJECTOR, AGENT);
 (workflow as any).addEdge(TOOLS, AGENT);
 
