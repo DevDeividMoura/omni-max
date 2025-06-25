@@ -1,5 +1,5 @@
 {
-  "popup": {
+  "sidepanel": {
     "header": {
       "title": "Omni Max",
       "subtitle": "Mucho más que una extensión",
@@ -26,7 +26,9 @@
       "prompt_placeholder": "Eres un experto en...",
       "confirm_delete_message": "¿Está seguro de que desea eliminar la persona \"{name}\"?",
       "validation_error": "El nombre y el prompt de la persona no pueden estar vacíos.",
-      "no_personas_yet": "Aún no hay personas creadas. Haga clic abajo para añadir una."
+      "no_personas_yet": "Aún no hay personas creadas. Haga clic abajo para añadir una.",
+      "tools_label": "Herramientas Disponibles",
+      "tools_placeholder": "Seleccione las herramientas que esta persona puede usar."
     },
     "placeholders": {
       "loading": "Cargando configuraciones...",
@@ -46,6 +48,8 @@
       "add_credentials_to_list_models": "Para listar modelos, añada las credenciales en el modal de abajo y guarde."
     },
     "labels": {
+      "model_chat": "Modelo de Chat",
+      "embedding_model": "Modelo de Embedding",
       "toggle_module": "Activar/Desactivar {moduleName}",
       "all_ai_features": "Todas las Funciones de IA",
       "ai_provider": "Proveedor de IA",
@@ -76,6 +80,8 @@
     },
     "errors": {
       "ai": {
+        "ollama_failed": "Error al conectar con Ollama. Verifique la URL y el Estado de Ollama.",
+        "api_key_required": "Se requiere clave API para este proveedor.",
         "load_failed_generic": "Error al cargar modelos. Verifique las credenciales y el acceso al proveedor.",
         "load_failed_specific": "Error al cargar modelos: {message}",
         "no_models_found_provider": "No se encontraron modelos para este proveedor. Verifique la URL (Ollama) o si hay modelos disponibles.",
@@ -119,7 +125,7 @@
       "description": "Configure las funcionalidades de IA para mejorar la eficiencia de la atención.",
       "ai_assistant": {
         "name": "IA: Asistente de Chat",
-        "description": "Abre un popup con un asistente de IA para ayudar con tareas contextuales durante la atención."
+        "description": "Abre un sidepanel con un asistente de IA para ayudar con tareas contextuales durante la atención."
       }
     },
     "prompts": {
@@ -135,22 +141,39 @@
         "placeholder": "Ej: Revisa la siguiente respuesta para un cliente, haciéndola más clara, empática y profesional.",
         "default": "Revisa la siguiente respuesta para un cliente, haciéndola más clara, empática y profesional, manteniendo el significado original:"
       }
+    },
+    "tools": {
+      "get_entire_protocol_history": {
+        "name": "Buscar Historial Completo del Protocolo",
+        "description": "Recupera todas las interacciones de un número de protocolo para resúmenes y análisis completos."
+      },
+      "get_latest_messages_from_session": {
+        "name": "Buscar Mensajes Recientes de la Sesión",
+        "description": "Recupera los mensajes más recientes del chat activo para obtener contexto en tiempo real."
+      },
+      "knowledge_base_search": {
+        "name": "Buscar en Base de Conocimiento",
+        "description": "Busca información en documentos y notas guardadas localmente para responder preguntas."
+      }
+    },
+    "knowledge_base": {
+      "title": "Base de Conocimiento (RAG)",
+      "add_document_title": "Añadir Nuevo Documento",
+      "content_label": "Contenido del Documento",
+      "content_placeholder": "Pegue aquí el texto, artículo o información que desea añadir...",
+      "source_label": "Fuente (Opcional)",
+      "source_placeholder": "Ej: URL del artículo, nombre del PDF, etc.",
+      "add_button": "Añadir a la Base de Conocimiento",
+      "existing_documents_title": "Documentos en la Base",
+      "no_documents_yet": "Ningún documento en la base de conocimiento. Añada uno arriba.",
+      "add_button_new": "Añadir Nuevo Documento",
+      "delete_button_title": "Eliminar Documento",
+      "delete_confirmation": "¿Está seguro de que desea eliminar este documento?",
+      "delete_success": "Documento eliminado con éxito.",
+      "delete_error": "Error al eliminar documento: {message}"
     }
   },
   "content": {
-    "summary_popup": {
-      "title": "Resumen de la Conversación",
-      "close_button_title": "Cerrar",
-      "close_button_aria_label": "Cerrar resumen",
-      "loading_text": "Analizando conversación...",
-      "no_summary_available": "No hay resumen disponible.",
-      "error_generating": "Error al generar resumen: {message}",
-      "error_generating_unknown": "Error al generar resumen: Error desconocido."
-    },
-    "summary_button": {
-      "label": "Resumir",
-      "context_error_alert": "Omni Max: No se pudo identificar la atención activa para resumir."
-    },
     "ai_context": {
       "preamble_start": "Inicio de atención del protocolo {protocolNumber} con {customerName}.",
       "preamble_segments": "Este protocolo incluye múltiples segmentos de atención fusionados (IDs: {ids}).",
@@ -218,6 +241,33 @@
       "command_label": "Comando",
       "url_label": "URL",
       "tools_label": "Herramientas"
+    }
+  },
+  "popup": {
+    "header": {
+      "title": "Omni Max",
+      "subtitle": "Mucho más que una extensión",
+      "repo_tooltip": "Ver repositorio de Omni Max en GitHub"
+    },
+    "content": {
+      "allowed_origin_label": "Origen Permitido",
+      "allowed_origin_description": "Agregue la URL del sitio donde la extensión Omni Max debe estar habilitada.",
+      "allowed_origin_placeholder": "Ej: https://www.ejemplo.com"
+    },
+    "buttons": {
+      "save": "Guardar Configuración",
+      "save_tooltip": "Guardar la configuración actual de la extensión Omni Max"
+    },
+    "footer": {
+      "made_with_love": "Hecho con ❤️ por"
+    },
+    "errors": {
+      "invalid_origin": "El origen permitido debe comenzar con 'http://' o 'https://'.",
+      "empty_origin": "El origen permitido no puede estar vacío.",
+      "save_failed": "Error al guardar la configuración. Verifique la consola para más detalles."
+    },
+    "alerts": {
+      "save_success_reloading": "Configuración guardada con éxito. Recargando la extensión..."
     }
   }
 }

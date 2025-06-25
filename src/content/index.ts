@@ -11,7 +11,7 @@ import { getLocaleFromAgent } from '../utils/language';
 import { getConfig } from './config';
 import packageJson from '../../package.json';
 import { Translator } from '../i18n/translator.content';
-import NotificationContainer from '../components/notifications/NotificationContainer.svelte';
+import NotificationContainer from './components/notifications/NotificationContainer.svelte';
 
 const extensionVersion = packageJson.version;
 export const OMNI_MAX_CONTENT_LOADED_FLAG = `omniMaxContentLoaded_v${extensionVersion}`;

@@ -10,6 +10,16 @@ import { PROVIDER_METADATA_LIST } from '../shared/providerMetadata';
 
 // --- Default Values ---
 
+export interface PlatformConfig {
+  allowedOrigin: string;
+}
+
+// O valor padrão pode ser o domínio que você usa para testes.
+export const PlatformConfigDefaults: PlatformConfig = {
+  allowedOrigin: '',
+};
+
+
 /**
  * @const {boolean} GlobalExtensionEnabledDefault
  * @description Default state for whether the entire extension is globally enabled.
@@ -72,6 +82,11 @@ export interface AiProviderConfig {
   provider: string;
   /** @property {string} model - The specific model selected for the chosen provider. */
   model: string;
+  /**
+   * @property {string} embeddingModel - The specific embedding model selected.
+   * This can be from the same provider or a different one, depending on future implementation.
+   */
+  embeddingModel: string;
 }
 /**
  * @const {AiProviderConfig} AiProviderConfigDefaults
@@ -83,6 +98,7 @@ export const AiProviderConfigDefaults: AiProviderConfig = {
   // Uses the ID of the first provider in the metadata list as default, or a fallback.
   provider: PROVIDER_METADATA_LIST.length > 0 ? PROVIDER_METADATA_LIST[0].id : 'openai',
   model: PROVIDER_METADATA_LIST.length > 0 ? (PROVIDER_METADATA_LIST[0].defaultModel || '') : '',
+  embeddingModel: PROVIDER_METADATA_LIST.find(p => p.defaultEmbeddingModel)?.defaultEmbeddingModel || '',
 };
 
 export interface Persona {
@@ -104,14 +120,14 @@ export const PersonasDefaults: Persona[] = [
     name: 'Suporte Padrão',
     description: 'Assistente geral para resolução de problemas comuns.',
     prompt: '...',
-    tool_names: ['get_entire_protocol_history', 'get_latest_messages_from_session'], // <-- Exemplo preenchido
+    tool_names: ['knowledge_base_search'], // <-- Exemplo preenchido
   },
   {
     id: '1718544000001-sales',
     name: 'Vendas Consultivas',
     description: 'Assistente focado em identificar oportunidades e apresentar produtos.',
     prompt: '...',
-    tool_names: ['get_latest_messages_from_session'], // <-- Vendas talvez só precise das msgs recentes
+    tool_names: ['knowledge_base_search'], // <-- Vendas talvez só precise das msgs recentes
   }
 ];
 
@@ -128,6 +144,8 @@ export interface CollapsibleSectionsState {
   ai: boolean;
   /** @property {boolean} personas - State for the agent personas configuration section. True if open, false if closed. */
   personas: boolean;
+  /** @property {boolean} knowledgeBase - State for the knowledge base section. True if open, false if closed. */
+  knowledgeBase: boolean;
 
 }
 /**
@@ -137,8 +155,9 @@ export interface CollapsibleSectionsState {
 export const CollapsibleSectionsStateDefaults: CollapsibleSectionsState = {
   modules: false,
   shortcuts: false,
-  personas: false,
   ai: false,
+  personas: false,
+  knowledgeBase: false,
 };
 
 /**
@@ -228,3 +247,10 @@ export const selectedLocaleStore =
  * @description Persistent Svelte store for managing the list of user-defined agent personas.
  */
 export const personasStore = persistentStore<Persona[]>('omniMaxPersonas', PersonasDefaults);
+
+/**
+ * @const {Writable<PlatformConfig>} platformConfigStore
+ * @description Salva a configuração da plataforma, como o domínio permitido.
+ */
+export const platformConfigStore = 
+  persistentStore<PlatformConfig>('omniMaxPlatformConfig', PlatformConfigDefaults);

@@ -4,12 +4,14 @@
  */
 import type { AiCredentials } from '../../../storage/stores';
 
+export type ModelType = 'chat' | 'embedding'; // <-- NOVO TIPO
+
 export interface IModelLister {
   /**
    * Fetches and returns a list of available model names for the provider.
-   * @param credentials The user's stored credentials, containing necessary API keys or base URLs.
+   * @param credentials The user's stored credentials.
+   * @param modelType The type of models to list ('chat' or 'embedding'). // <-- NOVO PARÂMETRO
    * @returns A promise that resolves to a sorted array of model name strings.
-   * @throws An error if fetching fails or credentials are insufficient.
    */
-  listModels(credentials: AiCredentials): Promise<string[]>;
+  listModels(credentials: AiCredentials, modelType: ModelType): Promise<string[]>;
 }

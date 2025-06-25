@@ -12,10 +12,8 @@ import { getEntireProtocolHistoryTool, getLatestMessagesFromSessionTool } from '
 import { AgentStateSchema } from "./state";
 
 // Importa todas as classes de LLM que suportamos
-import { ChatGroq } from "@langchain/groq";
 import { ChatOpenAI } from "@langchain/openai";
 import { ChatOllama } from "@langchain/ollama";
-import { ChatAnthropic } from "@langchain/anthropic";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 
 import { IndexedDBCheckpointer } from '../services/indexedDBCheckpointer';
@@ -30,10 +28,8 @@ const TOOLS = "tools" as const;
  * Isso mantém nosso código limpo e extensível.
  */
 const llmFactoryRegistry: Record<string, (config: { apiKey?: string; baseUrl?: string; model: string }) => BaseChatModel> = {
-  'groq': (config) => new ChatGroq({ apiKey: config.apiKey, model: config.model }),
   'openai': (config) => new ChatOpenAI({ apiKey: config.apiKey, model: config.model }),
   'ollama': (config) => new ChatOllama({ baseUrl: config.baseUrl, model: config.model }),
-  'anthropic': (config) => new ChatAnthropic({ apiKey: config.apiKey, model: config.model }),
   'gemini': (config) => new ChatGoogleGenerativeAI({ apiKey: config.apiKey, model: config.model }),
 };
 
@@ -149,11 +145,31 @@ You must adopt the following persona and specialization for this interaction. Th
 ${state.system_prompt}
 ---
 
+# INTERACTION FLOW
+1. **Agent's Questions**  
+   - If it's an internal query (e.g., “What's Max Internet's phone number?”), respond **only** to the agent with the correct information.
+2. **Customer Response Suggestions**  
+   - Generate a suggestion **only** when the agent uses explicit triggers such as:  
+     - “Suggest a response to the customer”  
+     - “How can I reply to the customer on this?”  
+   - When triggered, deliver:
+     \`\`\`markdown
+     Here is a suggested response for the customer:
+      <text>
+      \`\`\`
+
 # KEY RESPONSIBILITIES
 1.  **Analyze the Conversation:** Carefully read the conversation transcript between the attendant and the client provided in previous system messages.
 2.  **Answer the Attendant's Questions:** The attendant will ask you for information, clarifications, or suggestions. Provide concise and accurate answers.
 3.  **Suggest Responses:** Proactively suggest well-formulated responses that the attendant can send to the client. Clearly label these suggestions, for example: "Here is a suggested response for the client:".
 4.  **Execute Actions via Tools:** When the attendant asks you to perform a specific action (e.g., "get the invoice," "generate a Pix key"), use your available tools to accomplish the task.
+
+# HOW TO USE TOOLS
+- You have a set of tools to help you. Before answering, consider if any of your available tools could provide a more accurate, specific, or up-to-date answer than your general knowledge.
+- **Knowledge Base Search:** You have a special tool called 'knowledge_base_search'.
+  - **USE THIS TOOL FIRST** whenever the attendant asks a question about internal procedures, product details, specific policies, or any information that might be stored in internal documents.
+  - If the tool finds relevant information, use it to construct your answer and mention that the information came from the knowledge base.
+  - If the tool returns "No relevant information found", inform the attendant that you couldn't find an answer in the knowledge base and then proceed to answer based on your general knowledge.
 
 # RESPONSE SUGGESTION RULES
 Before crafting a response suggestion for the attendant, you MUST analyze the conversation history to determine the context.

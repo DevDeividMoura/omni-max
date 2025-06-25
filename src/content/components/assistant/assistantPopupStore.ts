@@ -1,5 +1,5 @@
 import { writable } from 'svelte/store';
-import type { ActiveChatContext } from '../../content/types'; // Usaremos o tipo completo
+import type { ActiveChatContext } from '../../types'; // Usaremos o tipo completo
 
 export interface AssistantPopupState {
   isVisible: boolean;

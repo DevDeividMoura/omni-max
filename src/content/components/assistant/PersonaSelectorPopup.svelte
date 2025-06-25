@@ -1,7 +1,7 @@
 <script lang="ts">
   // import { createEventDispatcher } from 'svelte'; // REMOVIDO
   import { Check } from 'lucide-svelte';
-  import type { Persona } from '../../storage/stores';
+  import type { Persona } from '../../../storage/stores';
 
   // --- Props ---
   export let isOpen: boolean = false;

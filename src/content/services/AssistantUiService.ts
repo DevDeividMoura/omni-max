@@ -2,9 +2,9 @@ import { mount } from 'svelte';
 import type { DomService } from './DomService';
 import type { ActiveChatContext } from '../types';
 import type { Translator } from '../../i18n/translator.content';
-import { assistantPopupStore } from '../../components/assistant/assistantPopupStore';
-import popupStyles from '../../components/assistant/AIAssistantPopup.css?inline';
-import AIAssistantPopup from '../../components/assistant/AIAssistantPopup.svelte';
+import { assistantPopupStore } from '../components/assistant/assistantPopupStore';
+import popupStyles from '../components/assistant/AIAssistantPopup.css?inline';
+import AIAssistantPopup from '../components/assistant/AIAssistantPopup.svelte';
 import { AgentService } from './AgentService'; // <-- Importando o novo serviço
 
 export const ASSISTANT_BUTTON_CLASS = 'omni-max-assistant-button';

@@ -1,4 +1,5 @@
 import { type Tool } from "@langchain/core/tools";
+import { knowledgeBaseSearchTool } from './knowledgeBaseTool';
 // Importe aqui todas as ferramentas que o AGENTE pode usar
 
 /**
@@ -8,8 +9,8 @@ import { type Tool } from "@langchain/core/tools";
 export interface AgentToolMetadata {
   id: string; // Deve ser igual ao `tool.name`
   tool: Tool; // O objeto da ferramenta real
-  name_i18n_key: string; // Chave para o nome na UI
-  description_i18n_key: string; // Chave para a descrição na UI
+  name: string; // Chave para o nome na UI
+  description: string; // Chave para a descrição na UI
 }
 
 /**
@@ -20,7 +21,12 @@ export interface AgentToolMetadata {
  */
 export const AGENT_TOOLS_METADATA: AgentToolMetadata[] = [
   // Ferramentas internas como 'get_entire_protocol_history' foram REMOVIDAS daqui.
-  
+  {
+    id: 'knowledge_base_search',
+    tool: knowledgeBaseSearchTool as unknown as Tool,
+    name: 'Knowledge Base Search',
+    description: 'Searches the knowledge base for relevant information.',
+  }
 
   // Adicione aqui outras ferramentas do agente no futuro...
 ];

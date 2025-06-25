@@ -6,7 +6,7 @@ import type { ExtractionService } from './ExtractionService';
 import type { ClipboardService } from './ClipboardService';
 import type { Translator } from '../../i18n/translator.content';
 import * as stores from '../../storage/stores';
-import * as notifications from '../../components/notifications/notifications';
+import * as notifications from '../components/notifications/notifications';
 
 // Mocks
 vi.mock('./ExtractionService');
