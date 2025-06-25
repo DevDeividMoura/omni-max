@@ -18,7 +18,7 @@ async function loadTranslations(locale: string): Promise<LocaleFile> {
 }
 
 /**
- * Navega em um objeto usando uma string de chave aninhada (ex: 'popup.header.title').
+ * Navega em um objeto usando uma string de chave aninhada (ex: 'sidepanel.header.title').
  * @param obj O objeto para pesquisar.
  * @param key A chave aninhada.
  * @returns O valor encontrado ou undefined.

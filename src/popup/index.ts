@@ -15,18 +15,18 @@ function getLanguageFromContentScript(): Promise<string> {
           { type: 'GET_PAGE_LANGUAGE' },
           (response) => {
             if (chrome.runtime.lastError) {
-              console.warn('[Popup] Could not connect to content script. Using fallback locale.', chrome.runtime.lastError.message);
+              console.warn('Omni Max [Popup] Could not connect to content script. Using fallback locale.', chrome.runtime.lastError.message);
               resolve('pt-BR');
             } else if (response && response.locale) {
               resolve(response.locale);
             } else {
-              console.warn('[Popup] Received empty response from content script. Using fallback locale.');
+              console.warn('Omni Max [Popup] Received empty response from content script. Using fallback locale.');
               resolve('pt-BR');
             }
           }
         );
       } else {
-        console.warn('[Popup] Could not find active tab. Using fallback locale.');
+        console.warn('Omni Max [Popup] Could not find active tab. Using fallback locale.');
         resolve('pt-BR');
       }
     });
@@ -34,10 +34,10 @@ function getLanguageFromContentScript(): Promise<string> {
 }
 
 /**
- * Main function to initialize the popup.
+ * Main function to initialize the sidepanel.
  */
 async function render() {
-  console.log('[Popup] Requesting page language from content script...');
+  console.log('Omni Max [Popup] Requesting page language from content script...');
   const locale = await getLanguageFromContentScript();
   const target = document.getElementById('app');
   
@@ -47,10 +47,10 @@ async function render() {
   
   if (target) {
     target.innerHTML = ''; // Clear any previous content
-    const { default: OmniMaxPopup } = await import('../components/OmniMaxPopup.svelte');
-    mount(OmniMaxPopup, { target }); // Mount the Svelte component
+    const { default: Popup } = await import('./Popup.svelte');
+    mount(Popup, { target }); // Mount the Svelte component
   } else {
-    console.error("Target element #app not found in popup.html");
+    console.error("Target element #app not found in sidepanel.html");
   }
 }
 

@@ -1,5 +1,5 @@
 {
-  "popup": {
+  "sidepanel": {
     "header": {
       "title": "Omni Max",
       "subtitle": "Much more than an extension",
@@ -10,6 +10,25 @@
     },
     "footer": {
       "made_with_love": "Made with ❤️ by"
+    },
+    "personas": {
+      "title": "Persona Management",
+      "add_button": "Add New Persona",
+      "edit_button_title": "Edit Persona",
+      "delete_button_title": "Delete Persona",
+      "modal_title_add": "Add New Persona",
+      "modal_title_edit": "Edit Persona",
+      "name_label": "Persona Name",
+      "name_placeholder": "Ex: Level 2 Technical Support",
+      "description_label": "Short Description",
+      "description_placeholder": "Ex: Specialist in advanced technical issues.",
+      "prompt_label": "System Prompt",
+      "prompt_placeholder": "You are an expert in...",
+      "confirm_delete_message": "Are you sure you want to delete the persona \"{name}\"?",
+      "validation_error": "Persona name and prompt cannot be empty.",
+      "no_personas_yet": "No personas created yet. Click below to add one.",
+      "tools_label": "Available Tools",
+      "tools_placeholder": "Select the tools this persona can use."
     },
     "placeholders": {
       "loading": "Loading settings...",
@@ -29,6 +48,8 @@
       "add_credentials_to_list_models": "To list models, add credentials in the modal below and save."
     },
     "labels": {
+      "model_chat": "Chat Model",
+      "embedding_model": "Embedding Model",
       "toggle_module": "Enable/Disable {moduleName}",
       "all_ai_features": "All AI Features",
       "ai_provider": "AI Provider",
@@ -43,7 +64,8 @@
       "manage_credentials": "Manage Credentials",
       "manage_credentials_for": "Manage Credentials ({providerName})",
       "cancel": "Cancel",
-      "ok": "OK"
+      "ok": "OK",
+      "save": "Save"
     },
     "modal": {
       "credentials_title": "Credentials: {providerName}",
@@ -58,6 +80,8 @@
     },
     "errors": {
       "ai": {
+        "ollama_failed": "Failed to connect to Ollama. Check the URL and Ollama Status.",
+        "api_key_required": "API key required for this provider.",
         "load_failed_generic": "Failed to load models. Check credentials and provider access.",
         "load_failed_specific": "Failed to load models: {message}",
         "no_models_found_provider": "No models found for this provider. Check URL (Ollama) or if models are available.",
@@ -99,13 +123,9 @@
     "ai": {
       "title": "AI Settings",
       "description": "Configure AI features to improve service efficiency.",
-      "ai_chat_summary": {
-        "name": "AI: Summarize Conversation",
-        "description": "Generates a summary of the current conversation history using Artificial Intelligence."
-      },
-      "ai_response_review": {
-        "name": "AI: Review and Improve Response",
-        "description": "Uses AI to analyze and suggest improvements to your response text before sending."
+      "ai_assistant": {
+        "name": "AI: Chat Assistant",
+        "description": "Opens a sidepanel with an AI assistant to help with contextual tasks during service."
       }
     },
     "prompts": {
@@ -121,22 +141,39 @@
         "placeholder": "Ex: Review the following response to a customer, making it clearer, more empathetic, and professional.",
         "default": "Review the following response to a customer, making it clearer, more empathetic, and professional, while maintaining the original meaning:"
       }
+    },
+    "tools": {
+      "get_entire_protocol_history": {
+        "name": "Fetch Complete Protocol History",
+        "description": "Retrieves all interactions from a protocol number for complete summaries and analyses."
+      },
+      "get_latest_messages_from_session": {
+        "name": "Fetch Recent Session Messages",
+        "description": "Retrieves the most recent messages from the active chat to get real-time context."
+      },
+      "knowledge_base_search": {
+        "name": "Search Knowledge Base",
+        "description": "Searches for information in locally saved documents and notes to answer questions."
+      }
+    },
+    "knowledge_base": {
+      "title": "Knowledge Base (RAG)",
+      "add_document_title": "Add New Document",
+      "content_label": "Document Content",
+      "content_placeholder": "Paste here the text, article or information you want to add...",
+      "source_label": "Source (Optional)",
+      "source_placeholder": "Ex: Article URL, PDF name, etc.",
+      "add_button": "Add to Knowledge Base",
+      "existing_documents_title": "Documents in Base",
+      "no_documents_yet": "No documents in the knowledge base yet. Add one above.",
+      "add_button_new": "Add New Document",
+      "delete_button_title": "Delete Document",
+      "delete_confirmation": "Are you sure you want to delete this document?",
+      "delete_success": "Document successfully deleted.",
+      "delete_error": "Error deleting document: {message}"
     }
   },
   "content": {
-    "summary_popup": {
-      "title": "Conversation Summary",
-      "close_button_title": "Close",
-      "close_button_aria_label": "Close summary",
-      "loading_text": "Analyzing conversation...",
-      "no_summary_available": "No summary available.",
-      "error_generating": "Error generating summary: {message}",
-      "error_generating_unknown": "Error generating summary: Unknown error."
-    },
-    "summary_button": {
-      "label": "Summarize",
-      "context_error_alert": "Omni Max: Could not identify active conversation to summarize."
-    },
     "ai_context": {
       "preamble_start": "Start of protocol {protocolNumber} with {customerName}.",
       "preamble_segments": "This protocol includes multiple merged service segments (IDs: {ids}).",
@@ -163,6 +200,74 @@
       "protocol_placeholder": "PROTOCOL",
       "situation_placeholder": "SITUATION",
       "notes_placeholder": "NOTES"
+    }
+  },
+  "assistant": {
+    "button_label": "Assistant",
+    "title": "AI Assistant",
+    "how_can_i_help": "How can I help?",
+    "choose_or_type": "Choose a suggestion or type your question",
+    "thinking": "Thinking...",
+    "assistant_name": "AI Assistant",
+    "type_your_query": "Ask anything to the AI...",
+    "locale_code": "en",
+    "suggestions": {
+      "summarize": "Summarize this conversation",
+      "summarize_desc": "Get the main points of the conversation",
+      "summarize_prompt_text": "Summarize this customer service conversation concisely, highlighting the main problem, primary cause, and resolution.",
+      "extract_actions": "Extract necessary actions",
+      "extract_actions_desc": "Identify tasks and next steps"
+    },
+    "errors": {
+      "no_context": "Service context not found.",
+      "no_messages_to_summarize": "No messages to summarize.",
+      "summary_failed": "Failed to generate summary: {message}"
+    },
+    "mcp_popup": {
+      "title": "MCP Servers",
+      "close_button_title": "Close",
+      "tab_connect": "Connect an MCP",
+      "tab_my_mcps": "My MCPs",
+      "form_name_label": "Name",
+      "form_type_label": "Type",
+      "form_command_label": "Command",
+      "form_name_placeholder": "Example: Stripe",
+      "form_command_placeholder": "Example: npx -y @stripe/mcp --tools=all...",
+      "button_cancel": "Cancel",
+      "button_confirm": "Confirm",
+      "empty_list_message": "No MCPs connected yet.",
+      "reload_button_title": "Reload",
+      "delete_button_title": "Delete",
+      "command_label": "Command",
+      "url_label": "URL",
+      "tools_label": "Tools"
+    }
+  },
+  "popup": {
+    "header": {
+      "title": "Omni Max",
+      "subtitle": "Much more than an extension",
+      "repo_tooltip": "View Omni Max repository on GitHub"
+    },
+    "content": {
+      "allowed_origin_label": "Allowed Origin",
+      "allowed_origin_description": "Add the URL of the site where the Omni Max extension should be enabled.",
+      "allowed_origin_placeholder": "Ex: https://www.example.com"
+    },
+    "buttons": {
+      "save": "Save Settings",
+      "save_tooltip": "Save the current Omni Max extension settings"
+    },
+    "footer": {
+      "made_with_love": "Made with ❤️ by"
+    },
+    "errors": {
+      "invalid_origin": "The allowed origin must start with 'http://' or 'https://'.",
+      "empty_origin": "The allowed origin cannot be empty.",
+      "save_failed": "Failed to save settings. Check the console for more details."
+    },
+    "alerts": {
+      "save_success_reloading": "Settings saved successfully! Reloading the extension..."
     }
   }
 }

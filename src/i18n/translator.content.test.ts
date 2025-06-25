@@ -5,14 +5,14 @@ import { Translator } from './translator.content';
 // Mock para a importação dinâmica dos arquivos JSON
 vi.mock('./locales/en.json', () => ({
   default: {
-    popup: { header: { title: 'Omni Max' } },
+    sidepanel: { header: { title: 'Omni Max' } },
     alerts: { copy_success: 'Copied "{label}"!' }
   }
 }));
 
 vi.mock('./locales/pt-BR.json', () => ({
   default: {
-    popup: { header: { title: 'Omni Max BR' } },
+    sidepanel: { header: { title: 'Omni Max BR' } },
     alerts: { copy_success: '"{label}" copiado!' }
   }
 }));
@@ -24,7 +24,7 @@ vi.mock('./locales/non-existent.json', () => {
 describe('Translator', () => {
   it('should load the correct locale file on initialization', async () => {
     const translator = new Translator('en');
-    const title = await translator.t('popup.header.title');
+    const title = await translator.t('sidepanel.header.title');
     expect(title).toBe('Omni Max');
   });
 
@@ -32,7 +32,7 @@ describe('Translator', () => {
     const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     
     const translator = new Translator('non-existent');
-    const title = await translator.t('popup.header.title');
+    const title = await translator.t('sidepanel.header.title');
 
     expect(consoleWarnSpy).toHaveBeenCalledWith('[Translator] Could not load locale file for "non-existent". Falling back to pt-BR.');
     expect(title).toBe('Omni Max BR');

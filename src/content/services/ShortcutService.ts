@@ -2,7 +2,7 @@ import { get } from 'svelte/store';
 import { globalExtensionEnabledStore, shortcutsOverallEnabledStore, moduleStatesStore, shortcutKeysStore } from '../../storage/stores';
 import type { ExtractionService } from './ExtractionService';
 import type { ClipboardService } from './ClipboardService';
-import { addNotification } from '../../components/notifications/notifications';
+import { addNotification } from '../components/notifications/notifications';
 import type { ShortcutKeysConfig } from '../../storage/stores';
 import type { Translator } from '../../i18n/translator.content';
 

@@ -6,9 +6,19 @@
  */
 import { persistentStore } from './persistentStore';
 import { getInitialModuleStates } from '../modules';
-import { PROVIDER_METADATA_LIST } from '../ai/providerMetadata';
+import { PROVIDER_METADATA_LIST } from '../shared/providerMetadata';
 
 // --- Default Values ---
+
+export interface PlatformConfig {
+  allowedOrigin: string;
+}
+
+// O valor padrão pode ser o domínio que você usa para testes.
+export const PlatformConfigDefaults: PlatformConfig = {
+  allowedOrigin: '',
+};
+
 
 /**
  * @const {boolean} GlobalExtensionEnabledDefault
@@ -72,6 +82,11 @@ export interface AiProviderConfig {
   provider: string;
   /** @property {string} model - The specific model selected for the chosen provider. */
   model: string;
+  /**
+   * @property {string} embeddingModel - The specific embedding model selected.
+   * This can be from the same provider or a different one, depending on future implementation.
+   */
+  embeddingModel: string;
 }
 /**
  * @const {AiProviderConfig} AiProviderConfigDefaults
@@ -83,28 +98,38 @@ export const AiProviderConfigDefaults: AiProviderConfig = {
   // Uses the ID of the first provider in the metadata list as default, or a fallback.
   provider: PROVIDER_METADATA_LIST.length > 0 ? PROVIDER_METADATA_LIST[0].id : 'openai',
   model: PROVIDER_METADATA_LIST.length > 0 ? (PROVIDER_METADATA_LIST[0].defaultModel || '') : '',
+  embeddingModel: PROVIDER_METADATA_LIST.find(p => p.defaultEmbeddingModel)?.defaultEmbeddingModel || '',
 };
 
-/**
- * @interface PromptsConfig
- * @description Defines the structure for configurable AI prompts.
- * Note: Default prompt texts are in Portuguese as they are user-facing.
- */
-export interface PromptsConfig {
-  /** @property {string} summaryPrompt - The template prompt used for generating conversation summaries. */
-  summaryPrompt: string;
-  /** @property {string} improvementPrompt - The template prompt used for suggesting improvements to text. */
-  improvementPrompt: string;
+export interface Persona {
+  id: string;
+  name: string;
+  description: string;
+  prompt: string;
+  /**
+   * A list of tool names (IDs) that this persona is allowed to use.
+   * Corresponds to the IDs in toolMetadata.ts and keys in masterToolRegistry.
+   */
+  tool_names: string[]; // <-- NOSSO NOVO CAMPO
 }
-/**
- * @const {PromptsConfig} PromptsConfigDefaults
- * @description Default values for AI prompts.
- * These user-facing default prompts are provided in Portuguese.
- */
-export const PromptsConfigDefaults: PromptsConfig = {
-  summaryPrompt: 'Resuma esta conversa de atendimento ao cliente de forma concisa, destacando o problema principal a principal causa e a resolução.', // UI-facing: PT-BR
-  improvementPrompt: 'Revise a seguinte resposta para um cliente, tornando-a mais clara, empática e profissional, mantendo o significado original:', // UI-facing: PT-BR
-};
+
+// Também devemos atualizar o valor padrão
+export const PersonasDefaults: Persona[] = [
+  {
+    id: '1718544000000-support',
+    name: 'Suporte Padrão',
+    description: 'Assistente geral para resolução de problemas comuns.',
+    prompt: '...',
+    tool_names: ['knowledge_base_search'], // <-- Exemplo preenchido
+  },
+  {
+    id: '1718544000001-sales',
+    name: 'Vendas Consultivas',
+    description: 'Assistente focado em identificar oportunidades e apresentar produtos.',
+    prompt: '...',
+    tool_names: ['knowledge_base_search'], // <-- Vendas talvez só precise das msgs recentes
+  }
+];
 
 /**
  * @interface CollapsibleSectionsState
@@ -117,8 +142,11 @@ export interface CollapsibleSectionsState {
   shortcuts: boolean;
   /** @property {boolean} ai - State for the AI configuration section. True if open, false if closed. */
   ai: boolean;
-  /** @property {boolean} prompts - State for the AI prompts configuration section. True if open, false if closed. */
-  prompts: boolean;
+  /** @property {boolean} personas - State for the agent personas configuration section. True if open, false if closed. */
+  personas: boolean;
+  /** @property {boolean} knowledgeBase - State for the knowledge base section. True if open, false if closed. */
+  knowledgeBase: boolean;
+
 }
 /**
  * @const {CollapsibleSectionsState} CollapsibleSectionsStateDefaults
@@ -128,7 +156,8 @@ export const CollapsibleSectionsStateDefaults: CollapsibleSectionsState = {
   modules: false,
   shortcuts: false,
   ai: false,
-  prompts: false,
+  personas: false,
+  knowledgeBase: false,
 };
 
 /**
@@ -192,14 +221,6 @@ export const aiProviderConfigStore =
   persistentStore<AiProviderConfig>('omniMaxAiProviderConfig', AiProviderConfigDefaults);
 
 /**
- * @const {Writable<PromptsConfig>} promptsStore
- * @description Persistent Svelte store for configurable AI prompts.
- * Default prompt texts are in Portuguese.
- */
-export const promptsStore =
-  persistentStore<PromptsConfig>('omniMaxPrompts', PromptsConfigDefaults);
-
-/**
  * @const {Writable<CollapsibleSectionsState>} collapsibleSectionsStateStore
  * @description Persistent Svelte store for the open/closed state of UI collapsible sections.
  */
@@ -220,3 +241,16 @@ export const shortcutKeysStore =
  */
 export const selectedLocaleStore = 
   persistentStore<string>('omniMaxSelectedLocale', '');
+
+/**
+ * @const {Writable<Persona[]>} personasStore
+ * @description Persistent Svelte store for managing the list of user-defined agent personas.
+ */
+export const personasStore = persistentStore<Persona[]>('omniMaxPersonas', PersonasDefaults);
+
+/**
+ * @const {Writable<PlatformConfig>} platformConfigStore
+ * @description Salva a configuração da plataforma, como o domínio permitido.
+ */
+export const platformConfigStore = 
+  persistentStore<PlatformConfig>('omniMaxPlatformConfig', PlatformConfigDefaults);

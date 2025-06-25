@@ -45,6 +45,10 @@ export default defineManifest(async () => {
       "48": "src/assets/icons/icon-48.png",
       "128": "src/assets/icons/icon-128.png",
     },
+    background: {
+      service_worker: 'src/background/index.ts',
+      type: 'module',
+    },
     action: {
       default_popup: "src/popup/popup.html",
       default_icon: {
@@ -53,17 +57,41 @@ export default defineManifest(async () => {
         "48": "src/assets/icons/icon-48.png",
         "128": "src/assets/icons/icon-128.png",
       },
+      default_title: "Clique para abrir a Omni Max"
+    },
+    side_panel: {
+      default_path: "src/sidepanel/sidepanel.html",
+      default_icon: {
+        "16": "src/assets/icons/icon-16.png",
+        "32": "src/assets/icons/icon-32.png",
+        "48": "src/assets/icons/icon-48.png",
+        "128": "src/assets/icons/icon-128.png",
+      },
+      default_title: "Omni Max",
     },
     content_scripts: [
       {
-        matches: ["https://vipmax.matrixdobrasil.ai/Painel/"],
+        matches: ["https://*/Painel/", "http://*/Painel/"],
         js: ["src/content/index.ts"],
         run_at: "document_start"
       },
     ],
     permissions: [
+      "sidePanel",
       "storage",
       "tabs",
     ] as chrome.runtime.ManifestPermissions[],
+    web_accessible_resources: [
+      {
+        resources: [
+          "src/assets/icons/icon-16.png",
+          "src/assets/icons/icon-32.png",
+          "src/assets/icons/icon-48.png",
+          "src/assets/icons/icon-128.png",
+        ],
+        matches: ["https://*/*", "http://*/*"],
+        use_dynamic_urls: true,
+      },
+    ],
   };
 });
