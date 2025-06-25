@@ -2,21 +2,17 @@
  * @file src/background/services/model-lister/index.ts
  * @description Main service for listing models. Uses a registry to dispatch requests to the correct provider lister.
  */
-import type { IModelLister } from './IModelLister';
+import type { IModelLister, ModelType } from './IModelLister';
 import type { AiCredentials } from '../../../storage/stores';
-import { openaiLister } from './providers/openaiLister';
-import { groqLister } from './providers/groqLister';
-import { ollamaLister } from './providers/ollamaLister';
-import { geminiLister } from './providers/geminiLister';
-import { anthropicLister } from './providers/anthropicLister';
+import { OpenAILister } from './providers/openaiLister';
+import { OllamaLister } from './providers/ollamaLister';
+import { GeminiLister } from './providers/geminiLister';
 
 // The Registry maps provider IDs to their specific lister implementation.
 const providerRegistry: Record<string, IModelLister> = {
-  openai: openaiLister,
-  groq: groqLister,
-  ollama: ollamaLister,
-  gemini: geminiLister,
-  anthropic: anthropicLister,
+  openai: new OpenAILister(),
+  ollama: new OllamaLister(),
+  gemini: new GeminiLister(),
 };
 
 /**
@@ -25,7 +21,7 @@ const providerRegistry: Record<string, IModelLister> = {
  * @param credentials The user's stored credentials.
  * @returns A promise that resolves to a sorted list of model names.
  */
-export async function listAvailableModels(providerId: string, credentials: AiCredentials): Promise<string[]> {
+export async function listAvailableModels(providerId: string, credentials: AiCredentials, modelType: ModelType): Promise<string[]> {
   const lister = providerRegistry[providerId.toLowerCase()];
 
   if (!lister) {
@@ -34,7 +30,7 @@ export async function listAvailableModels(providerId: string, credentials: AiCre
   }
 
   try {
-    return await lister.listModels(credentials);
+    return await lister.listModels(credentials, modelType);
   } catch (error: any) {
     console.error(`[ModelListerService] Error fetching models for ${providerId}:`, error);
     // Re-throw the error so the UI can display it.

@@ -1,49 +1,41 @@
-/**
- * @file src/background/services/model-lister/providers/ollamaLister.ts
- * @description Model lister implementation for Ollama.
- */
-import type { IModelLister } from '../IModelLister';
+import type { ModelType } from '../IModelLister';
 import type { AiCredentials } from '../../../../storage/stores';
+import { BaseModelLister } from '../BaseModelLister';
 
-// Define types for API response
-interface OllamaModel {
-  name: string;
-  [key: string]: any;
-}
+interface OllamaModel { name: string; }
 
-interface OllamaModelsResponse {
-  models: OllamaModel[];
-}
+export class OllamaLister extends BaseModelLister {
+  protected providerId = 'ollama';
+  protected credentialName = 'ollamaBaseUrl';
 
-// Default models if API fails
-const DEFAULT_OLLAMA_MODELS: string[] = [];
+  protected getCredential(credentials: AiCredentials): string | undefined {
+    return credentials.ollamaBaseUrl;
+  }
 
-export const ollamaLister: IModelLister = {
-  async listModels(credentials: AiCredentials): Promise<string[]> {
-    const baseUrl = credentials.ollamaBaseUrl;
+  protected getEndpoint(credentials: AiCredentials): string {
+    const baseUrl = this.getCredential(credentials)!.replace(/\/$/, "");
+    return `${baseUrl}/api/tags`;
+  }
 
-    if (!baseUrl) {
-      console.warn("Ollama base URL is missing. Cannot fetch models.");
-      return DEFAULT_OLLAMA_MODELS;
-    }
-    
-    try {
-      // The endpoint for listing Ollama models is /api/tags
-      const response = await fetch(`${baseUrl.replace(/\/$/, "")}/api/tags`);
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error("Omni Max [OllamaProvider]: Error listing models:", response.status, errorData);
-        throw new Error(`Failed to list Ollama models: ${response.statusText}`);
-      }
-      
-      const data = await response.json() as OllamaModelsResponse;
-      
-      // Response format is { models: [ { name: "mistral:latest", ... }, ... ] }
-      return data.models.map((model: OllamaModel) => model.name).sort() || [];
-    } catch (error) {
-      console.error("Omni Max [OllamaProvider]: Exception when listing Ollama models:", error);
-      return DEFAULT_OLLAMA_MODELS;
+  protected getFetchOptions(): RequestInit {
+    return {}; // Sem opções especiais para o Ollama
+  }
+
+  protected extractModels(data: { models: OllamaModel[] }): OllamaModel[] {
+    return data.models;
+  }
+
+  protected filterAndMapModels(models: OllamaModel[], modelType: ModelType): string[] {
+    switch (modelType) {
+      case 'embedding':
+        return models
+          .filter(model => model.name.includes('embed'))
+          .map(model => model.name);
+      case 'chat':
+      default:
+        return models
+          .filter(model => !model.name.includes('embed'))
+          .map(model => model.name);
     }
   }
-};
+}
