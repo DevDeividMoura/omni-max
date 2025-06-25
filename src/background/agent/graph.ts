@@ -12,10 +12,8 @@ import { getEntireProtocolHistoryTool, getLatestMessagesFromSessionTool } from '
 import { AgentStateSchema } from "./state";
 
 // Importa todas as classes de LLM que suportamos
-import { ChatGroq } from "@langchain/groq";
 import { ChatOpenAI } from "@langchain/openai";
 import { ChatOllama } from "@langchain/ollama";
-import { ChatAnthropic } from "@langchain/anthropic";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 
 import { IndexedDBCheckpointer } from '../services/indexedDBCheckpointer';
@@ -30,10 +28,8 @@ const TOOLS = "tools" as const;
  * Isso mantém nosso código limpo e extensível.
  */
 const llmFactoryRegistry: Record<string, (config: { apiKey?: string; baseUrl?: string; model: string }) => BaseChatModel> = {
-  'groq': (config) => new ChatGroq({ apiKey: config.apiKey, model: config.model }),
   'openai': (config) => new ChatOpenAI({ apiKey: config.apiKey, model: config.model }),
   'ollama': (config) => new ChatOllama({ baseUrl: config.baseUrl, model: config.model }),
-  'anthropic': (config) => new ChatAnthropic({ apiKey: config.apiKey, model: config.model }),
   'gemini': (config) => new ChatGoogleGenerativeAI({ apiKey: config.apiKey, model: config.model }),
 };
 

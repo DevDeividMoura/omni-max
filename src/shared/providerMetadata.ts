@@ -89,7 +89,7 @@ export const PROVIDER_METADATA_LIST: ProviderMetadata[] = [
       inputType: 'password',
     },
     documentationLink: 'https://platform.openai.com/api-keys',
-    defaultModel: 'gpt-4o-mini',
+    defaultModel: 'gpt-4.1',
     defaultEmbeddingModel: 'text-embedding-3-small',
   },
   {
@@ -103,22 +103,8 @@ export const PROVIDER_METADATA_LIST: ProviderMetadata[] = [
       inputType: 'password',
     },
     documentationLink: 'https://ai.google.dev/gemini-api/docs/api-key',
-    defaultModel: 'gemini-1.5-flash-latest',
+    defaultModel: 'gemini-2.5-pro',
     defaultEmbeddingModel: 'gemini-embedding-exp-03-07',
-  },
-  {
-    id: 'anthropic',
-    displayName: 'Anthropic', // Proper name, typically English
-    credentialType: 'apiKey',
-    apiKeySettings: {
-      credentialKey: 'anthropicApiKey',
-      label: 'Anthropic API Key',         // UI Label
-      placeholder: 'Sua Anthropic API Key...', // UI Placeholder: PT-BR
-      inputType: 'password',
-    },
-    documentationLink: 'https://console.anthropic.com/settings/keys',
-    defaultModel: 'claude-3-haiku-20240307',
-    defaultEmbeddingModel: 'voyage-3.5-lite'
   },
   {
     id: 'ollama',
@@ -134,20 +120,33 @@ export const PROVIDER_METADATA_LIST: ProviderMetadata[] = [
     // Ollama does not have a fixed default model; it depends on what the user has installed.
     // The OllamaProvider's listModels method handles discovery of available models.
   },
-  {
-    id: 'groq',
-    displayName: 'Groq', // Proper name, typically English
-    credentialType: 'apiKey',
-    apiKeySettings: {
-      credentialKey: 'groqApiKey',
-      label: 'Groq API Key',        // UI Label
-      placeholder: 'gsk_...',       // UI Placeholder
-      inputType: 'password',
-    },
-    documentationLink: 'https://console.groq.com/keys',
-    defaultModel: 'llama3-8b-8192',
-  },
-  // Add new providers here following the same structure.
+  // {
+  //   id: 'anthropic',
+  //   displayName: 'Anthropic', // Proper name, typically English
+  //   credentialType: 'apiKey',
+  //   apiKeySettings: {
+  //     credentialKey: 'anthropicApiKey',
+  //     label: 'Anthropic API Key',         // UI Label
+  //     placeholder: 'Sua Anthropic API Key...', // UI Placeholder: PT-BR
+  //     inputType: 'password',
+  //   },
+  //   documentationLink: 'https://console.anthropic.com/settings/keys',
+  //   defaultModel: 'claude-3-haiku-20240307',
+  //   defaultEmbeddingModel: 'voyage-3.5-lite'
+  // },
+  // {
+  //   id: 'groq',
+  //   displayName: 'Groq', // Proper name, typically English
+  //   credentialType: 'apiKey',
+  //   apiKeySettings: {
+  //     credentialKey: 'groqApiKey',
+  //     label: 'Groq API Key',        // UI Label
+  //     placeholder: 'gsk_...',       // UI Placeholder
+  //     inputType: 'password',
+  //   },
+  //   documentationLink: 'https://console.groq.com/keys',
+  //   defaultModel: 'llama3-8b-8192',
+  // },
 ];
 
 /**

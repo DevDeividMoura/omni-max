@@ -9,8 +9,8 @@ import { knowledgeBaseSearchTool } from './knowledgeBaseTool';
 export interface AgentToolMetadata {
   id: string; // Deve ser igual ao `tool.name`
   tool: Tool; // O objeto da ferramenta real
-  name_i18n_key: string; // Chave para o nome na UI
-  description_i18n_key: string; // Chave para a descrição na UI
+  name: string; // Chave para o nome na UI
+  description: string; // Chave para a descrição na UI
 }
 
 /**
@@ -24,8 +24,8 @@ export const AGENT_TOOLS_METADATA: AgentToolMetadata[] = [
   {
     id: 'knowledge_base_search',
     tool: knowledgeBaseSearchTool as unknown as Tool,
-    name_i18n_key: 'tools.knowledge_base_search.name',
-    description_i18n_key: 'tools.knowledge_base_search.description',
+    name: 'Knowledge Base Search',
+    description: 'Searches the knowledge base for relevant information.',
   }
 
   // Adicione aqui outras ferramentas do agente no futuro...

@@ -3,6 +3,33 @@
     "header": {
       "title": "Omni Max",
       "subtitle": "Muito mais que uma extensão",
+      "repo_tooltip": "Ver repositório do Omni Max no GitHub"
+    },
+    "content": {
+      "allowed_origin_label": "Origem Permitida",
+      "allowed_origin_description": "Adicione a URL do site onde a extensão Omni Max deve ser ativada.",
+      "allowed_origin_placeholder": "Ex: https://www.exemplo.com"
+    },
+    "buttons": {
+      "save": "Salvar Configurações",
+      "save_tooltip": "Salvar as configurações atuais da extensão Omni Max"
+    },
+    "footer": {
+      "made_with_love": "Feito com ❤️ por"
+    },
+    "errors": {
+      "invalid_origin": "A origem permitida deve começar com 'http://' ou 'https://'.",
+      "empty_origin": "A origem permitida não pode estar vazia.",
+      "save_failed": "Falha ao salvar as configurações. Verifique o console para mais detalhes."
+    },
+    "alerts": {
+      "save_success_reloading": "As configurações foram salvas com sucesso! A extensão será recarregada."
+    }
+  },
+  "sidepanel": {
+    "header": {
+      "title": "Omni Max",
+      "subtitle": "Muito mais que uma extensão",
       "active": "Ativa",
       "inactive": "Inativa",
       "enable_tooltip": "Habilitar/Desabilitar toda a extensão Omni Max",
@@ -26,7 +53,9 @@
       "prompt_placeholder": "Você é um especialista em...",
       "confirm_delete_message": "Tem certeza que deseja excluir a persona \"{name}\"?",
       "validation_error": "O nome e o prompt da persona não podem estar vazios.",
-      "no_personas_yet": "Nenhuma persona criada. Clique abaixo para adicionar uma."
+      "no_personas_yet": "Nenhuma persona criada. Clique abaixo para adicionar uma.",
+      "tools_label": "Ferramentas Disponíveis",
+      "tools_placeholder": "Selecione as ferramentas que esta persona pode usar."
     },
     "placeholders": {
       "loading": "Carregando configurações...",
@@ -46,6 +75,7 @@
       "add_credentials_to_list_models": "Para listar modelos, adicione as credenciais no modal abaixo e salve."
     },
     "labels": {
+      "model_chat": "Modelo de Chat",
       "embedding_model": "Modelo de Embedding",
       "toggle_module": "Ativar/Desativar {moduleName}",
       "all_ai_features": "Todas as Funções de IA",
@@ -77,6 +107,8 @@
     },
     "errors": {
       "ai": {
+        "ollama_failed": "Falha ao conectar ao Ollama. Verifique a URL e o Status do Ollama.",
+        "api_key_required": "Chave de API necessária para este provedor.",
         "load_failed_generic": "Falha ao carregar modelos. Verifique as credenciais e o acesso ao provedor.",
         "load_failed_specific": "Falha ao carregar modelos: {message}",
         "no_models_found_provider": "Nenhum modelo encontrado para este provedor. Verifique a URL (Ollama) ou se há modelos disponíveis.",
@@ -120,7 +152,7 @@
       "description": "Configure as funcionalidades de IA para melhorar a eficiência do atendimento.",
       "ai_assistant": {
         "name": "IA: Assistente de Chat",
-        "description": "Abre um popup com um assistente de IA para ajudar com tarefas contextuais durante o atendimento."
+        "description": "Abre um sidepanel com um assistente de IA para ajudar com tarefas contextuais durante o atendimento."
       }
     },
     "prompts": {
@@ -160,23 +192,15 @@
       "source_placeholder": "Ex: URL do artigo, nome do PDF, etc.",
       "add_button": "Adicionar à Base de Conhecimento",
       "existing_documents_title": "Documentos na Base",
-      "no_documents_yet": "Nenhum documento na base de conhecimento. Adicione um acima."
+      "no_documents_yet": "Nenhum documento na base de conhecimento. Adicione um acima.",
+      "add_button_new": "Adicionar Novo Documento",
+      "delete_button_title": "Excluir Documento",
+      "delete_confirmation": "Tem certeza que deseja excluir este documento?",
+      "delete_success": "Documento excluído com sucesso.",
+      "delete_error": "Erro ao excluir documento: {message}"
     }
   },
   "content": {
-    "summary_popup": {
-      "title": "Resumo da Conversa",
-      "close_button_title": "Fechar",
-      "close_button_aria_label": "Fechar resumo",
-      "loading_text": "Analisando conversa...",
-      "no_summary_available": "Nenhum resumo disponível.",
-      "error_generating": "Erro ao gerar resumo: {message}",
-      "error_generating_unknown": "Erro ao gerar resumo: Erro desconhecido."
-    },
-    "summary_button": {
-      "label": "Resumir",
-      "context_error_alert": "Omni Max: Não foi possível identificar o atendimento ativo para resumir."
-    },
     "ai_context": {
       "preamble_start": "Início do atendimento do protocolo {protocolNumber} com {customerName}.",
       "preamble_segments": "Este protocolo inclui múltiplos segmentos de atendimento fundidos (IDs: {ids}).",
