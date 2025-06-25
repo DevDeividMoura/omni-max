@@ -10,6 +10,16 @@ import { PROVIDER_METADATA_LIST } from '../shared/providerMetadata';
 
 // --- Default Values ---
 
+export interface PlatformConfig {
+  allowedOrigin: string;
+}
+
+// O valor padrão pode ser o domínio que você usa para testes.
+export const PlatformConfigDefaults: PlatformConfig = {
+  allowedOrigin: '',
+};
+
+
 /**
  * @const {boolean} GlobalExtensionEnabledDefault
  * @description Default state for whether the entire extension is globally enabled.
@@ -237,3 +247,10 @@ export const selectedLocaleStore =
  * @description Persistent Svelte store for managing the list of user-defined agent personas.
  */
 export const personasStore = persistentStore<Persona[]>('omniMaxPersonas', PersonasDefaults);
+
+/**
+ * @const {Writable<PlatformConfig>} platformConfigStore
+ * @description Salva a configuração da plataforma, como o domínio permitido.
+ */
+export const platformConfigStore = 
+  persistentStore<PlatformConfig>('omniMaxPlatformConfig', PlatformConfigDefaults);

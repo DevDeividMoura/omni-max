@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { X, Plug, RefreshCw, Trash2 } from 'lucide-svelte';
-  import type { Translator } from '../../i18n/translator.content';
+  import type { Translator } from '../../../i18n/translator.content';
 
   // --- Props & Events ---
   export let isOpen: boolean;

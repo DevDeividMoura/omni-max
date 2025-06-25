@@ -1,3 +1,13 @@
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // Verificamos se a mensagem é um comando para fechar e se ela vem do nosso próprio background script.
+  // A verificação `!sender.tab` é uma forma de garantir que a mensagem veio de um script de extensão, não de um content script.
+  if (message.type === 'CLOSE_SIDE_PANEL' && !sender.tab) {
+    console.log('Omni Max [Sidepanel] Comando para fechar recebido. Fechando a janela.');
+    window.close();
+  }
+});
+
+
 import { mount } from 'svelte';
 import { initializeI18n } from '../i18n';
 
@@ -15,18 +25,18 @@ function getLanguageFromContentScript(): Promise<string> {
           { type: 'GET_PAGE_LANGUAGE' },
           (response) => {
             if (chrome.runtime.lastError) {
-              console.warn('Omni Max [Popup] Could not connect to content script. Using fallback locale.', chrome.runtime.lastError.message);
+              console.warn('Omni Max [Sidepanel] Could not connect to content script. Using fallback locale.', chrome.runtime.lastError.message);
               resolve('pt-BR');
             } else if (response && response.locale) {
               resolve(response.locale);
             } else {
-              console.warn('Omni Max [Popup] Received empty response from content script. Using fallback locale.');
+              console.warn('Omni Max [Sidepanel] Received empty response from content script. Using fallback locale.');
               resolve('pt-BR');
             }
           }
         );
       } else {
-        console.warn('Omni Max [Popup] Could not find active tab. Using fallback locale.');
+        console.warn('Omni Max [Sidepanel] Could not find active tab. Using fallback locale.');
         resolve('pt-BR');
       }
     });
@@ -37,7 +47,7 @@ function getLanguageFromContentScript(): Promise<string> {
  * Main function to initialize the sidepanel.
  */
 async function render() {
-  console.log('Omni Max [Popup] Requesting page language from content script...');
+  console.log('Omni Max [Sidepanel] Requesting page language from content script...');
   const locale = await getLanguageFromContentScript();
   const target = document.getElementById('app');
   
@@ -47,8 +57,8 @@ async function render() {
   
   if (target) {
     target.innerHTML = ''; // Clear any previous content
-    const { default: Popup } = await import('./Popup.svelte');
-    mount(Popup, { target }); // Mount the Svelte component
+    const { default: SettingsPanel } = await import('./SettingsSidepanel.svelte');
+    mount(SettingsPanel, { target }); // Mount the Svelte component
   } else {
     console.error("Target element #app not found in sidepanel.html");
   }

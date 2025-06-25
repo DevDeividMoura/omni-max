@@ -5,18 +5,19 @@ import { HumanMessage, AIMessageChunk, type BaseMessage } from "@langchain/core/
 import type { RunnableConfig } from "@langchain/core/runnables";
 import type { Runnable } from "@langchain/core/runnables";
 
-import { personasStore, aiProviderConfigStore, aiCredentialsStore, type Persona, type AiCredentials } from '../storage/stores';
+import { platformConfigStore , personasStore, aiProviderConfigStore, aiCredentialsStore, type Persona, type AiCredentials } from '../storage/stores';
 import { PROVIDER_METADATA_MAP } from '../shared/providerMetadata';
 import { agentTools, contextTools } from './agent/tools';
 import { app as agentGraph } from './agent/graph';
 import type { AgentState, StoredAgentState } from './agent/state';
 import { IndexedDBCheckpointer } from './services/indexedDBCheckpointer';
 import { listAvailableModels } from './services/model_lister';
+import type { ModelType } from './services/model_lister/IModelLister';
+import { createEmbeddingsInstance } from './services/embedding';
 
 import Dexie from 'dexie';
 import { Document } from '@langchain/core/documents';
-import { OpenAIEmbeddings } from '@langchain/openai';
-import { IndexedDBVectorStore } from './services/vector_storage/IndexedDBVectorStore';
+import { IndexedDBVectorStore } from './services/IndexedDBVectorStore';
 
 
 // --- Inicialização e Configuração Global ---
@@ -117,27 +118,30 @@ async function handleGetKnowledgeBaseDocuments(request: any, sender: chrome.runt
  */
 async function handleAddDocumentToKnowledgeBase(request: any, sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) {
   try {
-    const { document } = request; // document: { pageContent, metadata }
+    const { document } = request;
 
-    // Pega as configurações atuais para instanciar os serviços necessários.
     const providerConfig = get(aiProviderConfigStore);
     const credentials = get(aiCredentialsStore);
-    const openAIApiKey = credentials.openaiApiKey;
+    const providerMeta = PROVIDER_METADATA_MAP.get(providerConfig.provider);
 
-    if (!openAIApiKey) {
-      throw new Error("OpenAI API Key não configurada.");
+    if (!providerMeta) {
+      throw new Error(`Provider metadata not found for "${providerConfig.provider}"`);
     }
 
-    // Instancia o modelo de embedding e nosso VectorStore.
-    const embeddings = new OpenAIEmbeddings({
-      openAIApiKey,
-      modelName: providerConfig.embeddingModel,
-    });
-    const vectorStore = new IndexedDBVectorStore(embeddings, { dbName: 'omnimax-rag-db' });
+    const apiKey = providerMeta.apiKeySettings?.credentialKey ? credentials[providerMeta.apiKeySettings.credentialKey] : undefined;
+    const baseUrl = providerMeta.baseUrlSettings?.credentialKey ? credentials[providerMeta.baseUrlSettings.credentialKey] : undefined;
 
-    // Adiciona o documento. A classe já lida com a geração do embedding.
+    // Esta chamada agora usa a função importada do nosso novo serviço.
+    const embeddings = createEmbeddingsInstance(
+      providerConfig.provider,
+      providerConfig.embeddingModel,
+      apiKey,
+      baseUrl
+    );
+
+    const vectorStore = new IndexedDBVectorStore(embeddings, { dbName: 'omnimax-rag-db' });
     await vectorStore.addDocuments([new Document(document)]);
-    
+
     sendResponse({ success: true });
   } catch (error: any) {
     console.error('[Background] Error adding document:', error);
@@ -155,7 +159,7 @@ async function handleDeleteDocumentFromKnowledgeBase(request: any, sender: chrom
     if (typeof documentId !== 'number') {
       throw new Error("ID do documento inválido.");
     }
-    
+
     // Para uma exclusão simples, Dexie direto é mais eficiente.
     const db = new Dexie('omnimax-rag-db');
     db.version(1).stores({ vectors: '++id, content' });
@@ -404,11 +408,105 @@ function setupLangSmith() {
 
 /**
  * @handler handleListAvailableModels
- * @description Delegates the model listing logic to our dedicated service.
+ * @description Delegates the model listing logic to our dedicated service,
+ * now including the type of model to fetch.
  */
 function handleListAvailableModels(request: any, sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) {
-  const { provider, credentials } = request as { provider: string, credentials: AiCredentials };
-  listAvailableModels(provider, credentials)
+  // Extrai o novo parâmetro 'modelType' da requisição.
+  const { provider, credentials, modelType } = request as {
+    provider: string,
+    credentials: AiCredentials,
+    modelType: ModelType
+  };
+
+  // Chama o serviço passando todos os três parâmetros.
+  // Adicionamos 'chat' como um fallback para garantir retrocompatibilidade.
+  listAvailableModels(provider, credentials, modelType || 'chat')
     .then(models => sendResponse({ success: true, models }))
     .catch(error => sendResponse({ success: false, error: error.message }));
 }
+
+
+// ======================================================================
+// --- GERENCIAMENTO DO PAINEL LATERAL (SIDE PANEL) ---
+// ======================================================================
+
+
+/**
+ * Atualiza o estado do painel lateral (Side Panel) com base na URL da aba.
+ * Gerencia a abertura e fechamento automático com base no histórico da aba.
+ * @param {chrome.tabs.Tab} tab - O objeto da aba a ser verificado.
+ */
+async function updateSidePanel(tab: chrome.tabs.Tab): Promise<void> {
+  if (!tab.url || !tab.id) {
+    return;
+  }
+
+  try {
+    const url = new URL(tab.url);
+    const tabId = tab.id;
+
+    const allowedOrigin = get(platformConfigStore).allowedOrigin;
+
+    const isAllowed = url.origin === allowedOrigin &&             // 1
+                      url.pathname.startsWith('/Painel') && 
+                      !url.pathname.startsWith('/Painel/login');  
+
+    if (isAllowed) {
+      // Habilita o painel lateral na origem e caminho corretos.
+      console.log(`[SidePanel] Habilitando para a aba ${tabId} (Origem e Caminho válidos)`);
+      await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+      await chrome.sidePanel.setOptions({
+        tabId: tabId,
+        path: 'src/sidepanel/sidepanel.html',
+        enabled: true
+      });
+    }
+  } catch (error) {
+    if (error instanceof TypeError) {
+      console.warn(`[SidePanel] URL inválida ou interna ignorada: ${tab.url}`);
+    } else {
+      console.error(`[SidePanel] Erro ao atualizar o painel lateral para a aba ${tab.id}:`, error);
+    }
+  }
+}
+
+// --- Listeners para Eventos de Abas ---
+
+chrome.tabs.onActivated.addListener(async (activeInfo) => {
+  try {
+    const tab = await chrome.tabs.get(activeInfo.tabId);
+    await updateSidePanel(tab);
+  } catch (error) {
+    console.error(`[onActivated] Erro ao obter informações da aba ${activeInfo.tabId}:`, error);
+  }
+});
+
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  if (changeInfo.url && tab) { // Garante que a aba existe antes de prosseguir
+    await updateSidePanel(tab);
+  }
+});
+
+
+// Substitua a sua função initializeSidePanelState por esta
+async function initializeSidePanelState(): Promise<void> {
+  try {
+    // PASSO 1: Define o estado padrão GLOBAL como desabilitado.
+    // Isso garante que todas as abas comecem com o painel desabilitado.
+    console.log('[SidePanel] Definindo estado global padrão como DESABILITADO.');
+    // Chamamos setOptions SEM tabId para definir o padrão global.
+    await chrome.sidePanel.setOptions({ enabled: false });
+    await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false });
+
+    // PASSO 2: Agora, verifica a aba ativa para habilitá-la SE necessário.
+    const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (activeTab) {
+      await updateSidePanel(activeTab);
+    }
+  } catch (error) {
+    console.error('[Initializer] Erro ao configurar o estado inicial do painel lateral:', error);
+  }
+}
+
+initializeSidePanelState();

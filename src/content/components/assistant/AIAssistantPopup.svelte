@@ -6,11 +6,11 @@
   import { assistantPopupStore } from "./assistantPopupStore";
   import PersonaSelectorPopup from "./PersonaSelectorPopup.svelte";
   import { agentChatStore, type ChatMessage } from "./agentChatStore"; // Importar ChatMessage
-  import { personasStore, type Persona } from "../../storage/stores";
+  import { personasStore, type Persona } from "../../../storage/stores";
 
   import MCPServersPopup from "./MCPServersPopup.svelte";
-  import type { Translator } from "../../i18n/translator.content";
-  import type { AgentService } from "../../content/services/AgentService";
+  import type { Translator } from "../../../i18n/translator.content";
+  import type { AgentService } from "../../services/AgentService";
 
   // --- Props ---
   export let translator: Translator;
@@ -57,13 +57,13 @@
       descriptionKey: "assistant.suggestions.summarize_desc",
       promptKey: "assistant.suggestions.summarize_prompt_text",
     },
-    {
-      id: "extract_actions",
-      icon: "✅",
-      titleKey: "assistant.suggestions.extract_actions",
-      descriptionKey: "assistant.suggestions.extract_actions_desc",
-      promptKey: "assistant.suggestions.extract_actions_prompt_text",
-    },
+    // {
+    //   id: "extract_actions",
+    //   icon: "✅",
+    //   titleKey: "assistant.suggestions.extract_actions",
+    //   descriptionKey: "assistant.suggestions.extract_actions_desc",
+    //   promptKey: "assistant.suggestions.extract_actions_prompt_text",
+    // },
   ];
   let t: (key: string, options?: any) => Promise<string>;
   let contentAreaEl: HTMLElement;
@@ -162,7 +162,9 @@
 
     switch (message.type) {
       case "slashCommandResult":
-        console.log(`[UI] Received slash command result for session ${sessionId}.`);
+        console.log(
+          `[UI] Received slash command result for session ${sessionId}.`,
+        );
         // O `reply` já vem formatado como markdown pelo background.
         // Usamos `appendTokenToLastAiMessage` para substituir o conteúdo do balão "pensando".
         agentChatStore.appendTokenToLastAiMessage(sessionId, message.reply, "");
@@ -408,13 +410,13 @@
                   onClose={() => (isPersonaPopupOpen = false)}
                 />
               </div>
-              <button
+              <!-- <button
                 class="composer-button-icon"
                 on:click={() => (isMCPPopupOpen = true)}
                 title="Servidores MCP"
               >
                 <Plug size={16} />
-              </button>
+              </button> -->
             </div>
             <div class="composer-actions-right">
               <button
@@ -427,6 +429,16 @@
             </div>
           </div>
         </div>
+      </div>
+      <div class="app-credits-footer">
+        {#await t("sidepanel.footer.made_with_love") then made_with_love}{made_with_love}{/await}
+        <a
+          href="https://github.com/DevDeividMoura"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          @DevDeividMoura
+        </a>
       </div>
     </div>
   </div>

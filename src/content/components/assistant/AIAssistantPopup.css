@@ -19,25 +19,27 @@
   --brand-primary-start: #a9276f;
   --brand-primary-mid: #d02125;
   --brand-primary-end: #d6621c;
-  --brand-gradient: linear-gradient(
-    to right,
-    var(--brand-primary-start),
-    var(--brand-primary-mid),
-    var(--brand-primary-end)
-  );
+  --brand-gradient: linear-gradient(to right,
+      var(--brand-primary-start),
+      var(--brand-primary-mid),
+      var(--brand-primary-end));
 
   /* --- Grayscale Palette --- */
   --color-text-primary: #111827;
   --color-text-secondary: #374151;
   --color-text-muted: #6b7280;
-  --color-text-subtle: #4b5563; /* For less emphasis text */
+  --color-text-subtle: #4b5563;
+  /* For less emphasis text */
   --color-text-placeholder: #9ca3af;
   --color-text-on-brand: white;
 
   --color-surface-default: white;
-  --color-surface-hover: #f3f4f6; /* Lighter gray for hover */
-  --color-surface-subtle: #f9fafb; /* Very light gray for backgrounds */
-  --color-surface-active: #e5e7eb; /* Gray for active/pressed states */
+  --color-surface-hover: #f3f4f6;
+  /* Lighter gray for hover */
+  --color-surface-subtle: #f9fafb;
+  /* Very light gray for backgrounds */
+  --color-surface-active: #e5e7eb;
+  /* Gray for active/pressed states */
   --color-surface-glass-light: rgba(255, 255, 255, 0.85);
   --color-surface-glass-overlay: rgba(0, 0, 0, 0.2);
 
@@ -74,7 +76,7 @@
   --shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   --backdrop-blur: blur(4px);
   --backdrop-blur-strong: blur(16px);
-  
+
   /* --- Scrollbar --- */
   --color-scrollbar-thumb: rgba(0, 0, 0, 0.4);
   --color-scrollbar-thumb-hover: rgba(0, 0, 0, 0.5);
@@ -155,6 +157,7 @@
   border-radius: var(--border-radius-full);
   display: flex;
 }
+
 .header-controls button:hover {
   color: var(--color-text-primary);
   background-color: rgba(0, 0, 0, 0.05);
@@ -171,7 +174,7 @@
   text-align: center;
 }
 
-.welcome-state > *:not([hidden]) ~ *:not([hidden]) {
+.welcome-state>*:not([hidden])~*:not([hidden]) {
   margin-top: 24px;
 }
 
@@ -203,14 +206,15 @@
   font-size: 16px;
 }
 
-.suggestions-list > *:not([hidden]) ~ *:not([hidden]) {
+.suggestions-list>*:not([hidden])~*:not([hidden]) {
   margin-top: 12px;
 }
 
 .suggestion-item {
   width: 100%;
   padding: 16px;
-  background-color: rgba(249, 250, 251, 0.8); /* Keeping as is for specific transparency */
+  background-color: rgba(249, 250, 251, 0.8);
+  /* Keeping as is for specific transparency */
   border-radius: var(--border-radius-xl);
   text-align: left;
   transition: background-color 0.2s;
@@ -227,10 +231,12 @@
   align-items: flex-start;
   gap: 12px;
 }
+
 .suggestion-icon {
   font-size: 20px;
   line-height: 28px;
 }
+
 .suggestion-title {
   font-weight: 500;
   color: var(--color-text-primary);
@@ -247,16 +253,18 @@
 }
 
 /* --- Chat Messages --- */
-.conversation-state > *:not([hidden]) ~ *:not([hidden]) {
+.conversation-state>*:not([hidden])~*:not([hidden]) {
   margin-top: 16px;
 }
 
 .message-bubble {
   display: flex;
 }
+
 .message-bubble.user {
   justify-content: flex-end;
 }
+
 .message-bubble.ai {
   justify-content: flex-start;
 }
@@ -285,12 +293,16 @@
   as distinct code blocks.
 */
 .message-content pre {
-  background-color: #1e293b; /* Um cinza-azulado escuro, como em IDEs */
-  color: #e2e8f0; /* Um cinza claro para o texto, bom contraste */
+  background-color: #1e293b;
+  /* Um cinza-azulado escuro, como em IDEs */
+  color: #e2e8f0;
+  /* Um cinza claro para o texto, bom contraste */
   padding: 16px;
-  border-radius: var(--border-radius-lg); /* Usa a variável de raio que já definimos */
-  overflow-x: auto; /* Adiciona uma barra de rolagem horizontal se o conteúdo ainda for muito largo */
-  
+  border-radius: var(--border-radius-lg);
+  /* Usa a variável de raio que já definimos */
+  overflow-x: auto;
+  /* Adiciona uma barra de rolagem horizontal se o conteúdo ainda for muito largo */
+
   /* CORREÇÃO #1: A MÁGICA DA QUEBRA DE LINHA
     - white-space: pre-wrap; -> Preserva os espaços e quebras de linha do JSON, mas quebra a linha se necessário.
     - word-break: break-all; -> Força a quebra de palavras muito longas (como chaves de API ou PIX).
@@ -304,7 +316,8 @@
   o que é essencial para a legibilidade do código.
 */
 .message-content pre code {
-  font-family: var(--font-family-mono); /* Usa a variável de fonte monoespaçada */
+  font-family: var(--font-family-mono);
+  /* Usa a variável de fonte monoespaçada */
   font-size: 14px;
   line-height: 1.7;
 }
@@ -361,6 +374,7 @@
 .dot:nth-child(2) {
   animation-delay: 0.2s;
 }
+
 .dot:nth-child(3) {
   animation-delay: 0.4s;
 }
@@ -409,9 +423,11 @@
   color: var(--color-text-primary);
   overflow-y: auto;
 }
+
 .composer textarea:focus {
   outline: none;
 }
+
 .composer textarea::placeholder {
   color: var(--color-text-placeholder);
 }
@@ -459,12 +475,14 @@
 .persona-selector-button {
   max-width: 180px;
 }
+
 .persona-selector-button .button-text {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   flex-grow: 1;
 }
+
 .persona-selector-button .button-chevron {
   color: var(--color-text-muted);
   flex-shrink: 0;
@@ -474,7 +492,8 @@
   height: 32px;
   width: 32px;
   border-radius: var(--border-radius-full);
-  background-color: var(--brand-primary-start); /* Fallback */
+  background-color: var(--brand-primary-start);
+  /* Fallback */
   background-image: var(--brand-gradient);
   color: var(--color-text-on-brand);
   display: flex;
@@ -561,6 +580,7 @@
 .item-icon {
   font-size: 16px;
 }
+
 .item-name {
   flex-grow: 1;
   font-size: 14px;
@@ -568,10 +588,13 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
 .item-check {
   margin-left: auto;
-  color: var(--brand-primary-start); /* Using brand color for check */
+  color: var(--brand-primary-start);
+  /* Using brand color for check */
 }
+
 .list-item-empty {
   padding: 16px;
   text-align: center;
@@ -915,4 +938,23 @@
 .tab-content::-webkit-scrollbar-thumb:hover,
 .persona-list::-webkit-scrollbar-thumb:hover {
   background-color: var(--color-scrollbar-thumb-hover);
+}
+
+.app-credits-footer {
+  padding: 6px 16px;
+  text-align: center;
+  font-size: 0.75em;
+  color: #7f8c8d;
+  border-top: 1px solid #e0e0e0;
+  flex-shrink: 0;
+}
+
+.app-credits-footer a {
+  color: #a9276f;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.app-credits-footer a:hover {
+  text-decoration: underline;
 }
