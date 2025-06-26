@@ -2,7 +2,7 @@
     "name": "omni-max",
     "description": "Melhore a plataforma ASC SAC com resumos de chat por IA, templates e atalhos para agilizar seu atendimento.",
     "author": "Deivid Carvalho Moura <deividcarvalhomoura@gmail.com> (https://github.com/DevDeividMoura)",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "type": "module",
     "repository": {
         "type": "git",
@@ -16,7 +16,7 @@
         "test:watch": "vitest",
         "test:ui": "vitest --ui",
         "coverage": "vitest run --coverage",
-        "zip": "mkdirp tmp && bestzip tmp/omni-max_v$npm_package_version.zip dist/*",
+        "zip": "mkdirp tmp && cd dist && bestzip ../tmp/omni-max_v$npm_package_version.zip .",
         "pack": "npm run build && npm run zip"
     },
     "devDependencies": {
