@@ -11,13 +11,13 @@ const DOC_SOURCES = [
   {
     name: 'privacy-policy',
     sourceDir: 'docs/privacy_policy',
-    outputDir: 'public/privacy_policy',
+    outputDir: 'docs/public/privacy_policy',
     titlePrefix: 'Política de Privacidade'
   },
   {
     name: 'user-guide',
     sourceDir: 'docs/user_guide',
-    outputDir: 'public/user_guide',
+    outputDir: 'docs/public/user_guide',
     titlePrefix: 'Guia do Usuário'
   }
 ];
