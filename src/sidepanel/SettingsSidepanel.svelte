@@ -498,6 +498,31 @@
     showCredentialsModal.set(false);
   }
 
+  function handleShortcutKeyChange(moduleId: string, event: Event): void {
+    const inputElement = event.target as HTMLInputElement;
+    const rawValue = inputElement.value;
+
+    // Pega apenas o último caractere digitado e o converte para maiúscula.
+    const value =
+      rawValue.length > 0
+        ? rawValue.charAt(rawValue.length - 1).toUpperCase()
+        : "";
+
+    // Valida se a tecla é uma letra maiúscula (A-Z) ou um número (0-9).
+    if (value === "" || /^[A-Z0-9]$/.test(value)) {
+      // CORREÇÃO: Atualiza a store reativa, em vez de uma variável comum.
+      localShortcutKeysStore.update((keys) => {
+        keys[moduleId] = value;
+        return keys;
+      });
+      markChanged();
+    } else {
+      // Se o input for inválido (ex: 'ç'), força o campo a voltar ao valor salvo na store.
+      const currentValue = get(localShortcutKeysStore)[moduleId] || "";
+      inputElement.value = currentValue;
+    }
+  }
+
   async function applyChanges(): Promise<void> {
     if ($isLoading) return;
     await Promise.all([
@@ -657,6 +682,7 @@
     addNewDocument,
     handleDeleteDocument,
     handleProviderChange,
+    handleShortcutKeyChange,
 
     localGlobalEnabledStore,
     localModuleStatesStore,
