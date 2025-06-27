@@ -174,7 +174,7 @@ Para contribuir, por favor, leia nosso **[Guia de Contribuição](/CONTRIBUTING.
 
 ## 📝 Licença
 
-Este projeto é licenciado sob a **Licença MIT**. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
+Este projeto é licenciado sob a **Licença MIT**. Veja o arquivo [LICENSE](../LICENSE) para mais detalhes.
 
 ---
 
