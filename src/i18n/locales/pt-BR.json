@@ -184,20 +184,23 @@
       }
     },
     "knowledge_base": {
-      "title": "Base de Conhecimento (RAG)",
-      "add_document_title": "Adicionar Novo Documento",
-      "content_label": "Conteúdo do Documento",
-      "content_placeholder": "Cole aqui o texto, artigo ou informação que deseja adicionar...",
-      "source_label": "Fonte (Opcional)",
-      "source_placeholder": "Ex: URL do artigo, nome do PDF, etc.",
-      "add_button": "Adicionar à Base de Conhecimento",
-      "existing_documents_title": "Documentos na Base",
-      "no_documents_yet": "Nenhum documento na base de conhecimento. Adicione um acima.",
+      "title": "Base de Conhecimento",
       "add_button_new": "Adicionar Novo Documento",
+      "existing_documents_title": "Documentos na Base",
+      "no_documents_yet": "Nenhum documento na base de conhecimento.",
       "delete_button_title": "Excluir Documento",
       "delete_confirmation": "Tem certeza que deseja excluir este documento?",
       "delete_success": "Documento excluído com sucesso.",
-      "delete_error": "Erro ao excluir documento: {message}"
+      "delete_error": "Erro ao excluir documento: {message}",
+      "modal": {
+        "add_document_title": "Adicionar à Base de Conhecimento",
+        "select_file_button": "Selecionar Arquivo .txt ou .md",
+        "source_label": "Fonte do Documento (Opcional)",
+        "source_placeholder": "Ex: URL do artigo, nome do arquivo original",
+        "error_file_type": "Arquivo inválido. Por favor, selecione um arquivo .md ou .txt.",
+        "error_read_file": "Erro ao ler o arquivo: {message}",
+        "save_success": "Documento salvo com sucesso!"
+      }
     }
   },
   "content": {
