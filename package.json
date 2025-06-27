@@ -11,11 +11,10 @@
     "scripts": {
         "dev": "vite",
         "build": "vite build",
+        "docs:build": "node scripts/generate-docs.mjs",
         "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json",
         "test": "vitest run",
         "test:watch": "vitest",
-        "test:ui": "vitest --ui",
-        "coverage": "vitest run --coverage",
         "zip": "mkdirp tmp && cd dist && bestzip ../tmp/omni-max_v$npm_package_version.zip .",
         "pack": "npm run build && npm run zip"
     },
@@ -29,6 +28,7 @@
         "@vitest/coverage-v8": "^3.1.4",
         "@vitest/ui": "^3.1.4",
         "bestzip": "^2.2.1",
+        "glob": "^11.0.3",
         "jsdom": "^26.1.0",
         "mkdirp": "^3.0.1",
         "svelte": "5.16.2",

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Política de Privacidade - Omni Max</title>
+  <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/DevDeividMoura/omni-max/main/src/assets/icons/icon-32.png">
+  <style>
+    /* Cole o CSS que você forneceu aqui */
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; background-color: #f4f6f8; }
+    .page-container { max-width: 800px; margin: 0 auto; background-color: white; box-shadow: 0 0 10px rgba(0,0,0,0.05); }
+    .content-wrapper { padding: 20px 40px; }
+    h1, h2 { border-bottom: 1px solid #eaecef; padding-bottom: .3em; }
+    code { background-color: #f6f8fa; padding: .2em .4em; margin: 0; font-size: 85%; border-radius: 6px; }
+    pre { background-color: #f6f8fa; padding: 16px; overflow: auto; border-radius: 6px; }
+    a { color: #a9276f; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    /* Adicionando estilos para o seletor de idioma */
+    .language-switcher { text-align: center; padding: 10px; background-color: #f9fafb; border-bottom: 1px solid #e5e7eb; }
+    .language-switcher a, .language-switcher span { margin: 0 10px; font-weight: 500; }
+    .language-switcher span { color: #1f2937; } /* Idioma atual */
+  </style>
+</head>
+<body>
+  <div class="page-container">
+    <header class="sidepanel-header-fixed" style="border-radius: 0;">
+    <div class="header-title-group">
+        <img src="https://raw.githubusercontent.com/DevDeividMoura/omni-max/main/src/assets/icons/icon-48.png" alt="Omni Max Logo" class="header-logo" />
+        <div class="header-text-wrapper">
+            <h1>Omni Max</h1>
+            <p>Muito mais que uma extensão</p>
+        </div>
+    </div>
+    <div class="header-controls">
+        <a href="https://github.com/DevDeividMoura/omni-max" target="_blank" rel="noopener noreferrer" class="github-link-header" title="Ver repositório no GitHub">
+            </a>
+    </div>
+</header>
+    <main class="content-wrapper">
+      <div class="language-switcher">
+        <a href="../pt-br/">Português</a> · <a href="../en/">English</a> · <span>Español</span>
+      </div>
+      <h1>Política de Privacidad de Omni Max</h1>
+<div align="center">
+
+<p><a href="../en/">English</a> · <a href="../pt-br/">Português</a> · Español</p>
+</div>
+
+<hr>
+<p><strong>Última Actualización:</strong> 25 de junio de 2025</p>
+<p>Esta Política de Privacidad describe cómo Omni Max (&quot;nosotros&quot; o &quot;nuestro&quot;) maneja su información cuando usted utiliza nuestra extensión de navegador. Nuestro principio fundamental es proteger su privacidad y procesar la menor cantidad de datos posible. Omni Max está diseñado para operar localmente en su máquina.</p>
+<h2>1. Información que Recopilamos y Almacenamos</h2>
+<p>Omni Max almacena todos sus datos localmente en su ordenador, utilizando los mecanismos de almacenamiento integrados de su navegador (<code>chrome.storage.sync</code>, <code>chrome.storage.local</code> e <code>IndexedDB</code>). <strong>No</strong> tenemos un servidor y <strong>no</strong> recopilamos, transmitimos ni vemos su información personal.</p>
+<p>Los datos almacenados localmente por la extensión incluyen:</p>
+<ul>
+<li><strong>Ajustes de Configuración:</strong> Sus preferencias para habilitar/deshabilitar módulos, teclas de atajo y correcciones de diseño.</li>
+<li><strong>Credenciales del Proveedor de IA:</strong> Sus claves de API (p. ej., para OpenAI, Google Gemini) y URL Base (p. ej., para Ollama). Esta información se almacena localmente y solo se utiliza para comunicarse directamente desde su navegador con el proveedor de IA que usted ha seleccionado. <strong>Estas claves nunca se nos envían a nosotros ni a ningún otro tercero.</strong></li>
+<li><strong>Personas de IA:</strong> Las personas personalizadas que usted crea, incluyendo sus nombres, descripciones y prompts del sistema.</li>
+<li><strong>Documentos de la Base de Conocimiento:</strong> El contenido de los documentos que usted añade a su base de conocimiento local. Estos datos se convierten en representaciones numéricas (embeddings) y se almacenan en el IndexedDB de su navegador para que la IA pueda realizar búsquedas.</li>
+<li><strong>Estado de la Conversación del Agente:</strong> El historial de sus interacciones con el asistente de IA de Omni Max se guarda localmente en el IndexedDB de su navegador para proporcionar memoria de conversación para cada sesión de servicio al cliente.</li>
+</ul>
+<h2>2. Cómo Usamos Su Información</h2>
+<p>La información almacenada localmente se utiliza exclusivamente para proporcionar las funcionalidades de la extensión:</p>
+<ul>
+<li><strong>Claves de API/URLs:</strong> Se utilizan para realizar solicitudes directamente al servicio de IA de terceros que usted ha configurado (p. ej., OpenAI, Google Gemini, Ollama). Sus interacciones con estos servicios están sujetas a sus respectivas políticas de privacidad.</li>
+<li><strong>Contenido de la Base de Conocimiento:</strong> Utilizado localmente por el agente para encontrar información relevante y proporcionar respuestas contextualmente conscientes a sus consultas.</li>
+<li><strong>Ajustes y Personas:</strong> Se utilizan para personalizar el comportamiento de la extensión según sus preferencias.</li>
+</ul>
+<h2>3. Uso Compartido y Divulgación de Información</h2>
+<p>No compartimos, vendemos ni divulgamos ninguno de sus datos con nadie. Dado que todos los datos se almacenan localmente en su dispositivo, usted tiene el control total. La única comunicación externa iniciada por la extensión es entre su navegador y el proveedor de IA que usted ha configurado explícitamente.</p>
+<h2>4. Seguridad de los Datos</h2>
+<p>Confiamos en los mecanismos de seguridad del almacenamiento local de su navegador (<code>chrome.storage</code> e <code>IndexedDB</code>) para proteger la información almacenada en su dispositivo.</p>
+<h2>5. Cambios en Esta Política de Privacidad</h2>
+<p>Podemos actualizar esta Política de Privacidad de vez en cuando. Le notificaremos cualquier cambio publicando la nueva Política de Privacidad en esta página y actualizando la fecha de &quot;Última Actualización&quot;. Se le aconseja que revise esta Política de Privacidad periódicamente para detectar cualquier cambio.</p>
+<h2>6. Contacto</h2>
+<p>Si tiene alguna pregunta sobre esta Política de Privacidad, por favor, abra un issue en nuestro repositorio de GitHub:
+<a href="https://github.com/DevDeividMoura/omni-max/issues">https://github.com/DevDeividMoura/omni-max/issues</a></p>
+
+    </main>
+    <footer class="app-credits-footer">
+    Feito com ❤️ por
+    <a href="https://github.com/DevDeividMoura" target="_blank" rel="noopener noreferrer">
+        @DevDeividMoura
+    </a>
+</footer>
+  </div>
+</body>
+</html>
