@@ -1,0 +1,276 @@
+{
+  "sidepanel": {
+    "header": {
+      "title": "Omni Max",
+      "subtitle": "Mucho más que una extensión",
+      "active": "Activa",
+      "inactive": "Inactiva",
+      "enable_tooltip": "Habilitar/Deshabilitar toda la extensión Omni Max",
+      "repo_tooltip": "Ver repositorio de Omni Max en GitHub"
+    },
+    "footer": {
+      "made_with_love": "Hecho con ❤️ por"
+    },
+    "personas": {
+      "title": "Gestión de Personas",
+      "add_button": "Añadir Nueva Persona",
+      "edit_button_title": "Editar Persona",
+      "delete_button_title": "Eliminar Persona",
+      "modal_title_add": "Añadir Nueva Persona",
+      "modal_title_edit": "Editar Persona",
+      "name_label": "Nombre de la Persona",
+      "name_placeholder": "Ej: Soporte Técnico Nivel 2",
+      "description_label": "Descripción Breve",
+      "description_placeholder": "Ej: Especialista en problemas técnicos avanzados.",
+      "prompt_label": "Prompt del Sistema",
+      "prompt_placeholder": "Eres un experto en...",
+      "confirm_delete_message": "¿Está seguro de que desea eliminar la persona \"{name}\"?",
+      "validation_error": "El nombre y el prompt de la persona no pueden estar vacíos.",
+      "no_personas_yet": "Aún no hay personas creadas. Haga clic abajo para añadir una.",
+      "tools_label": "Herramientas Disponibles",
+      "tools_placeholder": "Seleccione las herramientas que esta persona puede usar."
+    },
+    "placeholders": {
+      "loading": "Cargando configuraciones...",
+      "no_general_modules": "No hay módulos generales configurados.",
+      "enable_extension_for_shortcuts": "Habilite la extensión para configurar atajos.",
+      "enable_all_shortcuts": "Habilite \"Todos los Atajos\" para configurar individualmente.",
+      "enable_extension_for_ai": "Habilite la extensión para usar IA.",
+      "enable_all_ai": "Habilite \"Todas las Funciones de IA\" para configurar.",
+      "no_ai_features": "No hay funcionalidades de IA configuradas.",
+      "enable_ai_for_prompts": "Prompts disponibles cuando la extensión y las funciones de IA estén habilitadas.",
+      "no_prompts_available": "No hay configuración de prompt disponible para las funcionalidades de IA activas.",
+      "loading_models": "Cargando modelos...",
+      "no_models_found": "No se encontraron modelos. Verifique las credenciales/URL.",
+      "select_model": "Seleccione un modelo",
+      "shortcut_key": "Tecla",
+      "shortcut_key_for": "Tecla para {moduleName}",
+      "add_credentials_to_list_models": "Para listar modelos, añada las credenciales en el modal de abajo y guarde."
+    },
+    "labels": {
+      "model_chat": "Modelo de Chat",
+      "embedding_model": "Modelo de Embedding",
+      "toggle_module": "Activar/Desactivar {moduleName}",
+      "all_ai_features": "Todas las Funciones de IA",
+      "ai_provider": "Proveedor de IA",
+      "model": "Modelo",
+      "individual_ai_modules": "Módulos de IA Individuales:"
+    },
+    "buttons": {
+      "apply": "Aplicar Cambios",
+      "apply_tooltip": "Aplicar todos los cambios realizados",
+      "discard": "Descartar",
+      "discard_tooltip": "Descartar cambios no guardados",
+      "manage_credentials": "Gestionar Credenciales",
+      "manage_credentials_for": "Gestionar Credenciales ({providerName})",
+      "cancel": "Cancelar",
+      "ok": "Aceptar",
+      "save": "Guardar"
+    },
+    "modal": {
+      "credentials_title": "Credenciales: {providerName}",
+      "get_credentials_prompt": "¿Cómo obtener {credentialLabel}?",
+      "no_credentials_needed": "Este proveedor no requiere credenciales adicionales.",
+      "select_valid_provider": "Seleccione un proveedor de IA válido."
+    },
+    "alerts": {
+      "ai_config_error": "Error en la configuración de IA: {error}. Por favor, corrija antes de guardar.",
+      "ai_config_incomplete": "Configuración de IA incompleta: Por favor, seleccione un modelo de IA.",
+      "changes_applied": "¡Configuraciones aplicadas con éxito!"
+    },
+    "errors": {
+      "ai": {
+        "ollama_failed": "Error al conectar con Ollama. Verifique la URL y el Estado de Ollama.",
+        "api_key_required": "Se requiere clave API para este proveedor.",
+        "load_failed_generic": "Error al cargar modelos. Verifique las credenciales y el acceso al proveedor.",
+        "load_failed_specific": "Error al cargar modelos: {message}",
+        "no_models_found_provider": "No se encontraron modelos para este proveedor. Verifique la URL (Ollama) o si hay modelos disponibles.",
+        "extension_disabled": "Extensión deshabilitada.",
+        "features_disabled": "Funciones de IA deshabilitadas."
+      }
+    }
+  },
+  "modules": {
+    "general": {
+      "title": "Módulos Generales",
+      "layout_correction": {
+        "name": "Corrección de Diseño",
+        "description": "Mueve la lista de conversaciones a la derecha y limita la altura para mejor usabilidad."
+      },
+      "template_processor": {
+        "name": "Procesador de Plantillas",
+        "description": "Ajusta el nombre del cliente ({NOMBRE} => Nombre) y auto selecciona variables ([VAR]) con Tab."
+      }
+    },
+    "shortcuts": {
+      "title": "Atajos de Teclado",
+      "shortcut_copy_name": {
+        "name": "Atajo: Copiar Nombre del Cliente",
+        "label": "Nombre del Cliente",
+        "description": "Permite copiar el nombre del cliente usando un atajo de teclado."
+      },
+      "shortcut_copy_document_number": {
+        "name": "Atajo: Copiar Documento del Cliente",
+        "label": "Número de Documento",
+        "description": "Permite copiar el número de documento del cliente usando un atajo de teclado."
+      },
+      "shortcut_service_order_template": {
+        "name": "Atajo: Plantilla de Orden de Servicio",
+        "label": "Plantilla de Orden de Servicio",
+        "description": "Copia una plantilla de Orden de Servicio con Teléfono y Protocolo pre-rellenados."
+      }
+    },
+    "ai": {
+      "title": "Configuraciones de IA",
+      "description": "Configure las funcionalidades de IA para mejorar la eficiencia de la atención.",
+      "ai_assistant": {
+        "name": "IA: Asistente de Chat",
+        "description": "Abre un sidepanel con un asistente de IA para ayudar con tareas contextuales durante la atención."
+      }
+    },
+    "prompts": {
+      "title": "Prompts Personalizables",
+      "description": "Personalice los prompts utilizados por las funcionalidades de IA para satisfacer mejor sus necesidades.",
+      "summary_prompt": {
+        "label": "Prompt de Resumen de Atención",
+        "placeholder": "Ej: Resume esta conversación de forma concisa, centrándote en el problema principal del cliente y la solución ofrecida.",
+        "default": "Resume esta conversación de atención al cliente de forma concisa, destacando el problema principal, la causa principal y la resolución."
+      },
+      "improvement_prompt": {
+        "label": "Prompt de Mejora de Respuesta",
+        "placeholder": "Ej: Revisa la siguiente respuesta para un cliente, haciéndola más clara, empática y profesional.",
+        "default": "Revisa la siguiente respuesta para un cliente, haciéndola más clara, empática y profesional, manteniendo el significado original:"
+      }
+    },
+    "tools": {
+      "get_entire_protocol_history": {
+        "name": "Buscar Historial Completo del Protocolo",
+        "description": "Recupera todas las interacciones de un número de protocolo para resúmenes y análisis completos."
+      },
+      "get_latest_messages_from_session": {
+        "name": "Buscar Mensajes Recientes de la Sesión",
+        "description": "Recupera los mensajes más recientes del chat activo para obtener contexto en tiempo real."
+      },
+      "knowledge_base_search": {
+        "name": "Buscar en Base de Conocimiento",
+        "description": "Busca información en documentos y notas guardadas localmente para responder preguntas."
+      }
+    },
+    "knowledge_base": {
+      "title": "Base de Conocimiento",
+      "add_button_new": "Añadir Nuevo Documento",
+      "existing_documents_title": "Documentos en la Base",
+      "no_documents_yet": "Ningún documento en la base de conocimiento.",
+      "delete_button_title": "Eliminar Documento",
+      "delete_confirmation": "¿Está seguro de que desea eliminar este documento?",
+      "delete_success": "Documento eliminado con éxito.",
+      "delete_error": "Error al eliminar documento: {message}",
+      "modal": {
+        "add_document_title": "Añadir a la Base de Conocimiento",
+        "select_file_button": "Seleccionar Archivo .txt o .md",
+        "source_label": "Fuente del Documento (Opcional)",
+        "source_placeholder": "Ej: URL del artículo, nombre del archivo original",
+        "error_file_type": "Archivo inválido. Por favor, seleccione un archivo .md o .txt.",
+        "error_read_file": "Error al leer el archivo: {message}",
+        "save_success": "¡Documento guardado con éxito!"
+      }
+    }
+  },
+  "content": {
+    "ai_context": {
+      "preamble_start": "Inicio de atención del protocolo {protocolNumber} con {customerName}.",
+      "preamble_segments": "Este protocolo incluye múltiples segmentos de atención fusionados (IDs: {ids}).",
+      "role_customer": "Cliente",
+      "role_agent": "Agente",
+      "role_system": "Sistema/Chatbot",
+      "role_unknown": "Desconocido"
+    }
+  },
+  "alerts": {
+    "copy_success": "{label} \"{data}\" copiado al portapapeles!",
+    "copy_failed": "Error al copiar \"{label}\".",
+    "document_not_found": "Documento del cliente no encontrado en la página.",
+    "customer_name_not_found": "Nombre del cliente no encontrado en la página.",
+    "template_creation_failed": "No se pudo generar la plantilla."
+  },
+  "templates": {
+    "service_order": {
+      "situation": "Situación",
+      "phone": "Teléfono",
+      "protocol": "Protocolo",
+      "notes": "OBS",
+      "phone_placeholder": "TELÉFONO",
+      "protocol_placeholder": "PROTOCOLO",
+      "situation_placeholder": "SITUACIÓN",
+      "notes_placeholder": "OBSERVACIONES"
+    }
+  },
+  "assistant": {
+    "button_label": "Asistente",
+    "title": "Asistente IA",
+    "how_can_i_help": "¿Cómo puedo ayudar?",
+    "choose_or_type": "Elija una sugerencia o escriba su pregunta",
+    "thinking": "Pensando...",
+    "assistant_name": "Asistente IA",
+    "type_your_query": "Pregunte cualquier cosa a la IA...",
+    "locale_code": "es",
+    "suggestions": {
+      "summarize": "Resumir esta atención",
+      "summarize_desc": "Obtenga los puntos principales de la conversación",
+      "summarize_prompt_text": "Resume esta conversación de atención al cliente de forma concisa, destacando el problema principal, la causa principal y la resolución.",
+      "extract_actions": "Extraer acciones necesarias",
+      "extract_actions_desc": "Identifique tareas y próximos pasos"
+    },
+    "errors": {
+      "no_context": "Contexto de atención no encontrado.",
+      "no_messages_to_summarize": "No hay mensajes para resumir.",
+      "summary_failed": "Error al generar resumen: {message}"
+    },
+    "mcp_popup": {
+      "title": "Servidores MCP",
+      "close_button_title": "Cerrar",
+      "tab_connect": "Conectar un MCP",
+      "tab_my_mcps": "Mis MCPs",
+      "form_name_label": "Nombre",
+      "form_type_label": "Tipo",
+      "form_command_label": "Comando",
+      "form_name_placeholder": "Ejemplo: Stripe",
+      "form_command_placeholder": "Ejemplo: npx -y @stripe/mcp --tools=all...",
+      "button_cancel": "Cancelar",
+      "button_confirm": "Confirmar",
+      "empty_list_message": "Aún no hay MCPs conectados.",
+      "reload_button_title": "Recargar",
+      "delete_button_title": "Eliminar",
+      "command_label": "Comando",
+      "url_label": "URL",
+      "tools_label": "Herramientas"
+    }
+  },
+  "popup": {
+    "header": {
+      "title": "Omni Max",
+      "subtitle": "Mucho más que una extensión",
+      "repo_tooltip": "Ver repositorio de Omni Max en GitHub"
+    },
+    "content": {
+      "allowed_origin_label": "Origen Permitido",
+      "allowed_origin_description": "Agregue la URL del sitio donde la extensión Omni Max debe estar habilitada.",
+      "allowed_origin_placeholder": "Ej: https://www.ejemplo.com"
+    },
+    "buttons": {
+      "save": "Guardar Configuración",
+      "save_tooltip": "Guardar la configuración actual de la extensión Omni Max"
+    },
+    "footer": {
+      "made_with_love": "Hecho con ❤️ por"
+    },
+    "errors": {
+      "invalid_origin": "El origen permitido debe comenzar con 'http://' o 'https://'.",
+      "empty_origin": "El origen permitido no puede estar vacío.",
+      "save_failed": "Error al guardar la configuración. Verifique la consola para más detalles."
+    },
+    "alerts": {
+      "save_success_reloading": "Configuración guardada con éxito. Recargando la extensión..."
+    }
+  }
+}

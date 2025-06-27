@@ -1,26 +1,58 @@
 {
-    "name": "chrome-extension-svelte-typescript-boilerplate",
-    "description": "Boilerplate for Chrome Extension Svelte Typescript project",
+    "name": "omni-max",
+    "description": "Melhore a plataforma ASC SAC com resumos de chat por IA, templates e atalhos para agilizar seu atendimento.",
+    "author": "Deivid Carvalho Moura <deividcarvalhomoura@gmail.com> (https://github.com/DevDeividMoura)",
     "version": "1.0.0",
     "type": "module",
     "repository": {
         "type": "git",
-        "url": "https://github.com/nekitcorp/chrome-extension-svelte-typescript-boilerplate.git"
+        "url": "https://github.com/DevDeividMoura/omni-max.git"
     },
     "scripts": {
         "dev": "vite",
         "build": "vite build",
-        "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json"
+        "docs:build": "node scripts/generate-docs.mjs",
+        "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "zip": "mkdirp tmp && cd dist && bestzip ../tmp/omni-max_v$npm_package_version.zip .",
+        "pack": "npm run build && npm run zip"
     },
     "devDependencies": {
         "@crxjs/vite-plugin": "2.0.0-beta.29",
         "@sveltejs/vite-plugin-svelte": "5.0.3",
+        "@testing-library/svelte": "^5.2.8",
         "@tsconfig/svelte": "5.0.4",
         "@types/chrome": "0.0.289",
+        "@types/lodash.debounce": "^4.0.9",
+        "@vitest/coverage-v8": "^3.1.4",
+        "@vitest/ui": "^3.1.4",
+        "bestzip": "^2.2.1",
+        "glob": "^11.0.3",
+        "jsdom": "^26.1.0",
+        "mkdirp": "^3.0.1",
         "svelte": "5.16.2",
         "svelte-check": "4.1.1",
         "tslib": "2.8.1",
         "typescript": "5.7.2",
-        "vite": "6.0.7"
+        "vite": "6.0.7",
+        "vitest": "^3.1.4",
+        "vitest-chrome": "^0.1.0"
+    },
+    "dependencies": {
+        "@langchain/anthropic": "^0.3.21",
+        "@langchain/core": "^0.3.57",
+        "@langchain/google-genai": "^0.2.10",
+        "@langchain/groq": "^0.2.2",
+        "@langchain/langgraph": "^0.3.3",
+        "@langchain/ollama": "^0.2.0",
+        "@langchain/openai": "^0.5.11",
+        "@types/marked": "^5.0.2",
+        "dexie": "^4.0.11",
+        "lodash.debounce": "^4.0.8",
+        "lucide-svelte": "^0.511.0",
+        "marked": "^15.0.12",
+        "svelte-i18n": "^4.0.1",
+        "zod": "^3.25.64"
     }
 }

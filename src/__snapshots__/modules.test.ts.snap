@@ -1,0 +1,54 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`availableModules > should match the snapshot of available modules 1`] = `
+[
+  {
+    "category": "general",
+    "defaultEnabled": false,
+    "description": "modules.general.layout_correction.description",
+    "id": "layoutCorrection",
+    "name": "modules.general.layout_correction.name",
+    "released": true,
+  },
+  {
+    "category": "general",
+    "defaultEnabled": true,
+    "description": "modules.general.template_processor.description",
+    "id": "templateProcessor",
+    "name": "modules.general.template_processor.name",
+    "released": true,
+  },
+  {
+    "category": "shortcut",
+    "defaultEnabled": true,
+    "description": "modules.shortcuts.shortcut_copy_name.description",
+    "id": "shortcutCopyName",
+    "name": "modules.shortcuts.shortcut_copy_name.name",
+    "released": true,
+  },
+  {
+    "category": "shortcut",
+    "defaultEnabled": true,
+    "description": "modules.shortcuts.shortcut_copy_document_number.description",
+    "id": "shortcutCopyDocumentNumber",
+    "name": "modules.shortcuts.shortcut_copy_document_number.name",
+    "released": true,
+  },
+  {
+    "category": "shortcut",
+    "defaultEnabled": true,
+    "description": "modules.shortcuts.shortcut_service_order_template.description",
+    "id": "shortcutServiceOrderTemplate",
+    "name": "modules.shortcuts.shortcut_service_order_template.name",
+    "released": true,
+  },
+  {
+    "category": "ai",
+    "defaultEnabled": true,
+    "description": "modules.ai.ai_assistant.description",
+    "id": "aiAssistant",
+    "name": "modules.ai.ai_assistant.name",
+    "released": true,
+  },
+]
+`;
