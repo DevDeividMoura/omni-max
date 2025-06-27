@@ -10,6 +10,8 @@
 
 [English](../README.md) · Português · [Español](README.es.md) 
 
+---
+
 **E aí, agente! Já desejou ter um superpoder para lidar com a rotina do atendimento ao cliente?** <br/>
 Nós sabemos como o trabalho pode ser desafiador. Por isso, criamos a **Omni Max**: a extensão de IA que todo profissional de atendimento merece. <br/>
 Com resumos de conversas, ajuda nas respostas, templates mágicos e atalhos que salvam vidas, sua experiência está prestes a mudar. <br/>
@@ -49,10 +51,10 @@ Adquira agora em:
     <img src="https://img.shields.io/badge/%20-Chrome-red?logo=google-chrome&logoColor=white" alt="Download for Chrome" />
     </a>
     <a href="#">
-    <img src="https://img.shields.io/badge/%20-Edge-blue?logo=microsoft-edge&logoColor=white" alt="Download for Edge" />
+    <img src="https://custom-icon-badges.demolab.com/badge/Microsoft%20Edge-2771D8?logo=edge-white&logoColor=white" alt="Download for Edge" />
     </a>
     <a href="#">
-    <img src="https://img.shields.io/badge/%20-Mobile-502ab0" alt="Download for Firefox" />
+    <img src="https://img.shields.io/badge/%20-Firefox-orange?logo=firefox-browser&logoColor=white" alt="Download for Firefox" />
     </a>
 </p>
 
@@ -104,14 +106,14 @@ Esta extensão é projetada para se integrar e aprimorar a experiência do usuá
 
 ## 🚀 Como Começar
 
+### Instalação (para Usuários)
+
+Para instruções detalhadas de uso, por favor, consulte nosso **[Guia do Usuário](./user_guides/USER-GUIDE.pt-BR.md)**.
+
 ### Pré-requisitos
 
 * [Node.js](https://nodejs.org/) (versão LTS recomendada)
 * `npm` (vem com o Node.js) ou `yarn` / `pnpm`
-
-### Instalação (para Usuários)
-
-Para instruções detalhadas de uso, por favor, consulte nosso **[Guia do Usuário](/docs/GUIA_DO_USUARIO.md)**.
 
 ### Configuração de Desenvolvimento
 

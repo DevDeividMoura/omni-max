@@ -10,6 +10,8 @@
 
 English · [Português](docs/README.pt-BR.md) · [Español](docs/README.es.md) 
 
+---
+
 **Hey there, agent! Ever wished you had a superpower to handle the daily grind of customer service?** <br/>
 We know how challenging the job can be. That's why we created **Omni Max**: the AI extension that every customer service professional deserves. <br/>
 With conversation summaries, response assistance, magic templates, and life-saving shortcuts, your experience is about to change. <br/>
@@ -47,7 +49,7 @@ Get it now at:
     <img src="https://img.shields.io/badge/%20-Chrome-red?logo=google-chrome&logoColor=white" alt="Download for Chrome" />
     </a>
     <a href="#">
-    <img src="https://img.shields.io/badge/%20-Edge-blue?logo=microsoft-edge&logoColor=white" alt="Download for Edge" />
+    <img src="https://custom-icon-badges.demolab.com/badge/Microsoft%20Edge-2771D8?logo=edge-white&logoColor=white" alt="Download for Edge" />
     </a>
     <a href="#">
     <img src="https://img.shields.io/badge/%20-Firefox-orange?logo=firefox-browser&logoColor=white" alt="Download for Firefox" />
@@ -102,14 +104,14 @@ This extension is designed to integrate with and enhance the user experience on 
 
 ## 🚀 Getting Started
 
+### Installation (for Users)
+
+For detailed usage instructions, please refer to our **[User Guide](./docs/user_guides/USER_GUIDE.md)**.
+
 ### Prerequisites
 
 * [Node.js](https://nodejs.org/) (LTS version recommended)
 * `npm` (comes with Node.js) or `yarn` / `pnpm`
-
-### Installation (for Users)
-
-For detailed usage instructions, please refer to our **[User Guide](/docs/USER_GUIDE.md)**.
 
 ### Development Setup
 

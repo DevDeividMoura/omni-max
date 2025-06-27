@@ -10,6 +10,8 @@
 
 [English](../README.md) · [Português](README.pt-BR.md) · Español
 
+---
+
 **¡Hola, agente! ¿Alguna vez has deseado tener un superpoder para lidiar con la rutina de atención al cliente?** <br/>
 Sabemos lo desafiante que puede ser el trabajo. Por eso, creamos **Omni Max**: la extensión de IA que todo profesional de atención al cliente merece. <br/>
 Con resúmenes de conversaciones, ayuda en las respuestas, plantillas mágicas y atajos que salvan vidas, tu experiencia está a punto de cambiar. <br/>
@@ -44,13 +46,13 @@ Consíguelo ahora en:
 
 <p align="center">
     <a href="#">
-    <img src="https://img.shields.io/badge/%20-Chrome-red?logo=google-chrome&logoColor=white" alt="Descargar para Chrome" />
+    <img src="https://img.shields.io/badge/%20-Chrome-red?logo=google-chrome&logoColor=white" alt="Download for Chrome" />
     </a>
     <a href="#">
-    <img src="https://img.shields.io/badge/%20-Edge-blue?logo=microsoft-edge&logoColor=white" alt="Descargar para Edge" />
+    <img src="https://custom-icon-badges.demolab.com/badge/Microsoft%20Edge-2771D8?logo=edge-white&logoColor=white" alt="Download for Edge" />
     </a>
     <a href="#">
-    <img src="https://img.shields.io/badge/%20-Firefox-orange?logo=firefox-browser&logoColor=white" alt="Descargar para Firefox" />
+    <img src="https://img.shields.io/badge/%20-Firefox-orange?logo=firefox-browser&logoColor=white" alt="Download for Firefox" />
     </a>
 </p>
 
@@ -102,14 +104,14 @@ Esta extensión está diseñada para integrarse y mejorar la experiencia del usu
 
 ## 🚀 Cómo Empezar
 
+### Instalación (para Usuarios)
+
+Para instrucciones detalladas de uso, por favor, consulta nuestra **[Guía del Usuario](./user_guides/USER_GUIDE.es.md)**.
+
 ### Prerrequisitos
 
 * [Node.js](https://nodejs.org/) (versión LTS recomendada)
 * `npm` (viene con Node.js) o `yarn` / `pnpm`
-
-### Instalación (para Usuarios)
-
-Para instrucciones detalladas de uso, por favor, consulta nuestra **[Guía del Usuario](/docs/GUIA_DEL_USUARIO.md)**.
 
 ### Configuración de Desarrollo
 
