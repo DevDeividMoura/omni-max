@@ -44,6 +44,19 @@
         </select>
       </div>
 
+      <button
+        class="button-primary full-width"
+        on:click={() => showCredentialsModal.set(true)}
+      >
+        {$_("sidepanel.buttons.manage_credentials_for", {
+          values: {
+            providerName:
+              selectedProviderMetadata?.displayName ||
+              $localAiProviderConfigStore.provider,
+          },
+        })}
+      </button>
+
       <div class="input-group">
         <label for="aiModel">{$_('sidepanel.labels.model_chat')}</label>
         <select id="aiModel" class="select-field" bind:value={$localAiProviderConfigStore.model} on:change={markChanged} disabled={$loadingModels || $chatModelList.length === 0}>
@@ -71,19 +84,6 @@
         </select>
       </div>
 
-
-      <button
-        class="button-primary full-width"
-        on:click={() => showCredentialsModal.set(true)}
-      >
-        {$_("sidepanel.buttons.manage_credentials_for", {
-          values: {
-            providerName:
-              selectedProviderMetadata?.displayName ||
-              $localAiProviderConfigStore.provider,
-          },
-        })}
-      </button>
 
       <hr class="sub-separator" />
       <p class="section-subtitle">{$_("sidepanel.labels.individual_ai_modules")}</p>

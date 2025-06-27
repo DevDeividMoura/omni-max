@@ -1,8 +1,8 @@
 {
     "name": "omni-max",
-    "description": "Omni Max: An AI-powered Chrome extension that enhances the MatrixGo omnichannel customer service platform with features like chat summarization, response improvement, message templates, and quick data copy shortcuts.",
+    "description": "Melhore a plataforma ASC SAC com resumos de chat por IA, templates e atalhos para agilizar seu atendimento.",
     "author": "Deivid Carvalho Moura <deividcarvalhomoura@gmail.com> (https://github.com/DevDeividMoura)",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "type": "module",
     "repository": {
         "type": "git",
@@ -11,11 +11,12 @@
     "scripts": {
         "dev": "vite",
         "build": "vite build",
+        "docs:build": "node scripts/generate-docs.mjs",
         "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json",
         "test": "vitest run",
         "test:watch": "vitest",
-        "test:ui": "vitest --ui",
-        "coverage": "vitest run --coverage"
+        "zip": "mkdirp tmp && cd dist && bestzip ../tmp/omni-max_v$npm_package_version.zip .",
+        "pack": "npm run build && npm run zip"
     },
     "devDependencies": {
         "@crxjs/vite-plugin": "2.0.0-beta.29",
@@ -26,7 +27,10 @@
         "@types/lodash.debounce": "^4.0.9",
         "@vitest/coverage-v8": "^3.1.4",
         "@vitest/ui": "^3.1.4",
+        "bestzip": "^2.2.1",
+        "glob": "^11.0.3",
         "jsdom": "^26.1.0",
+        "mkdirp": "^3.0.1",
         "svelte": "5.16.2",
         "svelte-check": "4.1.1",
         "tslib": "2.8.1",
