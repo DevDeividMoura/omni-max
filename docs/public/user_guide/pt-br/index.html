@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guia do Usuário - Omni Max</title>
+  <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/DevDeividMoura/omni-max/main/src/assets/icons/icon-32.png">
+  <style>
+    /* --- Estilos Globais e do Corpo da Página --- */
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+      line-height: 1.6; 
+      color: #333; 
+      margin: 0; 
+      background-color: #f4f6f8; 
+      padding: 40px 20px;
+    }
+    .page-container { 
+      max-width: 800px; 
+      margin: 0 auto; 
+      background-color: white; 
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      overflow: hidden; /* Garante que os cantos arredondados do header funcionem */
+    }
+    .content-wrapper { 
+      padding: 20px 40px; 
+    }
+    .content-wrapper h1, .content-wrapper h2 { 
+      border-bottom: 1px solid #eaecef; 
+      padding-bottom: .3em; 
+    }
+    .content-wrapper a { 
+      color: #a9276f; 
+      text-decoration: none; 
+    }
+    .content-wrapper a:hover { 
+      text-decoration: underline; 
+    }
+
+    /* --- Estilos do Header (Adaptados do Popup) --- */
+    .popup-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: linear-gradient(to right, #a9276f, #d02125, #d6621c);
+      color: white;
+      padding: 12px 16px;
+    }
+    .header-title-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .header-logo {
+      width: 48px;
+      height: 48px;
+      object-fit: contain;
+    }
+    .header-text-wrapper h1 {
+      font-size: 2rem;
+      font-weight: 600;
+      margin: 0;
+      line-height: 1.2;
+      border: none; /* Remove a borda de h1 dentro do header */
+    }
+    .header-text-wrapper p {
+      font-size: 1rem;
+      opacity: 0.9;
+      margin: 2px 0 0;
+      line-height: 1.2;
+    }
+    .header-controls {
+      display: flex;
+      align-items: center;
+    }
+    .github-link-header {
+      color: white;
+      display: inline-flex;
+      align-items: center;
+      opacity: 0.8;
+      transition: opacity 0.2s ease;
+    }
+    .github-link-header:hover {
+      opacity: 1;
+    }
+    .github-svg-icon path {
+        fill: white; /* Garante que o ícone SVG seja branco */
+    }
+    
+    /* --- Estilos do Language Switcher --- */
+    .language-switcher { 
+      text-align: center; 
+      padding: 15px; 
+      background-color: #f9fafb; 
+      border-bottom: 1px solid #e5e7eb; 
+      margin: -20px -40px 20px -40px; /* Faz ocupar a largura toda */
+    }
+    .language-switcher a, .language-switcher span { 
+      margin: 0 10px; 
+      font-weight: 500;
+      font-size: 0.9em;
+    }
+    .language-switcher span { 
+      color: #1f2937; /* Idioma atual */
+    }
+    
+    /* --- Estilos do Footer (Adaptados do Popup) --- */
+    .app-credits-footer {
+      padding: 12px 16px;
+      text-align: center;
+      font-size: 0.8em;
+      color: #7f8c8d;
+      background-color: #f4f6f8;
+      border-top: 1px solid #e0e0e0;
+    }
+    .app-credits-footer a {
+      color: #a9276f;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .app-credits-footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="page-container">
+    <header class="popup-header">
+    <div class="header-title-group">
+        <img src="https://raw.githubusercontent.com/DevDeividMoura/omni-max/main/src/assets/icons/icon-48.png" alt="Omni Max Logo" class="header-logo" />
+        <div class="header-text-wrapper">
+            <h1>Omni Max</h1>
+            <p>Muito mais que uma extensão</p>
+        </div>
+    </div>
+    <div class="header-controls">
+        <a href="https://github.com/DevDeividMoura/omni-max" target="_blank" rel="noopener noreferrer" class="github-link-header" title="Ver repositório no GitHub">
+            <svg class="github-svg-icon" width="24" height="24" viewBox="0 0 98 96" role="img" aria-label="GitHub" xmlns="http://www.w3.org/2000/svg">
+                <path fill-rule="evenodd" clip-rule="evenodd" d="M48.854 0C21.839 0 0 22 0 49.217c0 21.756 13.993 40.172 33.405 46.69 2.427.49 3.316-1.059 3.316-2.362 0-1.141-.08-5.052-.08-9.127-13.59 2.934-16.42-5.867-16.42-5.867-2.184-5.704-5.42-7.17-5.42-7.17-4.448-3.015.324-3.015.324-3.015 4.934.326 7.523 5.052 7.523 5.052 4.367 7.496 11.404 5.378 14.235 4.074.404-3.178 1.699-5.378 3.074-6.6-10.839-1.141-22.243-5.378-22.243-24.283 0-5.378 1.94-9.778 5.014-13.2-.485-1.222-2.184-6.275.486-13.038 0 0 4.125-1.304 13.426 5.052a46.97 46.97 0 0 1 12.214-1.63c4.125 0 8.33.571 12.213 1.63 9.302-6.356 13.427-5.052 13.427-5.052 2.67 6.763.97 11.816.485 13.038 3.155 3.422 5.015 7.822 5.015 13.2 0 18.905-11.404 23.06-22.324 24.283 1.78 1.548 3.316 4.481 3.316 9.126 0 6.6-.08 11.897-.08 13.526 0 1.304.89 2.853 3.316 2.364 19.412-6.52 33.405-24.935 33.405-46.691C97.707 22 75.788 0 48.854 0z" />
+            </svg>
+        </a>
+    </div>
+</header>
+    <main class="content-wrapper">
+      <!-- <div class="language-switcher">
+        <span>Português</span> · <a href="../en/">English</a> · <a href="../es/">Español</a>
+      </div> -->
+      <h1>Omni Max - Guia do Super Agente 🦸</h1>
+<div align="center">
+
+<p><a href="../en/">English</a> · Português · <a href="../es/">Español</a></p>
+</div>
+
+<hr>
+<p>E aí, agente! Boas-vindas ao seu centro de treinamento. Este guia é o mapa para dominar todos os superpoderes que a <strong>Omni Max</strong> oferece.</p>
+<p>Sua missão, caso decida aceitar, é transformar sua rotina de atendimento, automatizar o tédio e focar no que você faz de melhor: ser incrível com pessoas.</p>
+<p>Vamos decolar! 🚀</p>
+<h2>Sumário</h2>
+<ol>
+<li><a href="#1-instala%C3%A7%C3%A3o-vestindo-o-traje">Instalação: Vestindo o Traje</a></li>
+<li><a href="#2-primeira-configura%C3%A7%C3%A3o-ligando-os-motores">Primeira Configuração: Ligando os Motores</a></li>
+<li><a href="#3-dominando-seu-arsenal-funcionalidades">Dominando seu Arsenal: Funcionalidades</a><ul>
+<li><a href="#o-assistente-de-ia-seu-copiloto-inteligente">O Assistente de IA: Seu Copiloto Inteligente</a></li>
+<li><a href="#turbinando-a-ia-personas-e-base-de-conhecimento">Turbinando a IA: Personas e Base de Conhecimento</a></li>
+<li><a href="#ferramentas-do-dia-a-dia-agilidade-m%C3%A1xima">Ferramentas do Dia a Dia: Agilidade Máxima</a></li>
+</ul>
+</li>
+<li><a href="#4-solu%C3%A7%C3%A3o-de-problemas-pequenos-ajustes-na-rota">Solução de Problemas: Pequenos Ajustes na Rota</a></li>
+</ol>
+<hr>
+<h3>1. Instalação: Vestindo o Traje</h3>
+<p>Para começar sua jornada, primeiro você precisa adquirir seu traje. A Omni Max está disponível nas principais lojas de extensões.</p>
+<ol>
+<li>Acesse a loja do seu navegador:<ul>
+<li><a href="https://chromewebstore.google.com/detail/omni-max/lddmoiehfgdcmkgkfocnlddlolhehmnh"><strong>Google Chrome</strong></a></li>
+</ul>
+  <!-- * [**Microsoft Edge**](#)
+  * [**Mozilla Firefox**](#) --></li>
+<li>Clique em <strong>&quot;Adicionar ao Navegador&quot;</strong> ou <strong>&quot;Obter&quot;</strong>.</li>
+<li>Confirme a instalação. O ícone da Omni Max (<img src="https://raw.githubusercontent.com/DevDeividMoura/omni-max/main/src/assets/icons/icon-32.png" alt="Omni Max Logo" height="14">) aparecerá na sua barra de ferramentas.</li>
+</ol>
+<p><strong>Dica de Pro</strong>: Se ele estiver escondido dentro do menu de extensões (o ícone de quebra-cabeça 🧩), clique ali, encontre a Omni Max (<img src="https://raw.githubusercontent.com/DevDeividMoura/omni-max/main/src/assets/icons/icon-32.png" alt="Omni Max Logo" height="14">) na lista e clique no alfinete (📌) para fixá-la na barra. Assim, ela estará sempre a um clique de distância!</p>
+<div align="center">
+
+<img src="https://raw.githubusercontent.com/DevDeividMoura/omni-max/main/assets/browser_toolbar_icon.gif" alt="Animação mostrando como fixar o ícone da Omni Max na barra de ferramentas." height="300">
+
+</div>
+
+<h3>2. Primeira Configuração: Ligando os Motores</h3>
+<p>Com o traje vestido, é hora de sincronizar-se com sua base de operações. Esta configuração inicial é crucial e leva menos de 30 segundos.</p>
+<h4><strong>Passo 1: Conecte a Omni Max à sua Plataforma</strong></h4>
+<div align="center">
+
+<img src="https://raw.githubusercontent.com/DevDeividMoura/omni-max/main/assets/setup_platform_url_popup.gif" alt="Demonstração da configuração da URL da plataforma no popup da Omni Max." width="90%">
+
+</div>
+
+<ol>
+<li>Navegue até a página do Painel do Agente da sua plataforma de atendimento (ASC SAC e variações White-label).</li>
+<li>Clique no ícone da <strong>Omni Max (<img src="https://raw.githubusercontent.com/DevDeividMoura/omni-max/main/src/assets/icons/icon-32.png" alt="Omni Max Logo" height="14">)</strong> na barra de ferramentas do navegador. Um pequeno popup vai surgir.</li>
+<li>A extensão tentará adivinhar a URL, mas confirme se o domínio está correto. Se precisar, copie a URL do seu navegador e cole no campo.</li>
+<li>Clique em <strong>&quot;Salvar&quot;</strong>. A página será recarregada automaticamente.</li>
+</ol>
+<h4><strong>Passo 2: Explore seu Painel de Controle</strong></h4>
+<p>Após salvar a URL, um painel lateral se tornará disponível. Clique no ícone da <strong>Omni Max</strong> no canto do seu navegador para abrir seu novo painel de controle sempre que precisar. É aqui que toda a mágica acontece!</p>
+<p>Por padrão, os módulos <strong>&quot;Atalhos de Teclado&quot;</strong> e <strong>&quot;Processador de Templates&quot;</strong> já vêm ativados para turbinar sua produtividade desde o início.</p>
+<h4><strong>Passo 3: Dê Vida à sua IA (Opcional, mas incrível!)</strong></h4>
+<p>As funcionalidades de Inteligência Artificial vêm desativadas. Para ligar seu copiloto, siga estes passos no painel de controle:</p>
+<div align="center">
+
+<img src="https://raw.githubusercontent.com/DevDeividMoura/omni-max/main/assets/setup_ai_config_demo.gif" alt="Animação configurando as credenciais e modelos de IA no painel de controle." height="500">
+
+</div>
+
+<ol>
+<li>Vá para a seção <strong>&quot;Configurações de IA&quot;</strong> e ative o interruptor mestre <strong>&quot;Habilitar Todas as Funções de IA&quot;</strong>.</li>
+<li><strong>Escolha seu Provedor de IA:</strong> Selecione entre <strong>OpenAI</strong>, <strong>Gemini</strong> (Google) ou <strong>Ollama</strong> (para quem roda modelos localmente).</li>
+<li><strong>Adicione suas Credenciais 🔑:</strong><ul>
+<li>Clique em <strong>&quot;Gerenciar Credenciais&quot;</strong>.</li>
+<li>Para OpenAI ou Gemini, cole sua <strong>Chave de API (API Key)</strong>.</li>
+<li>Para Ollama, insira a <strong>URL Base</strong> do seu servidor (ex: <code>http://localhost:11434</code>).</li>
+<li>Clique em <strong>&quot;Salvar&quot;</strong>.</li>
+</ul>
+</li>
+<li><strong>Selecione os Modelos:</strong> Após validar as credenciais, a Omni Max carregará os modelos disponíveis.<ul>
+<li>Escolha um <strong>&quot;Modelo de Chat&quot;</strong> (para conversas, ex: <code>gpt-4.1-mini</code>, <code>gemini-2.5-pro</code>).</li>
+<li>Escolha um <strong>&quot;Modelo de Embedding&quot;</strong> (para a IA ler documentos, ex: <code>text-embedding-3-small</code>).</li>
+</ul>
+</li>
+<li><strong>Ative o Assistente:</strong> O módulo <strong>&quot;IA: Assistente de Chat&quot;</strong> é ativado por padrão assim que a IA geral é ligada.</li>
+<li>Role até o fim e clique em <strong>&quot;Aplicar Alterações&quot;</strong>.</li>
+</ol>
+<p>Pronto! O botão <img src="https://raw.githubusercontent.com/DevDeividMoura/omni-max/main/assets/assistant_button.svg" alt="Botão Assistente" height="20" style="vertical-align:middle"> agora aparecerá na área de digitação da sua plataforma, pronto para a ação.</p>
+<h3>3. Dominando seu Arsenal: Funcionalidades</h3>
+<h4>O Assistente de IA: Seu Copiloto Inteligente</h4>
+<p>Diferente de IAs genéricas, o seu assistente é um especialista. Ele já chega na conversa sabendo de tudo, pois lê o histórico do atendimento para entender o contexto.</p>
+<div align="center">
+
+<img src="https://raw.githubusercontent.com/DevDeividMoura/omni-max/main/assets/feature_assistant_summary_demo.gif" alt="Demonstração do Assistente de IA gerando um resumo de atendimento." width="90%">
+
+</div>
+
+<ul>
+<li><strong>Como usar:</strong><ol>
+<li>Durante um atendimento, clique no botão <img src="https://raw.githubusercontent.com/DevDeividMoura/omni-max/main/assets/assistant_button.svg" alt="Botão Assistente" height="20" style="vertical-align:middle">.</li>
+<li>Na janela que abrir, faça uma pergunta (&quot;Resuma o problema do cliente&quot;) ou clique em uma sugestão.</li>
+<li>A resposta aparecerá em segundos. Você pode copiá-la ou pedir para ele refinar.</li>
+</ol>
+</li>
+</ul>
+<h4>Turbinando a IA: Personas e Base de Conhecimento</h4>
+<p><strong>🎭 Personas: Dê uma Personalidade à sua IA</strong>
+Cansado de respostas robóticas? Crie &quot;Personas&quot; para ensinar a IA a se comportar de maneiras diferentes.</p>
+<ul>
+<li><strong>Como criar:</strong><ol>
+<li>No painel, vá para <strong>&quot;Gerenciamento de Personas&quot;</strong> e clique em <strong>&quot;Adicionar Nova&quot;</strong>.</li>
+<li>Dê um nome (ex: &quot;Especialista em Faturas&quot;).</li>
+<li>No campo &quot;Prompt do Sistema&quot;, dê as instruções: &quot;Você é um especialista financeiro. Seja formal, direto e responda apenas sobre cobranças e pagamentos.&quot;</li>
+<li>Salve. Agora você pode selecionar essa persona dentro da janela do assistente para mudar o tom da IA instantaneamente.</li>
+</ol>
+</li>
+</ul>
+<p><strong>🧠 Base de Conhecimento: Construa sua Biblioteca Secreta</strong>
+Faça a IA responder com base nos <em>seus</em> documentos! Adicione manuais, procedimentos e políticas internas.</p>
+<ul>
+<li><strong>Como adicionar documentos:</strong><ol>
+<li>No painel, vá para <strong>&quot;Base de Conhecimento (RAG)&quot;</strong>.</li>
+<li>Clique em <strong>&quot;Adicionar Novo Documento&quot;</strong> e escolha um arquivo <code>.txt</code> ou <code>.md</code>.</li>
+<li>Se quiser, altere o nome da fonte (útil para referência).</li>
+<li>Salve.</li>
+</ol>
+</li>
+</ul>
+<p>Pronto! O assistente agora irá consultar sua biblioteca antes de responder, garantindo informações precisas e alinhadas à sua empresa.</p>
+<h4>Ferramentas do Dia a Dia: Agilidade Máxima</h4>
+<p><strong>⌨️ Atalhos de Cópia Rápida</strong>
+Copie informações do cliente (nome, CPF/CNPJ) com um simples comando.</p>
+<div align="center">
+
+<img src="https://raw.githubusercontent.com/DevDeividMoura/omni-max/main/assets/feature_customize_shortcuts.gif" alt="Animação da personalização de atalhos de teclado no painel da Omni Max." width="90%">
+
+</div>
+
+<ul>
+<li><strong>Como usar:</strong> Use as combinações de teclas padrão ou...</li>
+<li><strong>Como personalizar:</strong> Vá para <strong>&quot;Atalhos de Teclado&quot;</strong> no painel, clique na combinação atual e digite sua nova combinação preferida. Simples assim!</li>
+</ul>
+<p><strong>📝 Processador de Templates Mágicos</strong>
+Esta funcionalidade turbina as <strong>&quot;Respostas Rápidas&quot;</strong> nativas da plataforma. Crie seus templates com variáveis especiais e deixe a Omni Max fazer o trabalho pesado, preenchendo informações e pulando entre campos para você.</p>
+<div align="center">
+
+<img src="https://raw.githubusercontent.com/DevDeividMoura/omni-max/main/assets/feature_template_processor.gif" alt="Demonstração do processador de templates preenchendo variáveis." width="90%">
+
+</div>
+
+<h5><strong>Como funciona o fluxo mágico:</strong></h5>
+<ol>
+<li><p><strong>Ative o Template:</strong> No campo de mensagem, comece a digitar o atalho da sua resposta rápida (por exemplo, <code>#</code>) e pressione <code>Tab</code> para inseri-la.</p>
+</li>
+<li><p><strong>Mágica Automática:</strong> Instantaneamente, a Omni Max entra em ação!</p>
+<ul>
+<li>Ela substitui variáveis fixas, como <code>{NOME}</code>, pelo nome correto do cliente.</li>
+<li>A primeira variável que você precisa preencher (ex: <code>[ASSUNTO]</code>) já virá selecionada.</li>
+</ul>
+</li>
+<li><p><strong>Navegue com o <code>Tab</code>:</strong> Digite a informação necessária e, em vez de usar o mouse, apenas pressione <code>Tab</code>. A Omni Max pulará para a próxima variável editável na sua mensagem.</p>
+</li>
+<li><p><strong>Complete e Envie:</strong> Continue preenchendo e pressionando <code>Tab</code> até que o template esteja perfeito.</p>
+</li>
+</ol>
+<h3>4. Solução de Problemas: Pequenos Ajustes na Rota</h3>
+<p>Às vezes, até um super-herói precisa de um ajuste no traje.</p>
+<ul>
+<li><p><strong>O painel lateral ou o botão do assistente não aparecem?</strong></p>
+<ul>
+<li>Verifique se a <strong>URL da plataforma</strong> está salva corretamente no popup da extensão (Passo 1 da configuração).</li>
+<li>Certifique-se de que os <strong>interruptores globais</strong> da extensão e das funcionalidades de IA estão ligados no painel.</li>
+<li>Dê um bom e velho F5 na página para recarregar.</li>
+</ul>
+</li>
+<li><p><strong>Os modelos de IA não carregam na lista?</strong></p>
+<ul>
+<li>A causa nº 1 é uma <strong>credencial inválida</strong>. Verifique se sua Chave de API ou URL do Ollama estão corretas.</li>
+<li>Se estiver usando <strong>Ollama</strong>, garanta que o programa está rodando no seu computador.</li>
+<li>Verifique sua conexão com a internet. A Omni Max precisa dela para falar com o provedor de IA.</li>
+</ul>
+</li>
+<li><p><strong>Um atalho de teclado não funciona?</strong></p>
+<ul>
+<li>Verifique se o módulo de atalhos está ativo no painel.</li>
+<li>Outra extensão ou programa pode estar usando a mesma combinação. Tente personalizar o atalho para uma combinação diferente.</li>
+</ul>
+</li>
+</ul>
+<p>Se a aventura ficar complicada, não hesite em nos chamar! <a href="https://github.com/DevDeividMoura/omni-max/issues"><strong>Abra uma issue em nosso GitHub</strong></a> e a comunidade virá ao resgate.</p>
+
+    </main>
+    <footer class="app-credits-footer">
+    Feito com ❤️ por
+    <a href="https://github.com/DevDeividMoura" target="_blank" rel="noopener noreferrer">
+        @DevDeividMoura
+    </a>
+</footer>
+  </div>
+</body>
+</html>

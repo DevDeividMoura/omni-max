@@ -32,7 +32,7 @@ Vamos decolar\! 🚀
 Para começar sua jornada, primeiro você precisa adquirir seu traje. A Omni Max está disponível nas principais lojas de extensões.
 
 1.  Acesse a loja do seu navegador:
-      * [**Google Chrome**](#)
+      * [**Google Chrome**][chrome-web-store-link]
       <!-- * [**Microsoft Edge**](#)
       * [**Mozilla Firefox**](#) -->
 2.  Clique em **"Adicionar ao Navegador"** ou **"Obter"**.
@@ -42,7 +42,7 @@ Para começar sua jornada, primeiro você precisa adquirir seu traje. A Omni Max
 
 <div align="center">
 
-<img src="../../assets/browser_toolbar_icon.gif" alt="logo Omni Max" height="300">
+<img src="../../assets/browser_toolbar_icon.gif" alt="Animação mostrando como fixar o ícone da Omni Max na barra de ferramentas." height="300">
 
 </div>
 
@@ -54,7 +54,7 @@ Com o traje vestido, é hora de sincronizar-se com sua base de operações. Esta
 
 <div align="center">
 
-<img src="../../assets/setup_platform_url_popup.gif" alt="logo Omni Max" width="90%">
+<img src="../../assets/setup_platform_url_popup.gif" alt="Demonstração da configuração da URL da plataforma no popup da Omni Max." width="90%">
 
 </div>
 
@@ -76,7 +76,7 @@ As funcionalidades de Inteligência Artificial vêm desativadas. Para ligar seu 
 
 <div align="center">
 
-<img src="../../assets/setup_ai_config_demo.gif" alt="logo Omni Max" height="500">
+<img src="../../assets/setup_ai_config_demo.gif" alt="Animação configurando as credenciais e modelos de IA no painel de controle." height="500">
 
 </div>
 
@@ -88,7 +88,7 @@ As funcionalidades de Inteligência Artificial vêm desativadas. Para ligar seu 
       * Para Ollama, insira a **URL Base** do seu servidor (ex: `http://localhost:11434`).
       * Clique em **"Salvar"**.
 4.  **Selecione os Modelos:** Após validar as credenciais, a Omni Max carregará os modelos disponíveis.
-      * Escolha um **"Modelo de Chat"** (para conversas, ex: `gpt-4.1`, `gemini-2.5-pro`).
+      * Escolha um **"Modelo de Chat"** (para conversas, ex: `gpt-4.1-mini`, `gemini-2.5-pro`).
       * Escolha um **"Modelo de Embedding"** (para a IA ler documentos, ex: `text-embedding-3-small`).
 5.  **Ative o Assistente:** O módulo **"IA: Assistente de Chat"** é ativado por padrão assim que a IA geral é ligada.
 6.  Role até o fim e clique em **"Aplicar Alterações"**.
@@ -104,7 +104,7 @@ Diferente de IAs genéricas, o seu assistente é um especialista. Ele já chega 
 
 <div align="center">
 
-<img src="../../assets/feature_assistant_summary_demo.gif" alt="logo Omni Max" width="90%">
+<img src="../../assets/feature_assistant_summary_demo.gif" alt="Demonstração do Assistente de IA gerando um resumo de atendimento." width="90%">
 
 </div>
 
@@ -142,7 +142,7 @@ Copie informações do cliente (nome, CPF/CNPJ) com um simples comando.
 
 <div align="center">
 
-<img src="../../assets/feature_customize_shortcuts.gif" alt="logo Omni Max" width="90%">
+<img src="../../assets/feature_customize_shortcuts.gif" alt="Animação da personalização de atalhos de teclado no painel da Omni Max." width="90%">
 
 </div>
 
@@ -154,7 +154,7 @@ Esta funcionalidade turbina as **"Respostas Rápidas"** nativas da plataforma. C
 
 <div align="center">
 
-<img src="../../assets/feature_template_processor.gif" alt="logo Omni Max" width="90%">
+<img src="../../assets/feature_template_processor.gif" alt="Demonstração do processador de templates preenchendo variáveis." width="90%">
 
 </div>
 
@@ -192,5 +192,7 @@ Esta funcionalidade turbina as **"Respostas Rápidas"** nativas da plataforma. C
       * Outra extensão ou programa pode estar usando a mesma combinação. Tente personalizar o atalho para uma combinação diferente.
 
 Se a aventura ficar complicada, não hesite em nos chamar\! [**Abra uma issue em nosso GitHub**](https://github.com/DevDeividMoura/omni-max/issues) e a comunidade virá ao resgate.
+
+[chrome-web-store-link]: https://chromewebstore.google.com/detail/omni-max/lddmoiehfgdcmkgkfocnlddlolhehmnh
 
 

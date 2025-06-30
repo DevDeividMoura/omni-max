@@ -31,7 +31,7 @@ Let's blast off! 🚀
 To begin your journey, you first need to get your suit. Omni Max is available in the main extension stores.
 
 1.  Go to your browser's store:
-    * [**Google Chrome**](#)
+    * [**Google Chrome**][chrome-web-store-link]
     2.  Click **"Add to Browser"** or **"Get"**.
 3.  Confirm the installation. The Omni Max icon (<img src="../../src/assets/icons/icon-32.png" alt="Omni Max Logo" height="14">) will appear in your toolbar.
 
@@ -39,7 +39,7 @@ To begin your journey, you first need to get your suit. Omni Max is available in
 
 <div align="center">
 
-<img src="../../assets/browser_toolbar_icon.gif" alt="Omni Max logo" height="300">
+<img src="../../assets/browser_toolbar_icon.gif" alt="Animation showing how to pin the Omni Max icon to the toolbar." height="300">
 
 </div>
 
@@ -51,7 +51,7 @@ With the suit on, it's time to sync with your base of operations. This initial s
 
 <div align="center">
 
-<img src="../../assets/setup_platform_url_popup.gif" alt="Omni Max logo" width="90%">
+<img src="../../assets/setup_platform_url_popup.gif" alt="Demonstration of the platform URL setup in the Omni Max popup." width="90%">
 
 </div>
 
@@ -72,7 +72,7 @@ The Artificial Intelligence features come disabled. To turn on your copilot, fol
 
 <div align="center">
 
-<img src="../../assets/setup_ai_config_demo.gif" alt="Omni Max logo" height="500">
+<img src="../../assets/setup_ai_config_demo.gif" alt="Animation configuring AI credentials and models in the control panel." height="500">
 
 </div>
 
@@ -84,7 +84,7 @@ The Artificial Intelligence features come disabled. To turn on your copilot, fol
     * For Ollama, enter the **Base URL** of your server (e.g., `http://localhost:11434`).
     * Click **"Save"**.
 4.  **Select the Models:** After validating the credentials, Omni Max will load the available models.
-    * Choose a **"Chat Model"** (for conversations, e.g., `gpt-4.1`, `gemini-2.5-pro`).
+    * Choose a **"Chat Model"** (for conversations, e.g., `gpt-4.1-mini`, `gemini-2.5-pro`).
     * Choose an **"Embedding Model"** (for the AI to read documents, e.g., `text-embedding-3-small`).
 5.  **Activate the Assistant:** The **"AI: Chat Assistant"** module is enabled by default as soon as the main AI is turned on.
 6.  Scroll to the bottom and click **"Apply Changes"**.
@@ -99,7 +99,7 @@ Unlike generic AIs, your assistant is an expert. It joins the conversation alrea
 
 <div align="center">
 
-<img src="../../assets/feature_assistant_summary_demo.gif" alt="Omni Max logo" width="90%">
+<img src="../../assets/feature_assistant_summary_demo.gif" alt="Demonstration of the AI Assistant generating a conversation summary." width="90%">
 
 </div>
 
@@ -137,7 +137,7 @@ Copy customer information (name, ID number) with a simple command.
 
 <div align="center">
 
-<img src="../../assets/feature_customize_shortcuts.gif" alt="Omni Max logo" width="90%">
+<img src="../../assets/feature_customize_shortcuts.gif" alt="Animation of customizing keyboard shortcuts in the Omni Max panel." width="90%">
 
 </div>
 
@@ -149,7 +149,7 @@ This feature supercharges the platform's native **"Quick Replies"**. Create your
 
 <div align="center">
 
-<img src="../../assets/feature_template_processor.gif" alt="Omni Max logo" width="90%">
+<img src="../../assets/feature_template_processor.gif" alt="Demonstration of the template processor filling variables." width="90%">
 
 </div>
 
@@ -184,3 +184,5 @@ Sometimes, even a superhero needs a suit adjustment.
     * Another extension or program might be using the same combination. Try customizing the shortcut to a different key combination.
 
 If the adventure gets complicated, don't hesitate to reach out! [**Open an issue on our GitHub**](https://github.com/DevDeividMoura/omni-max/issues) and the community will come to the rescue.
+
+[chrome-web-store-link]: https://chromewebstore.google.com/detail/omni-max/lddmoiehfgdcmkgkfocnlddlolhehmnh
