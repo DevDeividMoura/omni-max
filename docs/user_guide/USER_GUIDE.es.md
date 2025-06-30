@@ -31,7 +31,7 @@ Tu misión, si decides aceptarla, es transformar tu rutina de atención al clien
 Para empezar tu viaje, primero necesitas tu traje. Omni Max está disponible en las principales tiendas de extensiones.
 
 1.  Accede a la tienda de tu navegador:
-    * [**Google Chrome**](#)
+    * [**Google Chrome**][chrome-web-store-link]
     2.  Haz clic en **"Añadir a Chrome"** u **"Obtener"**.
 3.  Confirma la instalación. El icono de Omni Max (<img src="../../src/assets/icons/icon-32.png" alt="Omni Max Logo" height="14">) aparecerá en tu barra de herramientas.
 
@@ -39,7 +39,7 @@ Para empezar tu viaje, primero necesitas tu traje. Omni Max está disponible en 
 
 <div align="center">
 
-<img src="../../assets/browser_toolbar_icon.gif" alt="Logo de Omni Max" height="300">
+<img src="../../assets/browser_toolbar_icon.gif" alt="Animación que muestra cómo fijar el ícono de Omni Max en la barra." height="300">
 
 </div>
 
@@ -51,7 +51,7 @@ Con el traje puesto, es hora de sincronizarse con tu base de operaciones. Esta c
 
 <div align="center">
 
-<img src="../../assets/setup_platform_url_popup.gif" alt="Logo de Omni Max" width="90%">
+<img src="../../assets/setup_platform_url_popup.gif" alt="Demostración de la configuración de la URL en el popup de Omni Max." width="90%">
 
 </div>
 
@@ -72,7 +72,7 @@ Las funcionalidades de Inteligencia Artificial vienen desactivadas. Para encende
 
 <div align="center">
 
-<img src="../../assets/setup_ai_config_demo.gif" alt="Logo de Omni Max" height="500">
+<img src="../../assets/setup_ai_config_demo.gif" alt="Animación configurando las credenciales y modelos de IA en el panel." height="500">
 
 </div>
 
@@ -84,7 +84,7 @@ Las funcionalidades de Inteligencia Artificial vienen desactivadas. Para encende
     * Para Ollama, introduce la **URL Base** de tu servidor (ej: `http://localhost:11434`).
     * Haz clic en **"Guardar"**.
 4.  **Selecciona los Modelos:** Tras validar las credenciales, Omni Max cargará los modelos disponibles.
-    * Elige un **"Modelo de Chat"** (para conversaciones, ej: `gpt-4.1`, `gemini-2.5-pro`).
+    * Elige un **"Modelo de Chat"** (para conversaciones, ej: `gpt-4.1-mini`, `gemini-2.5-pro`).
     * Elige un **"Modelo de Embedding"** (para que la IA lea documentos, ej: `text-embedding-3-small`).
 5.  **Activa el Asistente:** El módulo **"IA: Asistente de Chat"** se activa por defecto en cuanto se enciende la IA principal.
 6.  Desplázate hasta el final y haz clic en **"Aplicar Cambios"**.
@@ -99,7 +99,7 @@ A diferencia de las IAs genéricas, tu asistente es un experto. Llega a la conve
 
 <div align="center">
 
-<img src="../../assets/feature_assistant_summary_demo.gif" alt="Logo de Omni Max" width="90%">
+<img src="../../assets/feature_assistant_summary_demo.gif" alt="Demostración del Asistente de IA generando un resumen de chat." width="90%">
 
 </div>
 
@@ -137,7 +137,7 @@ Copia información del cliente (nombre, DNI/CIF) con un simple comando.
 
 <div align="center">
 
-<img src="../../assets/feature_customize_shortcuts.gif" alt="Logo de Omni Max" width="90%">
+<img src="../../assets/feature_customize_shortcuts.gif" alt="Animación de la personalización de atajos de teclado en el panel." width="90%">
 
 </div>
 
@@ -149,7 +149,7 @@ Esta funcionalidad potencia las **"Respuestas Rápidas"** nativas de la platafor
 
 <div align="center">
 
-<img src="../../assets/feature_template_processor.gif" alt="Logo de Omni Max" width="90%">
+<img src="../../assets/feature_template_processor.gif" alt="Demostración del procesador de plantillas rellenando variables." width="90%">
 
 </div>
 
@@ -184,3 +184,5 @@ A veces, hasta un superhéroe necesita un ajuste en su traje.
     * Otra extensión o programa podría estar usando la misma combinación. Intenta personalizar el atajo con una combinación de teclas diferente.
 
 Si la aventura se complica, ¡no dudes en contactarnos! [**Abre un issue en nuestro GitHub**](https://github.com/DevDeividMoura/omni-max/issues) y la comunidad vendrá al rescate.
+
+[chrome-web-store-link]: https://chromewebstore.google.com/detail/omni-max/lddmoiehfgdcmkgkfocnlddlolhehmnh

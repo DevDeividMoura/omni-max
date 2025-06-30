@@ -45,15 +45,15 @@ Omni Max is currently available for Google Chrome, Microsoft Edge, and Mozilla F
 Get it now at:
 
 <p align="center">
-    <a href="#">
+    <a href="https://chromewebstore.google.com/detail/omni-max/lddmoiehfgdcmkgkfocnlddlolhehmnh">
     <img src="https://img.shields.io/badge/%20-Chrome-red?logo=google-chrome&logoColor=white" alt="Download for Chrome" />
     </a>
-    <a href="#">
+    <!-- <a href="#">
     <img src="https://custom-icon-badges.demolab.com/badge/Microsoft%20Edge-2771D8?logo=edge-white&logoColor=white" alt="Download for Edge" />
-    </a>
-    <a href="#">
+    </a> -->
+    <!-- <a href="#">
     <img src="https://img.shields.io/badge/%20-Firefox-orange?logo=firefox-browser&logoColor=white" alt="Download for Firefox" />
-    </a>
+    </a> -->
 </p>
 
 ## ✨ What Does Omni Max Actually Do?
@@ -106,7 +106,7 @@ This extension is designed to integrate with and enhance the user experience on 
 
 ### Installation (for Users)
 
-For detailed usage instructions, please refer to our **[User Guide](./docs/user_guides/USER_GUIDE.md)**.
+For detailed usage instructions, please refer to our **[User Guide](./docs/user_guide/USER_GUIDE.md)**.
 
 ### Prerequisites
 
